@@ -21,11 +21,7 @@ final futureInitializerPod = FutureProvider.autoDispose<ProviderContainer>((
   await (init());
   await IsolatedHive.initFlutter();
   await Hive.initFlutter();
-  try {
-    await Supabase.instance.dispose();
-  } catch (e) {
-    talker.error(e);
-  }
+
   await Supabase.initialize(
     url: Secrets.SUPABASE_URL,
     anonKey: Secrets.SUPABASE_ANON_KEY,
