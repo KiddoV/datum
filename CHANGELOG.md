@@ -1,3 +1,7 @@
+## 0.0.8
+- fix conditional import for web and io
+
+
 ## 0.0.7
 
 ### 🐛 Bug Fixes
