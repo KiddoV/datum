@@ -2,10 +2,12 @@
 library;
 
 import 'package:datum/datum.dart';
+import 'package:example/sync/isolate_stratergy.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:test/test.dart';
 
-class MockDatumSyncOperation extends Mock implements DatumSyncOperation<DatumEntity> {}
+class MockDatumSyncOperation extends Mock
+    implements DatumSyncOperation<DatumEntity> {}
 
 class MockDatumEntity extends Mock implements DatumEntity {}
 
@@ -16,7 +18,9 @@ void main() {
   group(
     'IsolateStrategy on Web',
     () {
-      test('when forceIsolateInTest is true, uses web runner which does not support callbacks', () async {
+      test(
+          'when forceIsolateInTest is true, uses web runner which does not support callbacks',
+          () async {
         // ARRANGE
         // On web, `compute` is used. It cannot serialize and send back the
         // `processOperation`, `isCancelled`, or `onProgress` closures.
@@ -33,7 +37,8 @@ void main() {
         when(() => operations.first.data).thenReturn(MockDatumEntity());
 
         var processOperationCalled = false;
-        Future<void> processOperation(DatumSyncOperation<DatumEntity> op) async {
+        Future<void> processOperation(
+            DatumSyncOperation<DatumEntity> op) async {
           processOperationCalled = true;
         }
 
@@ -58,11 +63,13 @@ void main() {
         // Verify that the callbacks were NOT invoked, confirming the web-specific
         // `compute`-based runner was used. The `wrappedStrategy` inside the
         // compute callback receives placeholder functions.
-        expect(processOperationCalled, isFalse, reason: 'processOperation should not be called on web isolate runner');
-        expect(onProgressCalled, isFalse, reason: 'onProgress should not be called on web isolate runner');
+        expect(processOperationCalled, isFalse,
+            reason:
+                'processOperation should not be called on web isolate runner');
+        expect(onProgressCalled, isFalse,
+            reason: 'onProgress should not be called on web isolate runner');
       });
     },
-    testOn: 'browser',
     skip: isSkipped,
   );
 }

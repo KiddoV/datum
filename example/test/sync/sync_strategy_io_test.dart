@@ -1,10 +1,12 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:example/sync/isolate_stratergy.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:test/test.dart';
 
-class MockDatumSyncOperation extends Mock implements DatumSyncOperation<DatumEntity> {}
+class MockDatumSyncOperation extends Mock
+    implements DatumSyncOperation<DatumEntity> {}
 
 class MockDatumEntity extends Mock implements DatumEntity {}
 
@@ -12,7 +14,9 @@ void main() {
   group(
     'IsolateStrategy on I/O (VM)',
     () {
-      test('when forceIsolateInTest is true, uses IO runner which supports callbacks', () async {
+      test(
+          'when forceIsolateInTest is true, uses IO runner which supports callbacks',
+          () async {
         // ARRANGE
         // On I/O platforms, the isolate runner uses Isolate.spawn and can
         // communicate back to the main isolate to execute callbacks.
@@ -28,7 +32,8 @@ void main() {
         when(() => operations.first.id).thenReturn('1');
 
         final processOperationCompleter = Completer<void>();
-        Future<void> processOperation(DatumSyncOperation<DatumEntity> op) async {
+        Future<void> processOperation(
+            DatumSyncOperation<DatumEntity> op) async {
           if (!processOperationCompleter.isCompleted) {
             processOperationCompleter.complete();
           }

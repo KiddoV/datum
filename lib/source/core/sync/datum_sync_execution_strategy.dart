@@ -2,11 +2,11 @@
 
 import 'dart:async';
 
-import 'package:test_api/src/backend/invoker.dart' as invoker;
+// import 'package:test_api/src/backend/invoker.dart';
 import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
 
-import '_isolate_runner_io.dart' if (dart.library.html) '_isolate_runner_web.dart';
+// import '_isolate_runner_io.dart' if (dart.library.html) '_isolate_runner_web.dart';
 
 /// Defines the execution strategy for processing the sync queue.
 abstract class DatumSyncExecutionStrategy {
@@ -21,11 +21,11 @@ abstract class DatumSyncExecutionStrategy {
   ///
   /// It wraps another [DatumSyncExecutionStrategy] (e.g., `sequential` or `parallel`)
   /// which will be executed within the isolate.
-  const factory DatumSyncExecutionStrategy.isolate(
-    DatumSyncExecutionStrategy strategy, {
-    // Add the optional parameter to the factory constructor as well.
-    bool forceIsolateInTest,
-  }) = IsolateStrategy.new;
+  // const factory DatumSyncExecutionStrategy.isolate(
+  //   DatumSyncExecutionStrategy strategy, {
+  //   // Add the optional parameter to the factory constructor as well.
+  //   bool forceIsolateInTest,
+  // }) = IsolateStrategy.new;
 
   /// Executes the push operations according to the strategy.
   ///
@@ -62,66 +62,6 @@ class SequentialStrategy implements DatumSyncExecutionStrategy {
       completedOps++;
       onProgress(completedOps, operations.length);
     }
-  }
-}
-
-/// A strategy that executes another [DatumSyncExecutionStrategy] in a background
-/// isolate. This is ideal for long-running syncs to prevent UI jank.
-class IsolateStrategy implements DatumSyncExecutionStrategy {
-  /// Creates a strategy that wraps another strategy to run it in a background
-  /// isolate.
-  ///
-  /// For example: `IsolateStrategy(SequentialStrategy())` will run the
-  /// sequential sync process in a background isolate.
-  const IsolateStrategy(
-    this.wrappedStrategy, {
-    this.forceIsolateInTest = false,
-  });
-
-  /// The underlying strategy (e.g., sequential or parallel) to be executed
-  /// in the background isolate.
-  final DatumSyncExecutionStrategy wrappedStrategy;
-
-  /// When running in a test environment (`isTest` is true), this flag can be
-  /// set to `true` to force the creation of a real isolate. This is useful
-  /// for integration tests that need to verify the isolate communication logic.
-  /// Defaults to `false`.
-  final bool forceIsolateInTest;
-
-  @override
-  Future<void> execute<T extends DatumEntityBase>(
-    List<DatumSyncOperation<T>> operations,
-    Future<void> Function(DatumSyncOperation<T> operation) processOperation,
-    bool Function() isCancelled,
-    void Function(int completed, int total) onProgress,
-  ) {
-    // A reliable way to detect if we are in a test environment, regardless of
-    // platform (VM, web), is to check if the test runner's Invoker is active.
-    final isTest = invoker.Invoker.current != null;
-
-    if (isTest && !forceIsolateInTest) {
-      // In a test environment (and not forced), run the wrapped strategy
-      // directly on the main thread to simplify testing.
-      return wrappedStrategy.execute<T>(
-        operations,
-        processOperation,
-        isCancelled,
-        onProgress,
-      );
-    }
-
-    // Use the platform-specific runner, which is resolved at compile time
-    // via the conditional import.
-    // - On native, `spawnIsolate` uses `Isolate.spawn` for full two-way communication.
-    // - On web, `spawnIsolate` uses `compute` as a fallback, which has limitations
-    //   (e.g., no progress reporting or cancellation).
-    return spawnIsolate<T>(
-      operations,
-      processOperation,
-      isCancelled,
-      onProgress,
-      wrappedStrategy,
-    );
   }
 }
 
