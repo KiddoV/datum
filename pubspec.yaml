@@ -21,6 +21,15 @@ topics:
 environment:
   sdk: '>=3.3.0 <4.0.0'
 
+# This package supports all platforms listed below.
+platforms:
+  android:
+  ios:
+  linux:
+  macos:
+  web:
+  windows:
+
 dependencies:
   crypto: ^3.0.3
   equatable: ^2.0.5

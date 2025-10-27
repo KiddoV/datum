@@ -16,6 +16,14 @@
 
 ### ♻️ Refactors & 🧹 Chores
 
+- **♻️ Isolate Helper Improvements**:
+  - Replaced conditional imports with platform-specific implementations.
+  - Removed `isolate_helper.dart` and `isolate_helper_unsupported.dart`.
+  - Added `_isolate_helper_io.dart` for IO platforms.
+  - Updated `_isolate_helper_web.dart` to use synchronous JSON encoding.
+  - Updated `datum_sync_engine.dart` to use the new isolate helper.
+  - Removed unused imports in `test.dart`, `adapter_test.dart`, `relational_data_test.dart`, `relational_data_integration_test.dart`, `mock_adapters.dart`, and `test_entity.dart`.
+  - Updated `isolate_helper_test.dart` to use the new isolate helper.
 - **🗑️ Removed `sampleInstance`**: The `sampleInstance` property on `LocalAdapter` is no longer needed due to the sealed class migration and has been removed.
 - **🩺 Renamed `AdapterHealthStatus.ok`** to `AdapterHealthStatus.healthy` for better clarity.
 - **📦 Refactored internal imports** to use the `datum` package consistently.
