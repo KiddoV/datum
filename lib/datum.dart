@@ -6,7 +6,7 @@ export 'source/adapter/local_adapter.dart';
 export 'source/adapter/remote_adapter.dart';
 export 'source/config/datum_config.dart';
 export 'source/core/engine/_internal.dart';
-export 'source/core/engine/_isolate_helper_io.dart';
+export 'source/core/engine/isolate_helper.dart';
 export 'source/core/engine/conflict_detector.dart';
 export 'source/core/engine/datum_core.dart';
 export 'source/core/engine/datum_observer.dart';

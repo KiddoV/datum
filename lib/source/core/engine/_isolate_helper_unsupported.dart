@@ -7,4 +7,10 @@ class IsolateHelper {
     // On unsupported platforms, run synchronously on the main thread.
     return jsonEncode(object);
   }
+
+  /// Initializes any platform-specific resources. (No-op for unsupported)
+  Future<void> initialize() async {}
+
+  /// Disposes of any platform-specific resources. (No-op for unsupported)
+  void dispose() {}
 }
