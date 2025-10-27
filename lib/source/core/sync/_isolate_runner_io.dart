@@ -107,7 +107,6 @@ class _SyncError {
 }
 
 /// The entry point for the background isolate.
-@pragma('vm:entry-point')
 void _isolateEntryPoint(_IsolateInitMessage initMessage) {
   final mainSendPort = initMessage.mainToIsolateSendPort;
   final operations = initMessage.operations;

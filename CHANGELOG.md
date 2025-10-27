@@ -2,7 +2,8 @@
 
 ### 🚀 Features
 
-- **✨ Sealed Class Migration**: Migrated `DatumEntity` and `RelationalDatumEntity` to a `DatumEntityBase` sealed class for enhanced type safety.
+- **🚀 Isolate Sync Strategy**: Introduced a new `IsolateStrategy` that runs data synchronization in a background isolate for improved performance and UI responsiveness. This includes platform-specific runners for both mobile/desktop (`dart:io`) and web (`dart:html`) via conditional imports, ensuring broad platform support.
+- **✨ Sealed Class Migration**: Migrated `DatumEntity` and `RelationalDatumEntity` to a `DatumEntityBase` sealed class for enhanced type safety and to remove the need for `sampleInstance`.
 - **🚀 New Facade Methods**: Added a suite of new methods to the global `Datum` facade for easier data interaction:
   - **Reactive Watching**: `watchAll`, `watchById`, `watchQuery`, `watchRelated`.
   - **One-time Fetching**: `query`, `fetchRelated`.
@@ -11,7 +12,7 @@
 
 ### ✅ Tests
 
-- **🧪 Enhanced Core Tests**: Added test cases for uninitialized state errors, `statusForUser`, `allHealths`, and relational method behavior with non-relational entities.
+- **🧪 Enhanced Core Tests**: Added test cases for uninitialized state errors, `statusForUser`, `allHealths`, and relational method behavior. Introduced a `CustomManagerConfig` for easier mock manager injection in tests.
 
 ### ♻️ Refactors & 🧹 Chores
 

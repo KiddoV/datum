@@ -1,12 +1,12 @@
+// ignore_for_file: implementation_imports, depend_on_referenced_packages
+
 import 'dart:async';
 
+import 'package:test_api/src/backend/invoker.dart' as invoker;
 import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
 
 import '_isolate_runner_io.dart' if (dart.library.html) '_isolate_runner_web.dart';
-
-/// A flag to determine if the code is running in a test environment.
-const bool isTest = bool.fromEnvironment('dart.vm.product') == false && bool.fromEnvironment('flutter.test') == true;
 
 /// Defines the execution strategy for processing the sync queue.
 abstract class DatumSyncExecutionStrategy {
@@ -95,31 +95,33 @@ class IsolateStrategy implements DatumSyncExecutionStrategy {
     bool Function() isCancelled,
     void Function(int completed, int total) onProgress,
   ) {
-    // The `compute` function is a simpler way to run a function in an isolate.
-    // However, it's designed for one-off computations and doesn't support
-    // the two-way communication needed to report progress or handle cancellation
-    // mid-flight. The current Isolate.spawn implementation is more suitable
-    // for this complex, stateful synchronization task.
-    //
-    // For testing purposes, we can simulate the behavior without a real isolate
-    // to speed up tests and avoid isolate-related complexities.
+    // A reliable way to detect if we are in a test environment, regardless of
+    // platform (VM, web), is to check if the test runner's Invoker is active.
+    final isTest = invoker.Invoker.current != null;
+
     if (isTest && !forceIsolateInTest) {
+      // In a test environment (and not forced), run the wrapped strategy
+      // directly on the main thread to simplify testing.
       return wrappedStrategy.execute<T>(
         operations,
         processOperation,
         isCancelled,
         onProgress,
       );
-    } else {
-      // Use the platform-specific runner.
-      return spawnIsolate<T>(
-        operations,
-        processOperation,
-        isCancelled,
-        onProgress,
-        wrappedStrategy,
-      );
     }
+
+    // Use the platform-specific runner, which is resolved at compile time
+    // via the conditional import.
+    // - On native, `spawnIsolate` uses `Isolate.spawn` for full two-way communication.
+    // - On web, `spawnIsolate` uses `compute` as a fallback, which has limitations
+    //   (e.g., no progress reporting or cancellation).
+    return spawnIsolate<T>(
+      operations,
+      processOperation,
+      isCancelled,
+      onProgress,
+      wrappedStrategy,
+    );
   }
 }
 
