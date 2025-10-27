@@ -26,6 +26,9 @@ class DatumSyncEngine<T extends DatumEntityBase> {
 
   String? get lastActiveUserId => _lastActiveUserId;
 
+  /// Returns true if a synchronization process is currently active.
+  bool get isSyncing => statusSubject.value.status == DatumSyncStatus.syncing;
+
   String get entityName => T.toString();
 
   DatumSyncEngine({

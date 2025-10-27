@@ -1,6 +1,7 @@
 import 'package:datum/source/adapter/local_adapter.dart';
 import 'package:datum/source/adapter/remote_adapter.dart';
 import 'package:datum/source/config/datum_config.dart';
+import 'package:datum/source/core/manager/datum_sync_request_strategy.dart';
 import 'package:datum/source/core/models/datum_registration.dart';
 import 'package:datum/source/core/engine/datum_core.dart';
 import 'package:datum/source/core/engine/datum_observer.dart';
@@ -21,6 +22,7 @@ class AdapterPairImpl<T extends DatumEntityBase> implements AdapterPair {
   final DatumConfig<T>? config;
   final List<DatumMiddleware<T>>? middlewares;
   final List<DatumObserver<T>>? observers;
+  final DatumSyncRequestStrategy? syncRequestStrategy;
 
   AdapterPairImpl(
     this.local,
@@ -29,6 +31,7 @@ class AdapterPairImpl<T extends DatumEntityBase> implements AdapterPair {
     this.middlewares,
     this.config,
     this.observers,
+    this.syncRequestStrategy,
   });
 
   factory AdapterPairImpl.fromRegistration(DatumRegistration<T> registration) {
@@ -39,6 +42,7 @@ class AdapterPairImpl<T extends DatumEntityBase> implements AdapterPair {
       middlewares: registration.middlewares,
       config: registration.config,
       observers: registration.observers,
+      syncRequestStrategy: registration.syncRequestStrategy,
     );
   }
 
@@ -66,6 +70,7 @@ class AdapterPairImpl<T extends DatumEntityBase> implements AdapterPair {
       datumConfig: registrationConfig,
       connectivity: datum.connectivityChecker,
       logger: datum.logger,
+      syncRequestStrategy: syncRequestStrategy,
     );
     return manager;
   }

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:datum/datum.dart';
+
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 
@@ -23,6 +24,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   final List<DatumObserver<T>> _localObservers = [];
   final List<GlobalDatumObserver> _globalObservers = [];
   final List<DatumMiddleware<T>> _middlewares = [];
+  final DatumSyncRequestStrategy _syncRequestStrategy;
 
   // Internal state management
   final Map<String, Timer> _autoSyncTimers = {};
@@ -93,11 +95,13 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     List<DatumObserver<T>>? localObservers,
     List<DatumMiddleware<T>>? middlewares,
     List<GlobalDatumObserver>? globalObservers,
+    DatumSyncRequestStrategy? syncRequestStrategy,
   })  : config = datumConfig ?? const DatumConfig(),
         _connectivity = connectivity,
         // The logger's enabled status should always respect the config.
         _logger = (logger ?? DatumLogger()).copyWith(enabled: datumConfig?.enableLogging ?? true),
-        _conflictResolver = conflictResolver ?? LastWriteWinsResolver<T>() {
+        _conflictResolver = conflictResolver ?? datumConfig?.defaultConflictResolver ?? LastWriteWinsResolver<T>(),
+        _syncRequestStrategy = syncRequestStrategy ?? datumConfig?.syncRequestStrategy ?? const SequentialRequestStrategy() {
     _localObservers.addAll(localObservers ?? []);
     _globalObservers.addAll(globalObservers ?? []);
     _middlewares.addAll(middlewares ?? []);
@@ -793,91 +797,104 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   }) async {
     _ensureInitialized();
 
-    if (_isSyncPaused) {
-      _logger.info('Sync for user $userId skipped: manager is paused.');
-      return DatumSyncResult.skipped(
-        userId,
-        await getPendingCount(userId),
-        reason: 'Sync is paused',
-      );
-    }
-
-    // Handle user switching logic before proceeding with synchronization.
-    if (_syncEngine.lastActiveUserId != null && _syncEngine.lastActiveUserId != userId) {
-      if (config.defaultUserSwitchStrategy == UserSwitchStrategy.promptIfUnsyncedData) {
-        final oldUserOps = await _queueManager.getPending(
-          _syncEngine.lastActiveUserId ?? '',
-        );
-        if (oldUserOps.isNotEmpty) {
-          throw UserSwitchException(
-            _syncEngine.lastActiveUserId,
+    return _syncRequestStrategy.execute(
+      () async {
+        if (_isSyncPaused) {
+          _logger.info('Sync for user $userId skipped: manager is paused.');
+          return DatumSyncResult.skipped(
             userId,
-            'Cannot switch user while unsynced data exists for the previous user.',
+            await getPendingCount(userId),
+            reason: 'Sync is paused',
           );
         }
-      }
-      // Other strategies like syncThenSwitch or clearAndFetch would be handled here.
-    }
 
-    try {
-      // Convert options to the correct type if needed.
-      // This handles cases where options might be passed with a different generic type from Datum.
-      final typedOptions = options != null
-          ? DatumSyncOptions<T>(
-              includeDeletes: options.includeDeletes,
-              resolveConflicts: options.resolveConflicts,
-              forceFullSync: options.forceFullSync,
-              overrideBatchSize: options.overrideBatchSize,
-              timeout: options.timeout,
-              direction: options.direction,
-              conflictResolver: options.conflictResolver is DatumConflictResolver<T> ? options.conflictResolver as DatumConflictResolver<T> : null,
-            )
-          : null;
+        // Handle user switching logic before proceeding with synchronization.
+        if (_syncEngine.lastActiveUserId != null && _syncEngine.lastActiveUserId != userId) {
+          if (config.defaultUserSwitchStrategy == UserSwitchStrategy.promptIfUnsyncedData) {
+            final oldUserOps = await _queueManager.getPending(
+              _syncEngine.lastActiveUserId ?? '',
+            );
+            if (oldUserOps.isNotEmpty) {
+              throw UserSwitchException(
+                _syncEngine.lastActiveUserId,
+                userId,
+                'Cannot switch user while unsynced data exists for the previous user.',
+              );
+            }
+          }
+          // Other strategies like syncThenSwitch or clearAndFetch would be handled here.
+        }
 
-      // If the direction is pushOnly and there are no pending operations,
-      // we can skip the sync entirely for this manager.
-      if (typedOptions?.direction == SyncDirection.pushOnly && await getPendingCount(userId) == 0) {
-        _logger.info('Push-only sync for user $userId skipped: no pending operations.');
-        return DatumSyncResult.skipped(userId, 0);
-      }
+        try {
+          // Convert options to the correct type if needed.
+          // This handles cases where options might be passed with a different generic type from Datum.
+          final typedOptions = options != null
+              ? DatumSyncOptions<T>(
+                  includeDeletes: options.includeDeletes,
+                  resolveConflicts: options.resolveConflicts,
+                  forceFullSync: options.forceFullSync,
+                  overrideBatchSize: options.overrideBatchSize,
+                  timeout: options.timeout,
+                  direction: options.direction,
+                  conflictResolver: options.conflictResolver is DatumConflictResolver<T> ? options.conflictResolver as DatumConflictResolver<T> : null,
+                )
+              : null;
 
-      final (result, events) = await _syncEngine.synchronize(
-        userId,
-        options: typedOptions,
-        scope: scope,
-      );
-      _processSyncEvents(events);
-      // Persist the result of the sync operation.
-      if (!result.wasSkipped) {
-        await localAdapter.saveLastSyncResult(userId, result);
-      }
-      return result;
-    } on Object catch (e, stack) {
-      // This block handles a special case where the sync engine fails but
-      // needs to communicate events (like DatumSyncErrorEvent) back to the
-      // manager before the top-level Future completes with an error.
+          // If the direction is pushOnly and there are no pending operations,
+          // we can skip the sync entirely for this manager.
+          if (typedOptions?.direction == SyncDirection.pushOnly && await getPendingCount(userId) == 0) {
+            _logger.info('Push-only sync for user $userId skipped: no pending operations.');
+            return DatumSyncResult.skipped(userId, 0);
+          }
 
-      // If the error is already our special type, it came from the main
-      // isolate. If not, it likely came from a worker isolate and lost its
-      // type, so we need to re-wrap it.
-      final SyncExceptionWithEvents<T> wrappedException = e is SyncExceptionWithEvents<T> ? e : SyncExceptionWithEvents(e, stack, []);
+          final (result, events) = await _syncEngine.synchronize(
+            userId,
+            options: typedOptions,
+            scope: scope,
+          );
+          _processSyncEvents(events);
+          // Persist the result of the sync operation.
+          if (!result.wasSkipped) {
+            await localAdapter.saveLastSyncResult(userId, result);
+          }
+          return result;
+        } on Object catch (e, stack) {
+          // This block handles a special case where the sync engine fails but
+          // needs to communicate events (like DatumSyncErrorEvent) back to the
+          // manager before the top-level Future completes with an error.
 
-      _processSyncEvents(wrappedException.events);
+          // If the error is already our special type, it came from the main
+          // isolate. If not, it likely came from a worker isolate and lost its
+          // type, so we need to re-wrap it.
+          final SyncExceptionWithEvents<T> wrappedException = e is SyncExceptionWithEvents<T> ? e : SyncExceptionWithEvents(e, stack, []);
 
-      // CRITICAL: Re-throw the original error asynchronously.
-      // Using `return Future.error` instead of a synchronous `throw` is
-      // essential to prevent a race condition in tests. It ensures that the
-      // event stream has a chance to deliver the `DatumSyncErrorEvent`
-      // (processed in the line above) to its listeners *before* the Future
-      // returned by `synchronize()` completes with an error. Without this,
-      // a test awaiting both the event and the thrown exception might see
-      // the exception first and terminate before the event is received,
-      // leading to a timeout.
-      return Future.error(
-        wrappedException.originalError,
-        wrappedException.originalStackTrace,
-      );
-    }
+          _processSyncEvents(wrappedException.events);
+
+          // CRITICAL: Re-throw the original error asynchronously.
+          // Using `return Future.error` instead of a synchronous `throw` is
+          // essential to prevent a race condition in tests. It ensures that the
+          // event stream has a chance to deliver the `DatumSyncErrorEvent`
+          // (processed in the line above) to its listeners *before* the Future
+          // returned by `synchronize()` completes with an error. Without this,
+          // a test awaiting both the event and the thrown exception might see
+          // the exception first and terminate before the event is received,
+          // leading to a timeout.
+          return Future.error(
+            wrappedException.originalError,
+            wrappedException.originalStackTrace,
+          );
+        }
+      },
+      isSyncInProgress: () => _syncEngine.isSyncing,
+      onSkipped: () {
+        _logger.info('Sync for user $userId skipped: another sync is in progress.');
+        return DatumSyncResult.skipped(
+          userId,
+          0, // Can't reliably get pending count here without async, so default to 0.
+          reason: 'Sync in progress',
+        );
+      },
+    );
   }
 
   /// Switches the active user with configurable handling of unsynced data.

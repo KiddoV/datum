@@ -60,3 +60,4 @@ export 'source/utils/connectivity_checker.dart';
 export 'source/utils/datum_logger.dart';
 export 'source/utils/duration_formatter.dart';
 export 'source/utils/hash_generator.dart';
+export 'source/core/manager/datum_sync_request_strategy.dart';

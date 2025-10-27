@@ -5,6 +5,7 @@ import 'package:example/data/task/entity/task.dart';
 import 'package:example/data/user/adapters/supabase_adapter.dart';
 import 'package:example/data/task/adapters/local.dart';
 import 'package:example/my_datum_observer.dart';
+import 'package:example/sync/isolate_stratergy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,11 +15,12 @@ final simpleDatumProvider = FutureProvider.autoDispose<Datum>(
       enableLogging: true,
       autoStartSync: true,
       initialUserId: Supabase.instance.client.auth.currentUser?.id,
-      changeCacheDuration: Duration(milliseconds: 0),
+      changeCacheDuration: Duration(milliseconds: 100),
       autoSyncInterval: Duration(
         minutes: 1,
       ),
-      syncExecutionStrategy: DatumSyncExecutionStrategy.parallel(),
+      syncExecutionStrategy:
+          IsolateStrategy(DatumSyncExecutionStrategy.sequential()),
     );
     final datum = await Datum.initialize(
       config: config,

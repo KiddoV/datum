@@ -8,6 +8,7 @@ import 'package:datum/source/core/models/error_strategy.dart';
 import 'package:datum/source/core/models/user_switch_models.dart';
 import 'package:datum/source/core/resolver/conflict_resolution.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
+import 'package:datum/source/core/manager/datum_sync_request_strategy.dart';
 
 /// A handler for migration errors.
 typedef MigrationErrorHandler = Future<void> Function(Object error, StackTrace stackTrace);
@@ -81,6 +82,10 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
   /// Helps to group rapid-fire updates from a server push into a single operation.
   final Duration remoteEventDebounceTime;
 
+  /// The strategy for handling concurrent calls to the `synchronize` method.
+  /// Defaults to [SequentialRequestStrategy].
+  final DatumSyncRequestStrategy syncRequestStrategy;
+
   /// The duration to keep a change ID in the cache to prevent duplicate processing.
   ///
   /// This should be long enough to account for network latency and potential
@@ -101,6 +106,7 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
     this.migrations = const [],
     this.syncExecutionStrategy = const SequentialStrategy(),
     this.onMigrationError,
+    this.syncRequestStrategy = const SequentialRequestStrategy(),
     this.errorRecoveryStrategy = const DatumErrorRecoveryStrategy(
       shouldRetry: _defaultShouldRetry,
       maxRetries: 3,
@@ -129,6 +135,7 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
     List<Migration>? migrations,
     DatumSyncExecutionStrategy? syncExecutionStrategy,
     MigrationErrorHandler? onMigrationError,
+    DatumSyncRequestStrategy? syncRequestStrategy,
     DatumErrorRecoveryStrategy? errorRecoveryStrategy,
     Duration? remoteEventDebounceTime,
     Duration? changeCacheDuration,
@@ -148,6 +155,7 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
       migrations: migrations ?? this.migrations,
       syncExecutionStrategy: syncExecutionStrategy ?? this.syncExecutionStrategy,
       onMigrationError: onMigrationError ?? this.onMigrationError,
+      syncRequestStrategy: syncRequestStrategy ?? this.syncRequestStrategy,
       errorRecoveryStrategy: errorRecoveryStrategy ?? this.errorRecoveryStrategy,
       remoteEventDebounceTime: remoteEventDebounceTime ?? this.remoteEventDebounceTime,
       changeCacheDuration: changeCacheDuration ?? this.changeCacheDuration,
@@ -156,7 +164,7 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
 
   @override
   String toString() {
-    return 'DatumConfig(autoSyncInterval: $autoSyncInterval, autoStartSync: $autoStartSync, syncTimeout: $syncTimeout, defaultConflictResolver: $defaultConflictResolver, defaultUserSwitchStrategy: $defaultUserSwitchStrategy, initialUserId: $initialUserId, enableLogging: $enableLogging, defaultSyncDirection: $defaultSyncDirection, schemaVersion: $schemaVersion, migrations: $migrations, syncExecutionStrategy: $syncExecutionStrategy, onMigrationError: $onMigrationError, errorRecoveryStrategy: $errorRecoveryStrategy, remoteEventDebounceTime: $remoteEventDebounceTime, changeCacheDuration: $changeCacheDuration)';
+    return 'DatumConfig(autoSyncInterval: $autoSyncInterval, autoStartSync: $autoStartSync, syncTimeout: $syncTimeout, defaultConflictResolver: $defaultConflictResolver, defaultUserSwitchStrategy: $defaultUserSwitchStrategy, initialUserId: $initialUserId, enableLogging: $enableLogging, defaultSyncDirection: $defaultSyncDirection, schemaVersion: $schemaVersion, migrations: $migrations, syncExecutionStrategy: $syncExecutionStrategy, onMigrationError: $onMigrationError, syncRequestStrategy: $syncRequestStrategy, errorRecoveryStrategy: $errorRecoveryStrategy, remoteEventDebounceTime: $remoteEventDebounceTime, changeCacheDuration: $changeCacheDuration)';
   }
 
   @override
@@ -174,6 +182,7 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
       migrations,
       syncExecutionStrategy,
       onMigrationError,
+      syncRequestStrategy,
       errorRecoveryStrategy,
       remoteEventDebounceTime,
       changeCacheDuration,

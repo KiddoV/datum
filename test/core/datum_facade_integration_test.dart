@@ -247,6 +247,7 @@ void main() {
     }
 
     setUp(() {
+      Datum.resetForTesting(); // Ensure a clean slate before each test
       localAdapter1 = MockedLocalAdapter<TestEntity>();
       remoteAdapter1 = MockedRemoteAdapter<TestEntity>();
       localAdapter2 = MockedLocalAdapter<TestEntity2>();
@@ -256,7 +257,7 @@ void main() {
       // Example of using the new helpers directly:
       // _stubAllBehaviors(localAdapter1, remoteAdapter1);
       // _stubAllBehaviors(localAdapter2, remoteAdapter2);
-      // when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+      when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
     });
 
     tearDown(() async {
@@ -586,39 +587,41 @@ void main() {
     test('Global synchronize triggers sync on all managers', () async {
       // Arrange
       await initializeDatum();
+      final pendingOps1 = [
+        DatumSyncOperation(
+          id: 'op1',
+          userId: 'u1',
+          entityId: 'e1',
+          type: DatumOperationType.create,
+          timestamp: _fallbackDate,
+          data: TestEntity.create('e1', 'u1', 'Item 1'),
+        ),
+      ];
+      final pendingOps2 = [
+        DatumSyncOperation(
+          id: 'op2',
+          userId: 'u1',
+          entityId: 'e2',
+          type: DatumOperationType.create,
+          timestamp: _fallbackDate,
+          data: TestEntity2(
+            id: 'e2',
+            userId: 'u1',
+            description: 'Item 2',
+            modifiedAt: _fallbackDate,
+            createdAt: _fallbackDate,
+            version: 1,
+          ),
+        ),
+      ];
+
       // Stub sync for manager 1
-      when(() => localAdapter1.getPendingOperations('u1')).thenAnswer(
-        (_) async => [
-          DatumSyncOperation(
-            id: 'op1',
-            userId: 'u1',
-            entityId: 'e1',
-            type: DatumOperationType.create,
-            timestamp: _fallbackDate,
-            data: TestEntity.create('e1', 'u1', 'Item 1'),
-          ),
-        ],
-      );
+      when(() => localAdapter1.getPendingOperations('u1')).thenAnswer((_) async => pendingOps1);
+      when(() => localAdapter1.removePendingOperation('op1')).thenAnswer((_) async => pendingOps1.clear());
+
       // Stub sync for manager 2
-      when(() => localAdapter2.getPendingOperations('u1')).thenAnswer(
-        (_) async => [
-          DatumSyncOperation(
-            id: 'op2',
-            userId: 'u1',
-            entityId: 'e2',
-            type: DatumOperationType.create,
-            timestamp: _fallbackDate,
-            data: TestEntity2(
-              id: 'e2',
-              userId: 'u1',
-              description: 'Item 2',
-              modifiedAt: _fallbackDate,
-              createdAt: _fallbackDate,
-              version: 1,
-            ),
-          ),
-        ],
-      );
+      when(() => localAdapter2.getPendingOperations('u1')).thenAnswer((_) async => pendingOps2);
+      when(() => localAdapter2.removePendingOperation('op2')).thenAnswer((_) async => pendingOps2.clear());
 
       // Act
       await Datum.instance.synchronize('u1');
