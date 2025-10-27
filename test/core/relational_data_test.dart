@@ -1,5 +1,4 @@
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/models/relational_datum_entity.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 

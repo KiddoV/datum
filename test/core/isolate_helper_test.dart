@@ -1,6 +1,6 @@
 import 'dart:isolate';
 
-import 'package:datum/source/core/engine/isolate_helper.dart';
+import 'package:datum/source/core/engine/_isolate_helper_io.dart';
 import 'package:test/test.dart';
 
 // This must be a top-level function to be used as an isolate entry point.

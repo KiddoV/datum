@@ -1,5 +1,4 @@
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/models/relational_datum_entity.dart';
 
 /// A mock entity for testing purposes.
 class TestEntity extends RelationalDatumEntity {
