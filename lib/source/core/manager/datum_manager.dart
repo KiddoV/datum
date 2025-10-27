@@ -1070,6 +1070,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     if (isDisposed) return;
     stopAutoSync();
     await _queueManager.dispose();
+    _syncRequestStrategy.dispose();
     _isolateHelper.dispose();
     await localAdapter.dispose();
     await remoteAdapter.dispose();

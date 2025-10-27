@@ -19,6 +19,7 @@ final simpleDatumProvider = FutureProvider.autoDispose<Datum>(
       autoSyncInterval: Duration(
         minutes: 1,
       ),
+      syncRequestStrategy: SequentialRequestStrategy(),
       syncExecutionStrategy:
           IsolateStrategy(DatumSyncExecutionStrategy.sequential()),
     );

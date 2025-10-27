@@ -120,6 +120,8 @@ class UnregisteredEntity extends DatumEntity {
 
 class MockedLocalAdapter<T extends DatumEntityBase> extends Mock implements LocalAdapter<T> {}
 
+class MockedSyncRequestStrategy extends Mock implements DatumSyncRequestStrategy {}
+
 class MockedRemoteAdapter<T extends DatumEntityBase> extends Mock implements RemoteAdapter<T> {}
 
 void main() {
@@ -294,6 +296,30 @@ void main() {
       verify(() => remoteAdapter1.initialize()).called(1);
       verify(() => localAdapter2.initialize()).called(1);
       verify(() => remoteAdapter2.initialize()).called(1);
+    });
+
+    test('Datum.dispose() disposes all managers and their strategies', () async {
+      // Arrange
+      final mockStrategy1 = MockedSyncRequestStrategy();
+      final mockStrategy2 = MockedSyncRequestStrategy();
+      when(() => mockStrategy1.dispose()).thenAnswer((_) {});
+      when(() => mockStrategy2.dispose()).thenAnswer((_) {});
+
+      await Datum.initialize(
+        config: const DatumConfig(enableLogging: false),
+        connectivityChecker: connectivityChecker,
+        registrations: [
+          DatumRegistration<TestEntity>(localAdapter: localAdapter1, remoteAdapter: remoteAdapter1, syncRequestStrategy: mockStrategy1),
+          DatumRegistration<TestEntity2>(localAdapter: localAdapter2, remoteAdapter: remoteAdapter2, syncRequestStrategy: mockStrategy2),
+        ],
+      );
+
+      // Act
+      await Datum.instance.dispose();
+
+      // Assert
+      verify(() => mockStrategy1.dispose()).called(1);
+      verify(() => mockStrategy2.dispose()).called(1);
     });
 
     test('Datum.manager<T>() returns the correct manager instance', () async {

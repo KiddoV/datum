@@ -14,6 +14,9 @@ abstract class DatumSyncRequestStrategy {
     required bool Function() isSyncInProgress,
     required T Function() onSkipped,
   });
+
+  /// Disposes of any resources held by the strategy.
+  void dispose() {}
 }
 
 /// A strategy that skips new sync requests if one is already in progress.
@@ -32,6 +35,9 @@ class SkipConcurrentStrategy implements DatumSyncRequestStrategy {
     }
     return action();
   }
+
+  @override
+  void dispose() {}
 }
 
 /// A strategy that queues new sync requests if one is already in progress.
@@ -40,27 +46,46 @@ class SkipConcurrentStrategy implements DatumSyncRequestStrategy {
 /// the other, preventing lost updates from rapid, concurrent calls. This is
 /// the recommended default for most applications to ensure data consistency.
 class SequentialRequestStrategy implements DatumSyncRequestStrategy {
-  const SequentialRequestStrategy();
+  /// The number of times to retry a failed synchronization action.
+  final int retryCount;
 
-  // A static queue to ensure all DatumManager instances share the same
-  // sequential processing logic if they are part of the same Isolate.
-  static final AsyncQueue _queue = AsyncQueue.autoStart();
+  /// Creates a sequential strategy with an optional [retryCount].
+  const SequentialRequestStrategy({this.retryCount = 3});
 
   @override
   Future<T> execute<T>(
+    //
     Future<T> Function() action, {
     required bool Function() isSyncInProgress,
     required T Function() onSkipped,
   }) {
     final completer = Completer<T>();
-    _queue.addJob((_) async {
-      try {
-        final result = await action();
-        completer.complete(result);
-      } catch (e, s) {
-        completer.completeError(e, s);
-      }
-    });
+    (_instanceQueues[this] ??= AsyncQueue.autoStart()).addJob(
+      (queue) async {
+        try {
+          final result = await action();
+          completer.complete(result);
+        } catch (e, s) {
+          try {
+            queue.retry();
+          } catch (_) {
+            // This catch block handles the case where retry is called more than
+            // `retryCount` times. The queue throws an error, and we complete
+            // the future with the original error.
+            completer.completeError(e, s);
+          }
+        }
+      },
+      retryTime: retryCount,
+    );
     return completer.future;
   }
+
+  @override
+  void dispose() {
+    _instanceQueues[this]?.stop();
+  }
 }
+
+/// A weak map to hold a queue for each strategy instance.
+final _instanceQueues = <SequentialRequestStrategy, AsyncQueue>{};

@@ -9,6 +9,8 @@ import '../mocks/test_entity.dart';
 // Create mocktail-based mocks for this test file to allow `when()` stubs.
 class MockedLocalAdapter<T extends DatumEntityBase> extends Mock implements LocalAdapter<T> {}
 
+class MockedSyncRequestStrategy extends Mock implements DatumSyncRequestStrategy {}
+
 class MockedRemoteAdapter<T extends DatumEntityBase> extends Mock implements RemoteAdapter<T> {}
 
 void main() {
@@ -305,6 +307,30 @@ void main() {
         // Assert 2: The last emitted duration should be Duration.zero
         expect(durations.last, Duration.zero);
       });
+    });
+
+    test('calling dispose() disposes sync request strategy', () async {
+      // Arrange
+      final mockStrategy = MockedSyncRequestStrategy();
+      when(() => mockStrategy.dispose()).thenAnswer((_) {});
+
+      // Re-create manager with the mock strategy
+      manager = DatumManager<TestEntity>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        connectivity: connectivityChecker,
+        syncRequestStrategy: mockStrategy, // Inject the mock
+        datumConfig: const DatumConfig(
+          enableLogging: false,
+        ),
+      );
+      await manager.initialize();
+
+      // Act
+      await manager.dispose();
+
+      // Assert
+      verify(() => mockStrategy.dispose()).called(1);
     });
   });
 }
