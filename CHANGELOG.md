@@ -1,3 +1,13 @@
+## 0.0.7
+
+### 🐛 Bug Fixes
+
+- **🐛 Isolate Error Handling & Web Compatibility**:
+  - Ensured errors during isolate operations are properly caught and sent back to the main thread.
+  - Enhanced web compatibility by using `compute` function for isolate operations.
+  - Removed unnecessary newline at end of file for consistency.
+  - Removed unused import in `supabase_security_dialog.dart`.
+
 ## 0.0.6
 
 ### 🚀 Features
