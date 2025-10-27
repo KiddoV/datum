@@ -1,6 +1,25 @@
+# 0.0.9
+
+## ✨ Features
+
+### Core
+
+- **Implement Sync Request Strategies**: Introduced a new system to control how concurrent calls to the `synchronize` method are handled, preventing race conditions and improving data consistency.
+  - Added `DatumSyncRequestStrategy` as the base for defining execution behavior.
+  - Implemented `SequentialRequestStrategy` to queue and process all `synchronize` calls in the order they are received. This is the new default behavior.
+  - Implemented `SkipConcurrentStrategy` as an alternative strategy to ignore new `synchronize` calls if a sync is already in progress.
+  - Added `syncRequestStrategy` to `DatumConfig` to allow global configuration of this behavior.
+  - Added an `isSyncing` getter to `DatumSyncEngine` to check the current sync status.
+
+## 🐛 Bug Fixes
+
+### Build
+
+- **Correct Conditional Imports**: Fixed conditional imports to ensure compatibility across both `dart:io` and `dart:html` environments.
+
+
 ## 0.0.8
 - fix conditional import for web and io
-
 
 ## 0.0.7
 
