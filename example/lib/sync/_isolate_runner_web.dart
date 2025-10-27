@@ -45,5 +45,6 @@ Future<void> spawnIsolate<T extends DatumEntityBase>(
   // and the strategy to the compute function.
   // Note: `processOperation` cannot be passed to another isolate.
   // This is a limitation we accept for web compatibility.
-  return compute(_computeCallback, _ComputePayload(operations, wrappedStrategy));
+  return compute(
+      _computeCallback, _ComputePayload(operations, wrappedStrategy));
 }

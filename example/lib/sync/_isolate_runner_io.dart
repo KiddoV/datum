@@ -36,7 +36,9 @@ Future<void> spawnIsolate<T extends DatumEntityBase>(
             final operation = operations.firstWhere(
               (op) => op.id == message.id,
             );
-            processOperation(operation).then((_) => message.responsePort.send(null)).catchError((Object e, StackTrace s) {
+            processOperation(operation)
+                .then((_) => message.responsePort.send(null))
+                .catchError((Object e, StackTrace s) {
               message.responsePort.send(_IsolateError(e, s));
             });
           } else if (message is _ProgressUpdate) {
