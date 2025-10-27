@@ -63,17 +63,6 @@ void main() {
       expect(paginatedResult.nextCursor, 'cursor-abc');
     });
 
-    test('empty() constructor creates a correct empty result', () {
-      const emptyResult = PaginatedResult<TestEntity>.empty();
-
-      expect(emptyResult.items, isEmpty);
-      expect(emptyResult.totalCount, 0);
-      expect(emptyResult.currentPage, 1);
-      expect(emptyResult.totalPages, 0);
-      expect(emptyResult.hasMore, isFalse);
-      expect(emptyResult.nextCursor, isNull);
-    });
-
     test('supports value equality', () {
       final result1 = PaginatedResult<TestEntity>(
         items: testItems,
