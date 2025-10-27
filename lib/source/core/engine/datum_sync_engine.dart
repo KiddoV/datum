@@ -1,31 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
 
-import '_isolate_helper_io.dart' if (dart.library.html) '_isolate_helper_web.dart';
-import 'package:datum/source/core/health/datum_health.dart';
-import 'package:datum/source/adapter/local_adapter.dart';
-import 'package:datum/source/adapter/remote_adapter.dart';
-import 'package:datum/source/config/datum_config.dart';
-import 'package:datum/source/core/engine/conflict_detector.dart';
+import 'package:datum/datum.dart';
 
-import 'package:datum/source/core/engine/queue_manager.dart';
-import 'package:datum/source/core/events/conflict_detected_event.dart';
-import 'package:datum/source/core/events/user_switched_event.dart';
-import 'package:datum/source/core/events/conflict_resolved_event.dart';
-import 'package:datum/source/core/events/datum_event.dart';
-import 'package:datum/source/core/models/datum_exception.dart';
-import 'package:datum/source/core/models/datum_operation.dart';
-import 'package:datum/source/core/models/datum_sync_metadata.dart';
-import 'package:datum/source/core/models/datum_sync_operation.dart';
-import 'package:datum/source/core/models/datum_sync_options.dart';
-import 'package:datum/source/core/models/datum_sync_result.dart';
-import 'package:datum/source/core/models/datum_sync_scope.dart';
-import 'package:datum/source/core/models/datum_sync_status_snapshot.dart';
-import 'package:datum/source/core/resolver/conflict_resolution.dart';
-import 'package:datum/source/utils/connectivity_checker.dart';
-import 'package:datum/source/utils/datum_logger.dart';
-import 'package:datum/source/core/engine/datum_observer.dart';
-import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:rxdart/rxdart.dart';
 
 /// The core engine that orchestrates the synchronization process.
