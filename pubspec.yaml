@@ -19,7 +19,7 @@ topics:
   - supabase
 
 environment:
-  sdk: '>=3.3.0 <4.0.0'
+  sdk: '>=3.6.0 <4.0.0'
 
 # This package supports all platforms listed below.
 platforms:
@@ -29,6 +29,10 @@ platforms:
   macos:
   web:
   windows:
+
+workspace:
+  - datum_docs/
+
 
 dependencies:
   crypto: ^3.0.3
