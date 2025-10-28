@@ -156,10 +156,52 @@ class Datum {
     logBuffer.writeln('│  ├─ 🏗️  ${_yellow('Schema')}: v${_green(config.schemaVersion)} (Migrations: ${_green(config.migrations.length)})');
     logBuffer.writeln('│  ├─ 🌐 ${_yellow('Connectivity')}: ${_green(connectivityChecker.runtimeType)}');
     logBuffer.writeln('│  ├─ 🧭 ${_yellow('Sync Direction')}: ${_green(config.defaultSyncDirection.name)}');
+    switch (config.defaultSyncDirection) {
+      case SyncDirection.pushThenPull:
+        logBuffer.writeln('│  │  └─ ℹ️  Local changes will be pushed before pulling remote changes.');
+        break;
+      case SyncDirection.pullThenPush:
+        logBuffer.writeln('│  │  └─ ℹ️  Remote changes will be pulled before pushing local changes.');
+        break;
+      case SyncDirection.pushOnly:
+        logBuffer.writeln('│  │  └─ ℹ️  Only local changes will be pushed to the remote.');
+        break;
+      case SyncDirection.pullOnly:
+        logBuffer.writeln('│  │  └─ ℹ️  Only remote changes will be pulled to local.');
+        break;
+    }
     logBuffer.writeln('│  ├─ 🚦 ${_yellow('Sync Strategy')}: ${_green(config.syncExecutionStrategy.runtimeType)}');
+    if (config.syncExecutionStrategy is SequentialStrategy) {
+      logBuffer.writeln('│  │  └─ ℹ️  Pending operations will be processed one by one.');
+    } else if (config.syncExecutionStrategy is ParallelStrategy) {
+      logBuffer.writeln('│  │  └─ ℹ️  Pending operations will be processed in parallel batches.');
+    }
+    logBuffer.writeln('│  ├─ 🚦 ${_yellow('Request Strategy')}: ${_green(config.syncRequestStrategy.runtimeType)}');
+    if (config.syncRequestStrategy is SequentialRequestStrategy) {
+      logBuffer.writeln('│  │  └─ ℹ️  Concurrent sync calls will be queued and executed in order.');
+    } else if (config.syncRequestStrategy is SkipConcurrentStrategy) {
+      logBuffer.writeln('│  │  └─ ℹ️  Concurrent sync calls will be skipped if a sync is already in progress.');
+    } else {
+      logBuffer.writeln('│  │  └─ ℹ️  Using custom request strategy.');
+    }
     logBuffer.writeln('│  ├─ ⏳ ${_yellow('Sync Timeout')}: ${_cyan(formatDuration(config.syncTimeout))}');
     logBuffer.writeln('│  ├─ ↪️  ${_yellow('User Switch')}: ${_green(config.defaultUserSwitchStrategy.name)}');
+    switch (config.defaultUserSwitchStrategy) {
+      case UserSwitchStrategy.syncThenSwitch:
+        logBuffer.writeln('│  │  └─ ℹ️  Syncs previous user\'s pending data before switching.');
+        break;
+      case UserSwitchStrategy.clearAndFetch:
+        logBuffer.writeln('│  │  └─ ℹ️  Clears new user\'s local data, then fetches from remote.');
+        break;
+      case UserSwitchStrategy.promptIfUnsyncedData:
+        logBuffer.writeln('│  │  └─ ℹ️  Fails switch if previous user has unsynced data.');
+        break;
+      case UserSwitchStrategy.keepLocal:
+        logBuffer.writeln('│  │  └─ ℹ️  Switches user without any data modifications.');
+        break;
+    }
     logBuffer.writeln('│  ├─ 🛡️  ${_yellow('Error Recovery')}: ${_green(config.errorRecoveryStrategy.runtimeType)} (Retries: ${_cyan(config.errorRecoveryStrategy.maxRetries)})');
+    logBuffer.writeln('│  │  └─ ℹ️  Uses a ${_green(config.errorRecoveryStrategy.backoffStrategy.runtimeType)} for retries on network errors.');
     logBuffer.writeln('│  └─ ⚡ ${_yellow('Event Handling')}:');
     logBuffer.writeln('│     ├─ ⏱️  Debounce: ${_cyan(formatDuration(config.remoteEventDebounceTime))}');
     logBuffer.writeln('│     └─ 🗑️  Cache TTL: ${_cyan(formatDuration(config.changeCacheDuration))}');

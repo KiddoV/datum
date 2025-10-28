@@ -237,7 +237,6 @@ class SupabaseRemoteAdapter<T extends DatumEntity> extends RemoteAdapter<T> {
 
   @override
   Future<void> initialize() {
-    _subscribeToChanges();
     // The Supabase client is initialized globally, so no specific
     // initialization is needed for this adapter instance.
     return Future.value();
