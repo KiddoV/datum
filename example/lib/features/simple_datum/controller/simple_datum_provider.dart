@@ -15,13 +15,14 @@ final simpleDatumProvider = FutureProvider.autoDispose<Datum>(
       enableLogging: true,
       autoStartSync: true,
       initialUserId: Supabase.instance.client.auth.currentUser?.id,
-      changeCacheDuration: Duration(milliseconds: 100),
+      changeCacheDuration: Duration(milliseconds: 200),
       autoSyncInterval: Duration(
-        minutes: 1,
+        minutes: 10,
       ),
       syncRequestStrategy: SequentialRequestStrategy(),
-      syncExecutionStrategy:
-          IsolateStrategy(DatumSyncExecutionStrategy.sequential()),
+      syncExecutionStrategy: IsolateStrategy(
+        DatumSyncExecutionStrategy.sequential(),
+      ),
     );
     final datum = await Datum.initialize(
       config: config,
@@ -40,9 +41,7 @@ final simpleDatumProvider = FutureProvider.autoDispose<Datum>(
         ),
       ],
     );
-    Datum.manager<Task>().startAutoSync(
-      Supabase.instance.client.auth.currentUser!.id,
-    );
+
     ref.onDispose(
       () async => await datum.dispose(),
     );
