@@ -3,14 +3,8 @@
 *.log
 *.pyc
 *.swp
-.DS_Store
-pubspec.lock
-.atom/
-.buildlog/
-.history
-.svn/
-.swiftpm/
-migrate_working_dir/
+**/.DS_Store
+**/pubspec.lock
 
 # IntelliJ related
 *.iml
@@ -26,7 +20,7 @@ migrate_working_dir/
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
-.dart_tool/
+**/.dart_tool/
 .flutter-plugins-dependencies
 .pub-cache/
 .pub/
