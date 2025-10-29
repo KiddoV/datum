@@ -30,8 +30,7 @@ platforms:
   web:
   windows:
 
-workspace:
-  - datum_docs/
+resolution: workspace
 
 
 dependencies:
