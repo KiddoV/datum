@@ -28,6 +28,26 @@
 **/coverage/
 packages/datum/example/pubspec.lock
 
+# Generated files
+*.g.dart
+*.freezed.dart
+*.gr.dart
+*.gen.dart
+*.pb.dart
+*.pbenum.dart
+*.pbjson.dart
+*.pbserver.dart
+*.pbgrpc.dart
+
+# Platform-specific build files
+android/local.properties
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Flutter/ephemeral/
+windows/flutter/generated_plugins.cmake
+linux/flutter/generated_plugins.cmake
+macos/Flutter/GeneratedPluginRegistrant.swift
+
 # Symbolication related
 app.*.symbols
 
