@@ -1,1 +1,0 @@
-{"isEntrypoint":true,"deps":["jaspr|lib/browser.dart","jaspr_content|lib/components/github_button.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["markdown|lib/src/ast.dart","markdown|lib/src/block_syntaxes/block_syntax.dart","markdown|lib/src/document.dart","markdown|lib/src/extension_set.dart","markdown|lib/src/inline_syntaxes/inline_syntax.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["convert"],"hasMain":false}

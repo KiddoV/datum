@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["liquify|lib/src/ast.dart","liquify|lib/src/mixins/parser.dart","liquify|lib/src/tags/tags.dart","liquify|lib/src/tags/tag.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

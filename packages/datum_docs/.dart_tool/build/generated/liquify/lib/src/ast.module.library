@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["liquify|lib/parser.dart","liquify|lib/src/visitor.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

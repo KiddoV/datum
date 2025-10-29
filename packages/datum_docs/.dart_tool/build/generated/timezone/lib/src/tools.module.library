@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["timezone|lib/timezone.dart","timezone|lib/tzdata.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["collection"],"hasMain":false}

@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["liquify|lib/src/context.dart","liquify|lib/src/tag.dart","liquify|lib/src/tags/for.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

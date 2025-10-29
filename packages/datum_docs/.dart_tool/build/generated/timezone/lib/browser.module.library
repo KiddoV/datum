@@ -1,1 +1,0 @@
-{"isEntrypoint":true,"deps":["http|lib/browser_client.dart","timezone|lib/timezone.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

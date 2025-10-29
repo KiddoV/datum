@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["jaspr|lib/jaspr.dart","jaspr|lib/src/foundation/styles/css.dart"],"parts":["jaspr_content|lib/src/theme/_base.dart","jaspr_content|lib/src/theme/_reset.dart","jaspr_content|lib/src/theme/colors.dart","jaspr_content|lib/src/theme/typography.dart"],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

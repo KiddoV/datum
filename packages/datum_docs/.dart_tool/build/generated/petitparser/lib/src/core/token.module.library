@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["meta|lib/meta.dart","petitparser|lib/src/matcher/matches.dart","petitparser|lib/src/parser/action/token.dart","petitparser|lib/src/parser/misc/newline.dart","petitparser|lib/src/core/parser.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["math"],"hasMain":false}

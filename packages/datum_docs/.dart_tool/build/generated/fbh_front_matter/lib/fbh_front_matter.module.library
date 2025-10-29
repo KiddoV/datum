@@ -1,1 +1,0 @@
-{"isEntrypoint":true,"deps":["fbh_front_matter|lib/src/front_matter_document.dart","fbh_front_matter|lib/src/front_matter_exception.dart","fbh_front_matter|lib/src/front_matter.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

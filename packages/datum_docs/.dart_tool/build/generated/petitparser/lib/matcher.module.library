@@ -1,1 +1,0 @@
-{"isEntrypoint":true,"deps":["petitparser|lib/src/matcher/accept.dart","petitparser|lib/src/matcher/matches.dart","petitparser|lib/src/matcher/pattern.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

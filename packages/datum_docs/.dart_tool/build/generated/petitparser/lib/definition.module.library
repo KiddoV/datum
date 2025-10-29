@@ -1,1 +1,0 @@
-{"isEntrypoint":true,"deps":["petitparser|lib/src/definition/grammar.dart","petitparser|lib/src/definition/reference.dart","petitparser|lib/src/definition/resolve.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

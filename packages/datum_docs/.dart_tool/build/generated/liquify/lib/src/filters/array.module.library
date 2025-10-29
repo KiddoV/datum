@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["liquify|lib/src/filters/module.dart","liquify|lib/src/filter_registry.dart","liquify|lib/parser.dart","liquify|lib/src/context.dart","liquify|lib/src/evaluator.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["math"],"hasMain":false}

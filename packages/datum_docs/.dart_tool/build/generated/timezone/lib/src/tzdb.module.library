@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["timezone|lib/src/location.dart","timezone|lib/src/location_database.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["collection","convert","typed_data"],"hasMain":false}

@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["liquify|lib/parser.dart","liquify|lib/src/grammar/grammar.dart","liquify|lib/src/registry.dart","petitparser|lib/debug.dart","petitparser|lib/reflection.dart","liquify|lib/src/ast.dart","petitparser|lib/petitparser.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

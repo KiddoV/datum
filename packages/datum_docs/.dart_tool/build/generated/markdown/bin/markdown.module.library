@@ -1,1 +1,0 @@
-{"isEntrypoint":true,"deps":["args|lib/args.dart","markdown|lib/markdown.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["async","io"],"hasMain":true}

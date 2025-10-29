@@ -1,1 +1,0 @@
-{"isEntrypoint":false,"deps":["yaml|lib/yaml.dart","jaspr_content|lib/src/page.dart","jaspr_content|lib/src/utils.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["convert"],"hasMain":false}
