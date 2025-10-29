@@ -63,6 +63,7 @@ app.*.map.json
 /example_jaspr/*.lock
 
 /datum_docs/.dart_tool/
+/datum_docs/build/
 
 .gemini/
 gha-creds-*.json
