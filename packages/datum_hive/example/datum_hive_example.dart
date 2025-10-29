@@ -1,4 +1,4 @@
-import 'package:datum_isolate/datum_isolate.dart';
+import 'package:datum_hive/datum_hive.dart';
 
 void main() {
   var awesome = Awesome();

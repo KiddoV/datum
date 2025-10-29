@@ -3,6 +3,6 @@
 /// More dartdocs go here.
 library;
 
-export 'src/datum_isolate_base.dart';
+export 'src/datum_hive_base.dart';
 
 // TODO: Export any libraries intended for clients of this package.
