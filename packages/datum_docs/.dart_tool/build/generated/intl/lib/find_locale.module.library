@@ -1,0 +1,1 @@
+{"isEntrypoint":true,"deps":[],"parts":[],"conditionalDeps":[{"$default":"intl|lib/src/intl_default.dart","dart.library.js_interop":"intl|lib/intl_browser.dart","dart.library.io":"intl|lib/intl_standalone.dart"}],"sdkDeps":[],"hasMain":false}

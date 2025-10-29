@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["liquify|lib/src/fs.dart","liquify|lib/src/filter_registry.dart","liquify|lib/src/tag_registry.dart","liquify|lib/src/ast.dart","liquify|lib/src/tags/tag.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

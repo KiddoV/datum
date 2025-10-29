@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["universal_web|lib/web.dart","jaspr|lib/src/components/html/html.dart","jaspr|lib/src/foundation/basic_types.dart","jaspr|lib/src/foundation/constants.dart","jaspr|lib/src/foundation/type_checks.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

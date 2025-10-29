@@ -1,0 +1,1 @@
+{"isEntrypoint":true,"deps":["petitparser|lib/core.dart","petitparser|lib/definition.dart","petitparser|lib/expression.dart","petitparser|lib/matcher.dart","petitparser|lib/parser.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

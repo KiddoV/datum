@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["meta|lib/meta.dart","petitparser|lib/src/core/parser.dart","petitparser|lib/src/reflection/analyzer.dart","petitparser|lib/src/reflection/internal/linter_rules.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

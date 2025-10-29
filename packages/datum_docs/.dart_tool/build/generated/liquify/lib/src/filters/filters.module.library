@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["liquify|lib/src/filters/array.dart","liquify|lib/src/filters/date.dart","liquify|lib/src/filters/html.dart","liquify|lib/src/filters/math.dart","liquify|lib/src/filters/misc.dart","liquify|lib/src/filters/string.dart","liquify|lib/src/filters/url.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["liquify|lib/src/filters/module.dart","timezone|lib/timezone.dart","timezone|lib/data/latest.dart","intl|lib/intl.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

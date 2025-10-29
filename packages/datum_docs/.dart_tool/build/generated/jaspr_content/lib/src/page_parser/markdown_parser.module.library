@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["html|lib/parser.dart","html|lib/src/token.dart","html|lib/src/tokenizer.dart","jaspr|lib/jaspr.dart","markdown|lib/markdown.dart","jaspr_content|lib/src/page.dart","jaspr_content|lib/src/page_parser/html_parser.dart","jaspr_content|lib/src/page_parser/page_parser.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

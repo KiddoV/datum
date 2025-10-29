@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["liquify|lib/src/ast.dart","liquify|lib/src/buffer.dart","liquify|lib/src/evaluator.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["async"],"hasMain":false}

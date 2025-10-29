@@ -1,0 +1,1 @@
+{"isEntrypoint":true,"deps":["jaspr|lib/browser.dart","jaspr_content|lib/components/theme_toggle.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["markdown|lib/src/assets/case_folding.dart","markdown|lib/src/assets/html_entities.dart","markdown|lib/src/charcode.dart","markdown|lib/src/line.dart","markdown|lib/src/patterns.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["convert"],"hasMain":false}

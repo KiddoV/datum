@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["mustache_template|lib/mustache_template.dart","jaspr_content|lib/src/page.dart","jaspr_content|lib/src/template_engine/template_engine.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

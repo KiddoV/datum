@@ -1,0 +1,1 @@
+{"isEntrypoint":true,"deps":["jaspr|lib/jaspr.dart","universal_web|lib/web.dart","jaspr_content|lib/components/_internal/icon.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["async"],"hasMain":false}

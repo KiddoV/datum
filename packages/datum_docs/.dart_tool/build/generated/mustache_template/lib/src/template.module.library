@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["mustache_template|lib/mustache.dart","mustache_template|lib/src/node.dart","mustache_template|lib/src/parser.dart","mustache_template|lib/src/renderer.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

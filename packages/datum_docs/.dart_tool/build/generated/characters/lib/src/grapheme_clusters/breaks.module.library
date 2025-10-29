@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["characters|lib/src/grapheme_clusters/constants.dart","characters|lib/src/grapheme_clusters/table.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

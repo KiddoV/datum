@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["liquify|lib/parser.dart","liquify|lib/src/analyzer/block_info.dart","liquify|lib/src/analyzer/template_structure.dart","liquify|lib/src/util.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

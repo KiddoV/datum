@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["intl|lib/number_symbols.dart","intl|lib/src/intl/string_stack.dart","intl|lib/src/intl/constants.dart","intl|lib/src/intl/number_format.dart","intl|lib/src/intl/number_format_parser.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

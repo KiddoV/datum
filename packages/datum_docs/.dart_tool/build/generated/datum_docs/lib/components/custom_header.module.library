@@ -1,0 +1,1 @@
+{"isEntrypoint":true,"deps":["jaspr|lib/jaspr.dart","jaspr_content|lib/components/sidebar_toggle_button.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

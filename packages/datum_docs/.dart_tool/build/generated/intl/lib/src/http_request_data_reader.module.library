@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["intl|lib/src/intl_helpers.dart","intl|lib/src/web.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["async","js_interop"],"hasMain":false}

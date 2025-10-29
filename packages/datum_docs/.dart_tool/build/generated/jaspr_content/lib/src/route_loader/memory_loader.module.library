@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["jaspr|lib/server.dart","jaspr_content|lib/src/page.dart","jaspr_content|lib/src/route_loader/route_loader.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["convert"],"hasMain":false}

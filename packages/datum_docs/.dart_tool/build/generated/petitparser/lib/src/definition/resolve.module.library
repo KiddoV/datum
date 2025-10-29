@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["petitparser|lib/src/core/parser.dart","petitparser|lib/src/parser/combinator/settable.dart","petitparser|lib/src/parser/utils/resolvable.dart","petitparser|lib/src/definition/reference.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

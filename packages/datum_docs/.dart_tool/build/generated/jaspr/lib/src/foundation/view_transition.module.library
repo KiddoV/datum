@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["jaspr|lib/src/framework/framework.dart"],"parts":[],"conditionalDeps":[{"$default":"jaspr|lib/src/foundation/view_transition/view_transition_io.dart","dart.library.js_interop":"jaspr|lib/src/foundation/view_transition/view_transition_web.dart"}],"sdkDeps":[],"hasMain":false}

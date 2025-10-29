@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["mustache_template|lib/src/node.dart","mustache_template|lib/src/scanner.dart","mustache_template|lib/src/template_exception.dart","mustache_template|lib/src/token.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

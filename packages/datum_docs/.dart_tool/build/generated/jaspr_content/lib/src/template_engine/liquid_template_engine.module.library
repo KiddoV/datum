@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["liquify|lib/liquify.dart","path|lib/path.dart","jaspr_content|lib/src/page.dart","jaspr_content|lib/src/template_engine/template_engine.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

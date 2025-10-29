@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["fbh_front_matter|lib/src/front_matter_document.dart","fbh_front_matter|lib/src/front_matter_exception.dart","fbh_front_matter|lib/src/parser.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":["async","io"],"hasMain":false}

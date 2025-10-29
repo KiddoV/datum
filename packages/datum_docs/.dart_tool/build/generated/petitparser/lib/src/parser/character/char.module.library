@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["meta|lib/meta.dart","petitparser|lib/src/core/parser.dart","petitparser|lib/src/parser/predicate/character.dart","petitparser|lib/src/parser/character/predicate/char.dart","petitparser|lib/src/parser/character/utils/code.dart","petitparser|lib/src/parser/character/utils/optimize.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

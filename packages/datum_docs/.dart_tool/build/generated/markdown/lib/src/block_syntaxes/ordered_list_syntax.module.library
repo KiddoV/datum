@@ -1,0 +1,1 @@
+{"isEntrypoint":false,"deps":["markdown|lib/src/patterns.dart","markdown|lib/src/block_syntaxes/list_syntax.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

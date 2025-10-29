@@ -1,0 +1,1 @@
+{"isEntrypoint":true,"deps":["timezone|lib/src/tzdata/zicfile.dart","timezone|lib/src/tzdata/zone_tab.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}

@@ -1,0 +1,1 @@
+{"isEntrypoint":true,"deps":["jaspr|lib/server.dart","syntax_highlight_lite|lib/syntax_highlight_lite.dart","jaspr_content|lib/jaspr_content.dart","jaspr_content|lib/components/_internal/code_block_copy_button.dart"],"parts":[],"conditionalDeps":[],"sdkDeps":[],"hasMain":false}
