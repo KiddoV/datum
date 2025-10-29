@@ -4,6 +4,7 @@
 *.pyc
 *.swp
 .DS_Store
+pubspec.lock
 .atom/
 .buildlog/
 .history
@@ -49,3 +50,4 @@ app.*.map.json
 
 .gemini/
 gha-creds-*.json
+.dart_tool/
