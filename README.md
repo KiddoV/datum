@@ -8,6 +8,7 @@ This monorepo contains the following packages:
 
 *   **`datum`**: The core framework for offline-first data synchronization. See the [datum/README.md](./packages/datum/README.md) for more information.
 *   **`datum_docs`**: The documentation website for the Datum ecosystem.
+*   **`datum_isolate`**: A package for managing isolates in Datum.
 
 ## Getting Started
 

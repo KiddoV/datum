@@ -5,3 +5,4 @@ environment:
 workspace:
   - packages/datum
   - packages/datum_docs
+  - packages/datum_isolate
