@@ -118,8 +118,7 @@ class TestEntity extends RelationalDatumEntity {
 
           return diffMap.isEmpty ? null : diffMap;
         }(),
-      DatumEntity() => toDatumMap(target: MapTarget.remote),
-      RelationalDatumEntity() => toDatumMap(target: MapTarget.remote),
+      _ => toDatumMap(target: MapTarget.remote)
     };
   }
 

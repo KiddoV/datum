@@ -5,7 +5,8 @@ import 'package:example/bootstrap.dart';
 import 'package:recase/recase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SupabaseRemoteAdapter<T extends DatumEntity> extends RemoteAdapter<T> {
+class SupabaseRemoteAdapter<T extends DatumEntityBase>
+    extends RemoteAdapter<T> {
   final String tableName;
   final T Function(Map<String, dynamic>) fromMap;
   final SupabaseClient? _clientOverride;
@@ -237,6 +238,10 @@ class SupabaseRemoteAdapter<T extends DatumEntity> extends RemoteAdapter<T> {
 
   @override
   Future<void> initialize() {
+    if (_channel == null) {
+      _unsubscribeFromChanges();
+      _subscribeToChanges();
+    }
     // The Supabase client is initialized globally, so no specific
     // initialization is needed for this adapter instance.
     return Future.value();

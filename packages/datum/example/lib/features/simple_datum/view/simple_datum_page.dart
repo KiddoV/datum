@@ -22,7 +22,8 @@ final simpleDatumControllerProvider =
 
 /// A provider that acts as an event channel to signal UI updates.
 /// The UI will listen to this and show a snackbar when the value changes.
-final syncResultEventProvider = StateProvider<DatumSyncResult<DatumEntity>?>(
+final syncResultEventProvider =
+    StateProvider<DatumSyncResult<DatumEntityBase>?>(
   (
     ref,
   ) =>
@@ -33,7 +34,7 @@ final syncResultEventProvider = StateProvider<DatumSyncResult<DatumEntity>?>(
 class SimpleDatumController extends AutoDisposeNotifier<void> {
   SimpleDatumController();
 
-  void _notifySyncResult(DatumSyncResult<DatumEntity> result) {
+  void _notifySyncResult(DatumSyncResult<DatumEntityBase> result) {
     ref.read(syncResultEventProvider.notifier).state = result;
   }
 

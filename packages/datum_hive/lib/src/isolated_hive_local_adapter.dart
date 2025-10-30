@@ -13,7 +13,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 ///
 /// To use it, provide the `entityBoxName`, a `fromMap` factory, and a
 /// `sampleInstance` of your entity.
-class IsolatedHiveLocalAdapter<T extends DatumEntity> extends LocalAdapter<T> {
+class IsolatedHiveLocalAdapter<T extends DatumEntityBase> extends LocalAdapter<T> {
   /// The name of the Hive box where entities of type `T` will be stored.
   final String entityBoxName;
 
@@ -32,7 +32,7 @@ class IsolatedHiveLocalAdapter<T extends DatumEntity> extends LocalAdapter<T> {
   @protected
   late final IsolatedBox<Map<dynamic, dynamic>> metadataBox;
 
-  int _schemaVersion = 0;
+  int schemaVersion;
 
   /// Creates a new `HiveLocalAdapter`.
   ///
@@ -42,6 +42,7 @@ class IsolatedHiveLocalAdapter<T extends DatumEntity> extends LocalAdapter<T> {
   IsolatedHiveLocalAdapter({
     required this.entityBoxName,
     required this.fromMap,
+    this.schemaVersion = 0,
   });
 
   @override
@@ -223,11 +224,11 @@ class IsolatedHiveLocalAdapter<T extends DatumEntity> extends LocalAdapter<T> {
   }
 
   @override
-  Future<int> getStoredSchemaVersion() => Future.value(_schemaVersion);
+  Future<int> getStoredSchemaVersion() => Future.value(schemaVersion);
 
   @override
   Future<void> setStoredSchemaVersion(int version) async {
-    _schemaVersion = version;
+    schemaVersion = version;
   }
 
   @override

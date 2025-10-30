@@ -689,7 +689,8 @@ class Datum {
     switch (parent) {
       case RelationalDatumEntity():
         return Datum.managerByType(parent.runtimeType).fetchRelated<R>(parent, relationName, source: source);
-      case DatumEntity():
+
+      case _:
         throw ArgumentError(
           'Entity of type ${parent.runtimeType} is not relational and cannot have relations. '
           'To use relations, extend RelationalDatumEntity instead of DatumEntity.',
@@ -706,7 +707,7 @@ class Datum {
     switch (parent) {
       case RelationalDatumEntity():
         return Datum.managerByType(parent.runtimeType).watchRelated<R>(parent, relationName);
-      case DatumEntity():
+      case _:
         throw ArgumentError(
           'Entity of type ${parent.runtimeType} is not relational and cannot have relations. '
           'To use relations, extend RelationalDatumEntity instead of DatumEntity.',

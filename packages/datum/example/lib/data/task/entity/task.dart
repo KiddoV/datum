@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:datum/datum.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Task extends DatumEntity {
+class Task with DatumEntityMixin {
   @override
   final String id;
 
@@ -79,7 +80,7 @@ class Task extends DatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
     if (oldVersion is! Task) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -207,4 +208,7 @@ class Task extends DatumEntity {
         isDeleted.hashCode ^
         version.hashCode;
   }
+
+  @override
+  bool? get stringify => true;
 }
