@@ -35,7 +35,7 @@ class MigrationException extends DatumException {
 }
 
 /// Exception thrown when a user switch operation is rejected by a strategy.
-class UserSwitchException<T extends DatumEntity> extends DatumException {
+class UserSwitchException<T extends DatumEntityBase> extends DatumException {
   /// Creates a [UserSwitchException].
   UserSwitchException(this.oldUserId, this.newUserId, this.message);
 

@@ -192,7 +192,7 @@ abstract class LocalAdapter<T extends DatumEntityBase> {
   /// ```dart
   /// import 'package:synchronized/synchronized.dart';
   ///
-  /// class MyInMemoryAdapter<T extends DatumEntity> extends LocalAdapter<T> {
+  /// class MyInMemoryAdapter<T extends DatumEntityBase> extends LocalAdapter<T> {
   ///   final _transactionLock = Lock();
   ///   final Map<String, T> _storage = {};
   ///
