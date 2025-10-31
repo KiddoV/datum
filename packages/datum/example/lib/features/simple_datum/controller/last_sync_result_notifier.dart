@@ -17,8 +17,7 @@ class LastSyncResultNotifier
     if (userId == null) return;
     // Since this is a global result display, we can't assume a single type.
     // For this example, we'll still fetch the Task result as a default.
-    state = await Datum.manager<Task>().getLastSyncResult(userId)
-        as DatumSyncResult<DatumEntity>?;
+    state = await Datum.manager<Task>().getLastSyncResult(userId);
   }
 
   void update(DatumSyncResult<DatumEntityBase> result) {
