@@ -11,8 +11,7 @@ dependencies:
   compute: ^1.0.2
   datum:
     path: ../
-  datum_hive:
-    path: ../../../packages/datum_hive
+
   dio: ^5.9.0
   dio_smart_retry: ^7.0.1
   duration: ^4.0.3

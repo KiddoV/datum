@@ -1,3 +1,7 @@
+# 0.0.13
+- fixed type casting error in `initialize()` method in Datum
+
+
 # 0.0.12
 
 ## ✨ Features

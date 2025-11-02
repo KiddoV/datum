@@ -140,6 +140,8 @@ import 'package:rxdart/rxdart.dart';
 ///
 /// By using mixins, you can compose Datum's capabilities into your own base
 /// classes, allowing for a clean and maintainable architecture.
+bool isSubtype<S, T>() => <T>[] is List<S>;
+
 class Datum {
   /// The singleton instance of the Datum engine.
   static Datum? _instance;
@@ -470,20 +472,10 @@ class Datum {
     final hasMiddlewares = registration.middlewares?.isNotEmpty ?? false;
     final hasObservers = registration.observers?.isNotEmpty ?? false;
     bool isRelational = false;
-    int relationCount = 0;
 
-    // Updated: Use sealed class pattern matching
-    try {
-      final sample = T;
-      switch (sample) {
-        case RelationalDatumEntity():
-          isRelational = true;
-          relationCount = (sample as RelationalDatumEntity).relations.length;
-        case DatumEntity():
-          isRelational = false;
-      }
-    } catch (_) {
-      // If creating a sample instance fails, skip this check
+    // Check if T is a subtype of RelationalDatumEntity
+    if (isSubtype<RelationalDatumEntity, T>()) {
+      isRelational = true;
     }
 
     final lastCharForConfig = hasMiddlewares || hasObservers || isRelational ? '├' : '└';
@@ -509,7 +501,7 @@ class Datum {
       }
     }
     if (isRelational) {
-      logBuffer?.writeln('│     └─ 🤝 Relational: ${_green(true)} (Relations: ${_cyan(relationCount)})');
+      logBuffer?.writeln('│     └─ 🤝 Relational: ${_green(true)} ');
     } else {
       if (!hasMiddlewares && !hasObservers) {
         logBuffer?.writeln('│     └─ 🤝 Relational: ${_green(false)}');

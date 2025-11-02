@@ -74,7 +74,9 @@ abstract class RelationalDatumEntity extends DatumEntityBase {
   const RelationalDatumEntity();
 
   /// A **map of relationship definitions**.
-  Map<String, Relation> get relations => {};
+  ///
+  /// Concrete implementations **must** override this getter to define their relations.
+  Map<String, Relation> get relations;
 }
 
 /// A **mixin** that provides **core Datum entity functionality**
@@ -153,11 +155,29 @@ mixin DatumEntityMixin implements DatumEntityBase {
 ///
 /// This should be mixed into any class that uses [DatumEntityMixin] and
 /// also defines relations, such as 'one-to-many' or 'many-to-many'.
-mixin RelationalDatumEntityMixin on DatumEntityMixin implements RelationalDatumEntity {
+///
+/// **Important**: Concrete implementations **must** override the [relations]
+/// getter to provide their relationship definitions. Failure to do so will
+/// result in a compilation error.
+mixin RelationalDatumEntityMixin implements RelationalDatumEntity {
   /// A **map of relationship definitions**.
   ///
   /// The key is the name of the relation (e.g., 'tasks'), and the value
   /// is a [Relation] object defining the target type and keys.
+  ///
+  /// **Must be overridden** by concrete implementations to define actual relationships.
+  ///
+  /// Example:
+  /// ```dart
+  /// @override
+  /// Map<String, Relation> get relations => {
+  ///   'tasks': Relation(
+  ///     type: RelationType.oneToMany,
+  ///     targetEntity: Task,
+  ///     foreignKey: 'projectId',
+  ///   ),
+  /// };
+  /// ```
   @override
-  Map<String, Relation> get relations => {};
+  Map<String, Relation> get relations;
 }

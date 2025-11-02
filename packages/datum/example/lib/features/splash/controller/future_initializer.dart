@@ -1,8 +1,9 @@
 import 'package:datum/datum.dart';
-import 'package:datum_hive/datum_hive.dart';
+
 import 'package:example/const/secrets.dart';
 import 'package:example/custom_connectivity_checker.dart';
 import 'package:example/custom_datum_logger.dart';
+import 'package:example/data/task/adapters/hive_isolate_adapter.dart';
 import 'package:example/data/task/entity/task.dart';
 import 'package:example/data/user/adapters/supabase_adapter.dart';
 import 'package:example/features/simple_datum/controller/simple_datum_provider.dart';
@@ -78,7 +79,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
           fromMap: (map) => Task.fromMap(map),
           schemaVersion: 0,
         ),
-        remoteAdapter: SupabaseRemoteAdapter(
+        remoteAdapter: SupabaseRemoteAdapter<Task>(
           tableName: 'tasks',
           fromMap: Task.fromMap,
         ),

@@ -6,7 +6,7 @@ import 'package:datum/datum.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Task with DatumEntityMixin {
+class Task with RelationalDatumEntityMixin {
   @override
   final String id;
 
@@ -211,4 +211,12 @@ class Task with DatumEntityMixin {
 
   @override
   bool? get stringify => true;
+
+  @override
+  List<Object?> get props => [];
+
+  @override
+  Map<String, Relation> get relations => {
+        "plan": BelongsTo("plan", localKey: "plan"),
+      };
 }

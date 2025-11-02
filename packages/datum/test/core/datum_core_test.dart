@@ -3,6 +3,7 @@ import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../mocks/test_entity.dart';
+import '../mocks/relational_test_entity.dart';
 
 /// A minimal entity for relational tests.
 class Post extends DatumEntity {
@@ -70,6 +71,10 @@ class FakeRemoteAdapterPost extends Fake implements RemoteAdapter<Post> {}
 
 class FakeLocalAdapterPost extends Fake implements LocalAdapter<Post> {}
 
+// New mocks for RelationalTestEntity
+class FakeRemoteAdapterRelationalTestEntity extends Fake implements RemoteAdapter<RelationalTestEntity> {}
+class FakeLocalAdapterRelationalTestEntity extends Fake implements LocalAdapter<RelationalTestEntity> {}
+
 void main() {
   setUpAll(() {
     registerFallbackValue(DatumQueryBuilder<TestEntity>().build());
@@ -97,6 +102,18 @@ void main() {
       ),
     );
 
+    // New fallback for RelationalTestEntity
+    registerFallbackValue(
+      RelationalTestEntity(
+        id: 'fallback',
+        userId: 'fallback',
+        createdAt: DateTime(0),
+        modifiedAt: DateTime(0),
+        version: 0,
+        name: 'fallback',
+      ),
+    );
+
     // Register fallback Fake instances for adapter types used with matchers.
     registerFallbackValue(FakeRemoteAdapterPost());
     registerFallbackValue(FakeLocalAdapterPost());
@@ -109,6 +126,8 @@ void main() {
     late MockDatumManager<Post> mockPostManager;
     late MockLocalAdapter<Post> localPostAdapter;
     late MockRemoteAdapter<Post> remotePostAdapter;
+
+    // New mocks for RelationalTestEntity
 
     setUp(() async {
       // Reset Datum singleton for test isolation
