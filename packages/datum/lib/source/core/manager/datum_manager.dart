@@ -536,6 +536,24 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     return (savedItem, syncResult);
   }
 
+  Future<List<T>> saveMany({
+    required List<T> items,
+    required String userId,
+    bool andSync = false,
+    DatumSyncOptions? syncOptions,
+  }) async {
+    _ensureInitialized();
+    final savedItems = <T>[];
+    for (final item in items) {
+      final savedItem = await push(item: item, userId: userId);
+      savedItems.add(savedItem);
+    }
+    if (andSync) {
+      await synchronize(userId, options: syncOptions);
+    }
+    return savedItems;
+  }
+
   /// Reads a single entity by its ID from the primary local adapter.
   Future<T?> read(String id, {String? userId}) async {
     _ensureInitialized();
@@ -1062,6 +1080,14 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     if (!_nextSyncTimeSubject.isClosed) {
       _nextSyncTimeSubject.add(null);
     }
+  }
+
+  void pause() {
+    remoteAdapter.unsubscribeFromChanges();
+  }
+
+  void resume() {
+    remoteAdapter.resubscribeToChanges();
   }
 
   /// Releases all resources held by the manager and its adapters.

@@ -14,6 +14,12 @@ abstract class RemoteAdapter<T extends DatumEntityBase> {
   /// Return null if the adapter doesn't support real-time change notifications.
   Stream<DatumChangeDetail<T>>? get changeStream;
 
+  /// Unsubscribes from the change stream.
+  Future<void> unsubscribeFromChanges() async {}
+
+  /// Resubscribes to the change stream.
+  Future<void> resubscribeToChanges() async {}
+
   /// Watch all items directly from the remote source.
   /// Return null if the adapter doesn't support reactive queries.
   Stream<List<T>>? watchAll({String? userId, DatumSyncScope? scope}) => null;

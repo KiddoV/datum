@@ -1,8 +1,144 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 
+/// The central engine for the Datum framework, managing data synchronization,
+/// entity registration, and communication between local and remote sources.
+///
+/// `Datum` is designed as a singleton, providing a single point of access to all
+/// data management capabilities. Before using any of its features, it must be
+/// initialized via [Datum.initialize].
+///
+/// ## Usage
+///
+/// 1. **Initialization**:
+///    Start by initializing the `Datum` singleton at the beginning of your
+///    application's lifecycle. This sets up the necessary configurations,
+///    registers your data models ([DatumEntity]), and prepares the synchronization
+///    engine.
+///
+///    ```dart
+///    await Datum.initialize(
+///      config: DatumConfig(
+///        // Your configuration here...
+///      ),
+///      registrations: [
+///        DatumRegistration<MyModel>(
+///          localAdapter: MyModelLocalAdapter(),
+///          remoteAdapter: MyModelRemoteAdapter(),
+///        ),
+///      ],
+///    );
+///    ```
+///
+/// 2. **Accessing Managers**:
+///    Once initialized, you can access a specific [DatumManager] for each
+///    registered entity type. The manager is the primary interface for all
+///    operations related to that entity.
+///
+///    ```dart
+///    final myModelManager = Datum.manager<MyModel>();
+///    ```
+///
+/// 3. **Performing Operations**:
+///    Use the manager to perform CRUD (Create, Read, Update, Delete) operations,
+///    watch for changes, and trigger synchronization.
+///
+///    ```dart
+///    // Create a new item
+///    await myModelManager.push(item: myNewModel, userId: 'user123');
+///
+///    // Read all items for a user
+///    final allItems = await myModelManager.readAll(userId: 'user123');
+///
+///    // Watch for real-time updates
+///    myModelManager.watchAll(userId: 'user123').listen((items) {
+///      print('Updated items: $items');
+///    });
+///
+/// 4. **Global Synchronization**:
+///    To trigger a synchronization for all registered entities for a specific user,
+///    you can use the global `synchronize` method.
+///
+///    ```dart
+///    final syncResult = await Datum.instance.synchronize('user123');
+///    print('Sync completed: ${syncResult.syncedCount} items synced.');
+///    ```
+///
+/// ## Defining Models
+///
+/// All data models in Datum must be built upon [DatumEntityBase]. You have two main
+/// approaches: extending abstract classes or using mixins.
+///
+/// ### 1. Extending Abstract Classes (Recommended)
+///
+/// This is the simplest way to get started.
+///
+/// - **For simple models**: Extend [DatumEntity].
+/// - **For models with relationships**: Extend [RelationalDatumEntity].
+///
+/// ```dart
+/// // A simple model
+/// class MyModel extends DatumEntity {
+///   final String name;
+///
+///   MyModel({required super.id, required this.name, required super.userId});
+///
+///   // Implement fromJson, toJson, and copyWith...
+/// }
+///
+/// // A model with relationships
+/// class Post extends RelationalDatumEntity {
+///   final String title;
+///
+///   Post({required super.id, required this.title, required super.userId});
+///
+///   @override
+///   Map<String, Relation> get relations => {
+///         'comments': HasMany('postId'), // Assumes Comment has a 'postId' field
+///       };
+///
+///   // ... fromJson, toJson, copyWith
+/// }
+/// ```
+///
+/// ### 2. Using Mixins
+///
+/// For more advanced use cases, such as integrating Datum with an existing
+/// class hierarchy, you can use mixins. This approach provides greater flexibility.
+///
+/// - **For simple models**: Use [DatumEntityMixin].
+/// - **For models with relationships**: Use both [DatumEntityMixin] and [RelationalDatumEntityMixin].
+///
+/// ```dart
+/// // A model with relationships using mixins
+/// class Comment with Equatable, DatumEntityMixin, RelationalDatumEntityMixin {
+///   @override
+///   final String id;
+///   @override
+///   final String userId;
+///   @override
+///   final DateTime modifiedAt;
+///   @override
+///   final DateTime createdAt;
+///   @override
+///   final int version;
+///   @override
+///   final bool isDeleted;
+///
+///   final String content;
+///   final String postId; // Foreign key for the Post relationship
+///
+///   // ... constructor, fromJson, toJson, copyWith, diff, props
+///
+///   // No need to override 'relations' if this is the "belongs to" side
+/// }
+/// ```
+///
+/// By using mixins, you can compose Datum's capabilities into your own base
+/// classes, allowing for a clean and maintainable architecture.
 class Datum {
   /// The singleton instance of the Datum engine.
   static Datum? _instance;
@@ -15,6 +151,7 @@ class Datum {
     return _instance!;
   }
 
+  static bool get isInitialized => _instance != null;
   static Datum? get instanceOrNull => _instance;
 
   final DatumConfig config;
@@ -598,6 +735,10 @@ class Datum {
   }
 
   // CRUD operations remain the same but now use DatumEntityBase
+
+  /// Creates a new entity and pushes it to the appropriate manager.
+  ///
+  /// This is a convenience method that is equivalent to calling `Datum.manager<T>().push(item: entity, userId: entity.userId)`.
   Future<T> create<T extends DatumEntityBase>(T entity) {
     return Datum.manager<T>().push(item: entity, userId: entity.userId);
   }
@@ -612,6 +753,34 @@ class Datum {
 
   Future<T> update<T extends DatumEntityBase>(T entity) {
     return Datum.manager<T>().push(item: entity, userId: entity.userId);
+  }
+
+  Future<List<T>> createMany<T extends DatumEntityBase>({
+    required List<T> items,
+    required String userId,
+    bool andSync = false,
+    DatumSyncOptions? syncOptions,
+  }) {
+    return Datum.manager<T>().saveMany(
+      items: items,
+      userId: userId,
+      andSync: andSync,
+      syncOptions: syncOptions,
+    );
+  }
+
+  Future<List<T>> updateMany<T extends DatumEntityBase>({
+    required List<T> items,
+    required String userId,
+    bool andSync = false,
+    DatumSyncOptions? syncOptions,
+  }) {
+    return Datum.manager<T>().saveMany(
+      items: items,
+      userId: userId,
+      andSync: andSync,
+      syncOptions: syncOptions,
+    );
   }
 
   Future<bool> delete<T extends DatumEntityBase>({
@@ -679,7 +848,7 @@ class Datum {
     return Datum.manager<T>().query(query, source: source, userId: userId);
   }
 
-  /// Fetches related entities with proper type checking for RelationalDatumEntity
+  /// Fetches related entities with proper type checking for [RelationalDatumEntity]
   Future<List<R>> fetchRelated<P extends DatumEntityBase, R extends DatumEntityBase>(
     P parent,
     String relationName, {
@@ -693,7 +862,7 @@ class Datum {
       case _:
         throw ArgumentError(
           'Entity of type ${parent.runtimeType} is not relational and cannot have relations. '
-          'To use relations, extend RelationalDatumEntity instead of DatumEntity.',
+          'To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin to use `with` block.',
         );
     }
   }
@@ -710,7 +879,7 @@ class Datum {
       case _:
         throw ArgumentError(
           'Entity of type ${parent.runtimeType} is not relational and cannot have relations. '
-          'To use relations, extend RelationalDatumEntity instead of DatumEntity.',
+          'To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin to use `with` block.',
         );
     }
   }
@@ -747,7 +916,6 @@ class Datum {
       ..._managerSubscriptions.map((s) => s.cancel()),
     ]);
     await _eventController.close();
-    // ignore: invalid_use_of_protected_member
     await _metricsSubject.close();
     await _statusSubject.close();
   }
@@ -774,7 +942,31 @@ class Datum {
     }
   }
 
+  void pause() {
+    for (final manager in _managers.values) {
+      manager.pause();
+    }
+  }
+
+  void resume() {
+    for (final manager in _managers.values) {
+      manager.resume();
+    }
+  }
+
+  @visibleForTesting
   static void resetForTesting() {
     _instance = null;
   }
+}
+
+// Check whether two types are the same type in Dart when working with
+// generic types.
+//
+// Uses the same definition as the language specification for when two
+// types are the same. Currently the same as mutual sub-typing.
+bool sameTypes<S, V>() {
+  void func<X extends S>() {}
+  // Dart spec says this is only true if S and V are "the same type".
+  return func is void Function<X extends V>();
 }

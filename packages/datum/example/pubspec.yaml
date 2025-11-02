@@ -51,6 +51,7 @@ dev_dependencies:
   build_runner: ^2.7.1
   custom_lint: ^0.7.6
   flutter_lints: ^6.0.0
+  hive_ce_test: ^2.0.0
   mocktail: ^1.0.4
   riverpod_lint: ^2.6.5
   riverpod_test: ^0.1.9

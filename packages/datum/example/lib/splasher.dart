@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:example/app/view/app.dart';
 import 'package:example/bootstrap.dart';
+import 'package:example/features/simple_datum/controller/datum_provider_with_lifecycle.dart';
 import 'package:example/features/splash/view/splash_view.dart';
 
 class Splasher extends StatelessWidget {
@@ -15,7 +16,7 @@ class Splasher extends StatelessWidget {
         removeSpalshLoader: false,
         onInitialized: (container) {
           bootstrap(
-            () => const App(),
+            () => DatumProviderWithLifecycle(child: const App()),
             parent: container,
           );
         },

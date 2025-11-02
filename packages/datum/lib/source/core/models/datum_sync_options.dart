@@ -15,10 +15,10 @@ class DatumSyncOptions<T extends DatumEntityBase> {
   /// If true, forces a full pull of all remote data, ignoring local metadata.
   final bool forceFullSync;
 
-  /// A custom batch size for this sync, overriding the one in `DatumConfig`.
+  /// A custom batch size for this sync, overriding the one in [DatumConfig].
   final int? overrideBatchSize;
 
-  /// A timeout for this specific sync operation, overriding the one in `DatumConfig`.
+  /// A timeout for this specific sync operation, overriding the one in[DatumConfig] .
   final Duration? timeout;
 
   /// The order of synchronization operations for this sync, overriding the default.

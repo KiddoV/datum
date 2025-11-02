@@ -69,10 +69,6 @@ class SimpleDatumController extends AutoDisposeNotifier<void> {
 final tasksStreamProvider =
     StreamProvider.autoDispose.family<List<Task>, String?>(
   (ref, userId) async* {
-    talker.debug("tasksStreamProvider");
-    final readData = await Datum.instance.readAll<Task>(userId: userId);
-    talker.debug(readData);
-
     // watchAll can return null if the adapter doesn't support it
     yield* Datum.manager<Task>()
             .watchAll(userId: userId, includeInitialData: true) ??
@@ -206,15 +202,38 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
     }
   }
 
+  late final AppLifecycleListener appLifecycleListener;
+  late ProviderSubscription sub;
   @override
   void initState() {
     super.initState();
+    appLifecycleListener = AppLifecycleListener(
+      onStateChange: (value) {
+        talker.debug("State $value");
+        if (Datum.isInitialized) {
+          Datum.instance.resumeSync();
+          Datum.manager<Task>().initialize();
+        }
+      },
+    );
     // Listen to the event provider to show snackbars.
-    ref.listenManual(syncResultEventProvider, (previous, next) {
+    sub = ref.listenManual(syncResultEventProvider, (previous, next) {
       if (next != null) {
         _handleSyncResult(next);
       }
     });
+  }
+
+  @override
+  void reassemble() {
+    super.reassemble();
+  }
+
+  @override
+  void dispose() {
+    sub.close();
+    appLifecycleListener.dispose();
+    super.dispose();
   }
 
   @override

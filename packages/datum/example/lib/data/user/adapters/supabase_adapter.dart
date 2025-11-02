@@ -48,7 +48,12 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
     }
 
     final response = await queryBuilder;
-    return response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
+    talker.debug("response readAll $response");
+    if (response is List<Map<String, dynamic>>) {
+      return response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
+    } else {
+      return [];
+    }
   }
 
   @override
@@ -140,7 +145,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   Stream<DatumChangeDetail<T>>? get changeStream {
     _streamController ??= StreamController<DatumChangeDetail<T>>.broadcast(
       onListen: _subscribeToChanges,
-      onCancel: _unsubscribeFromChanges,
+      onCancel: unsubscribeFromChanges,
     );
     return _streamController?.stream;
   }
@@ -150,7 +155,6 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
     _channel = _client
         .channel(
           'public:$tableName',
-          opts: const RealtimeChannelConfig(self: true),
         )
         .onPostgresChanges(
           event: PostgresChangeEvent.all,
@@ -218,11 +222,19 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
         )..subscribe();
   }
 
-  void _unsubscribeFromChanges() {
+  @override
+  Future<void> unsubscribeFromChanges() async {
     if (_channel != null) {
-      _client.removeChannel(_channel!);
+      await _client.removeChannel(_channel!);
       _channel = null;
     }
+  }
+
+  @override
+  Future<void> resubscribeToChanges() async {
+    talker.debug("Called Resub");
+    unsubscribeFromChanges();
+    _subscribeToChanges();
   }
 
   Future<void> clearSyncMetadata(String userId) async {
@@ -231,15 +243,15 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
 
   @override
   Future<void> dispose() async {
-    _unsubscribeFromChanges();
+    await unsubscribeFromChanges();
     await _streamController?.close();
     return super.dispose();
   }
 
   @override
-  Future<void> initialize() {
+  Future<void> initialize() async {
     if (_channel == null) {
-      _unsubscribeFromChanges();
+      await unsubscribeFromChanges();
       _subscribeToChanges();
     }
     // The Supabase client is initialized globally, so no specific

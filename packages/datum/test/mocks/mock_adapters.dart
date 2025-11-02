@@ -664,6 +664,18 @@ class MockRemoteAdapter<T extends DatumEntityBase> implements RemoteAdapter<T> {
   /// A function to deserialize JSON into an entity of type T.
   final T Function(Map<String, dynamic>)? fromJson;
 
+  bool isSubscribed = true;
+
+  @override
+  Future<void> unsubscribeFromChanges() async {
+    isSubscribed = false;
+  }
+
+  @override
+  Future<void> resubscribeToChanges() async {
+    isSubscribed = true;
+  }
+
   @override
   String get name => 'MockRemoteAdapter';
 
