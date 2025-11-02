@@ -1,3 +1,13 @@
+# 0.0.11
+
+## ✨ Features
+
+- **core**: introduce DatumEither for initialization result
+  - Use DatumEither to handle potential errors during Datum initialization
+  - Return Success or Failure based on the outcome of the initialization process
+  - Update related code to handle the new DatumEither return type
+  - Add DatumEither model for typing success or failure.
+
 # 0.0.10
 
 ## ✨ Features
