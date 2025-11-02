@@ -92,7 +92,10 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       translationsPod.overrideWith((ref) => translations),
       enableInternetCheckerPod.overrideWithValue(false),
       simpleDatumProvider.overrideWith(
-        (ref) => datum.getSuccess(),
+        (ref) => datum.fold(
+          (l, s) => throw l,
+          (r) => r,
+        ),
       ),
     ],
     observers: [

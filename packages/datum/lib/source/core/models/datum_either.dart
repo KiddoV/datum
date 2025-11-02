@@ -15,49 +15,70 @@ sealed class DatumEither<L, R> {
   ///
   /// If this is a `Failure`, the `onFailure` function is called with the value.
   /// If this is a `Success`, the `onSuccess` function is called with the value.
-  T fold<T>(T Function(L l) onFailure, T Function(R r) onSuccess);
+  T fold<T>(T Function(L l, StackTrace? s) onFailure, T Function(R r) onSuccess);
 
   /// Performs an action on the success value.
   void onSuccess(void Function(R r) onSuccess) {
-    if (this is Success<L, R>) {
-      onSuccess((this as Success<L, R>).value);
+    switch (this) {
+      case Success<L, R>(value: final r):
+        onSuccess(r);
+      case Failure<L, R>():
+        break;
     }
   }
 
   /// Performs an action on the failure value.
-  void onFailure(void Function(L l) onFailure) {
-    if (this is Failure<L, R>) {
-      onFailure((this as Failure<L, R>).value);
-    }
-  }
-
-  /// Returns the success value, or throws an exception if this is a `Failure`.
-  R getSuccess() {
-    if (this is Success<L, R>) {
-      return (this as Success<L, R>).value;
-    } else {
-      throw StateError('Cannot get success value from a Failure.');
+  void onFailure(void Function(L l, StackTrace? s) onFailure) {
+    switch (this) {
+      case Success<L, R>():
+        break;
+      case Failure<L, R>(value: final l, stackTrace: final s):
+        onFailure(l, s);
     }
   }
 
   /// Returns the failure value, or throws an exception if this is a `Success`.
-  L getError() {
-    if (this is Failure<L, R>) {
-      return (this as Failure<L, R>).value;
-    } else {
-      throw StateError('Cannot get error value from a Success.');
-    }
+  (L, StackTrace?) getError() {
+    return switch (this) {
+      Success<L, R>() => throw StateError('Cannot get error value from a Success.'),
+      Failure<L, R>(value: final l, stackTrace: final s) => (l, s),
+    };
+  }
+
+  R getSuccess() {
+    return switch (this) {
+      Success<L, R>(value: final r) => r,
+      Failure<L, R>() =>
+        throw StateError('Cannot get success value from a Failure.'),
+    };
+  }
+
+  /// Returns the success value, or `null` if this is a `Failure`.
+  R? get successOrNull {
+    return switch (this) {
+      Success<L, R>(value: final r) => r,
+      Failure<L, R>() => null,
+    };
+  }
+
+  /// Returns the error value, or `null` if this is a `Success`.
+  L? get errorOrNull {
+    return switch (this) {
+      Success<L, R>() => null,
+      Failure<L, R>(value: final l) => l,
+    };
   }
 }
 
 /// Represents the failure case of an `Either`.
 class Failure<L, R> extends DatumEither<L, R> {
-  const Failure(this.value);
+  const Failure(this.value, [this.stackTrace]);
 
   final L value;
+  final StackTrace? stackTrace;
 
   @override
-  T fold<T>(T Function(L l) onFailure, T Function(R r) onSuccess) => onFailure(value);
+  T fold<T>(T Function(L l, StackTrace? s) onFailure, T Function(R r) onSuccess) => onFailure(value, stackTrace);
 }
 
 /// Represents the success case of an `Either`.
@@ -67,5 +88,5 @@ class Success<L, R> extends DatumEither<L, R> {
   final R value;
 
   @override
-  T fold<T>(T Function(L l) onFailure, T Function(R r) onSuccess) => onSuccess(value);
+  T fold<T>(T Function(L l, StackTrace? s) onFailure, T Function(R r) onSuccess) => onSuccess(value);
 }

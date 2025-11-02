@@ -127,7 +127,7 @@ void main() {
         () => localAdapter.getAllUserIds(),
       ).thenAnswer((_) async => []);
 
-      datum = (await Datum.initialize(
+      (await Datum.initialize(
         config: const DatumConfig(schemaVersion: 0),
         connectivityChecker: connectivityChecker,
         registrations: [
@@ -137,7 +137,10 @@ void main() {
           ),
         ],
       ))
-          .getSuccess();
+          .fold(
+        (l, s) => throw l,
+        (r) => datum = r,
+      );
       manager = Datum.manager<TestEntity>();
     });
 

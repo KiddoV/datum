@@ -20,7 +20,7 @@ void main() {
     setUp(() async {
       await setUpTestHive();
       remoteAdapter = MockRemoteAdapter<Task>();
-      datum = (await Datum.initialize(
+      (await Datum.initialize(
         config: DatumConfig(),
         connectivityChecker: MockConnectivityChecker(),
         registrations: [
@@ -33,7 +33,10 @@ void main() {
           ),
         ],
       ))
-          .getSuccess();
+          .fold(
+        (l, s) => throw l,
+        (r) => datum = r,
+      );
     });
 
     tearDown(() async {

@@ -1,3 +1,25 @@
+# 0.0.12
+
+## ✨ Features
+
+- **core**: Add stacktrace to DatumEither
+  - The `Failure` class now includes an optional `StackTrace` property.
+  - The `fold` method in `DatumEither` now passes the `StackTrace` to the `onFailure` callback.
+  - The `onFailure` method now accepts a `StackTrace` parameter.
+  - The `getError` method now returns a tuple containing the error value and the stack trace.
+
+- **core**: Bring back getSuccess method
+  - Added the `getSuccess` method back to the `DatumEither` class.
+  - This method returns the success value if the `DatumEither` is a `Success`, otherwise it throws a `StateError`.
+
+## ♻️ Refactors
+
+- **core**: Remove isSuccess and isFailure methods
+  - Removed the `isSuccess` and `isFailure` methods from the `DatumEither` class.
+
+- **core**: Use switch statement instead of if statement
+  - Refactor the `onSuccess`, `onFailure`, `getSuccess`, `getError`, `successOrNull`, and `errorOrNull` methods to use switch statement instead of if statement.
+
 # 0.0.11
 
 ## ✨ Features
