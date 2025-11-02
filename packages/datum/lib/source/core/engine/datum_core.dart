@@ -201,7 +201,7 @@ class Datum {
   }) : logger = logger ?? DatumLogger(enabled: config.enableLogging);
 
   /// Initializes the central Datum engine as a singleton.
-  static Future<DatumEither<Exception, Datum>> initialize({
+  static Future<DatumEither<Object, Datum>> initialize({
     required DatumConfig config,
     required DatumConnectivityChecker connectivityChecker,
     DatumLogger? logger,
@@ -246,8 +246,11 @@ class Datum {
       datum._listenToEventsForMetrics();
       _instance = datum;
       return Success(datum);
-    } catch (e) {
-      return Failure(e as Exception);
+    } catch (e, s) {
+      if (e is Exception) {
+        return Failure(e, s);
+      }
+      return Failure(e, s);
     }
   }
 
