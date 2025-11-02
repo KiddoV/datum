@@ -3,7 +3,6 @@ import 'package:example/data/task/entity/task.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-
 class DatumProviderWithLifecycle extends ConsumerStatefulWidget {
   final Widget child;
 

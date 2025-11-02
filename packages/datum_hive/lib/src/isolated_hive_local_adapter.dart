@@ -275,9 +275,7 @@ class IsolatedHiveLocalAdapter<T extends DatumEntityBase> extends LocalAdapter<T
 
   @override
   Future<AdapterHealthStatus> checkHealth() async {
-    return entityBox.isOpen && pendingOpsBox.isOpen && metadataBox.isOpen
-        ? AdapterHealthStatus.healthy
-        : AdapterHealthStatus.unhealthy;
+    return entityBox.isOpen && pendingOpsBox.isOpen && metadataBox.isOpen ? AdapterHealthStatus.healthy : AdapterHealthStatus.unhealthy;
   }
 
   // Helper to convert Map<dynamic, dynamic> from Hive to Map<String, dynamic>
