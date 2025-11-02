@@ -136,7 +136,7 @@ mixin DatumEntityMixin implements DatumEntityBase {
   /// Computes the **difference** between the current entity state and an
   /// [oldVersion] of the entity.
   ///
-  /// Returns a **Map<String, dynamic>** containing only the fields that have
+  /// Returns a **`Map<String, dynamic>`** containing only the fields that have
   /// changed, with their new values.
   /// Returns `null` if the entities are identical (no changes detected).
   @override
