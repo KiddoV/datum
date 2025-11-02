@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/models/datum_either.dart';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -200,48 +201,54 @@ class Datum {
   }) : logger = logger ?? DatumLogger(enabled: config.enableLogging);
 
   /// Initializes the central Datum engine as a singleton.
-  static Future<Datum> initialize({
+  static Future<DatumEither<Exception, Datum>> initialize({
     required DatumConfig config,
     required DatumConnectivityChecker connectivityChecker,
     DatumLogger? logger,
     List<DatumRegistration> registrations = const [],
     List<GlobalDatumObserver> observers = const [],
   }) async {
-    if (_instance != null) {
-      return _instance!;
-    }
-    if (!config.enableLogging) {
-      return _initializeSilently(config, connectivityChecker, logger, registrations, observers);
-    }
+    try {
+      if (_instance != null) {
+        return Success(_instance!);
+      }
+      if (!config.enableLogging) {
+        final datum = await _initializeSilently(config, connectivityChecker, logger, registrations, observers);
+        return Success(datum);
+      }
 
-    final initLogger = logger ?? DatumLogger(enabled: config.enableLogging);
-    final logBuffer = StringBuffer();
+      final initLogger = logger ?? DatumLogger(enabled: config.enableLogging);
+      final logBuffer = StringBuffer();
 
-    final datum = Datum._(
-      config: config,
-      connectivityChecker: connectivityChecker,
-      logger: logger,
-    );
-    datum.globalObservers.addAll(observers);
-
-    datum._logInitializationHeader(logBuffer, config: config, connectivityChecker: connectivityChecker);
-    datum._logObservers(logBuffer);
-    if (registrations.isNotEmpty) {
-      logBuffer.writeln('├─ 📦 Registering Entities');
-    }
-    for (final reg in registrations) {
-      reg.capture(
-        <TT extends DatumEntityBase>() => datum._register<TT>(reg as DatumRegistration<TT>, logBuffer),
+      final datum = Datum._(
+        config: config,
+        connectivityChecker: connectivityChecker,
+        logger: logger,
       );
+      datum.globalObservers.addAll(observers);
+
+      datum._logInitializationHeader(logBuffer, config: config, connectivityChecker: connectivityChecker);
+      datum._logObservers(logBuffer);
+      if (registrations.isNotEmpty) {
+        logBuffer.writeln('├─ 📦 Registering Entities');
+      }
+      for (final reg in registrations) {
+        reg.capture(
+          <TT extends DatumEntityBase>() => datum._register<TT>(reg as DatumRegistration<TT>, logBuffer),
+        );
+      }
+      await datum._initializeManagers(logBuffer);
+      await datum._logPendingOperationsSummary(logBuffer);
+
+      logBuffer.write('└─ ✅ Datum Initialization Complete.');
+      initLogger.info(logBuffer.toString());
+
+      datum._listenToEventsForMetrics();
+      _instance = datum;
+      return Success(datum);
+    } catch (e) {
+      return Failure(e as Exception);
     }
-    await datum._initializeManagers(logBuffer);
-    await datum._logPendingOperationsSummary(logBuffer);
-
-    logBuffer.write('└─ ✅ Datum Initialization Complete.');
-    initLogger.info(logBuffer.toString());
-
-    datum._listenToEventsForMetrics();
-    return _instance = datum;
   }
 
   static Future<Datum> _initializeSilently(
@@ -265,7 +272,8 @@ class Datum {
     }
     await datum._initializeManagers(StringBuffer());
     datum._listenToEventsForMetrics();
-    return _instance = datum;
+    _instance = datum;
+    return datum;
   }
 
   String _green(Object text) => logger.colors ? '\x1B[32m$text\x1B[0m' : text.toString();

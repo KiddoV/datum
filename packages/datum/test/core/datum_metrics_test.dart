@@ -129,7 +129,7 @@ void main() {
         () => localAdapter.saveLastSyncResult(any(), any()),
       ).thenAnswer((_) async {});
 
-      datum = await Datum.initialize(
+      datum = (await Datum.initialize(
         config: const DatumConfig(schemaVersion: 0),
         connectivityChecker: connectivityChecker,
         registrations: [
@@ -138,7 +138,8 @@ void main() {
             remoteAdapter: remoteAdapter,
           ),
         ],
-      );
+      ))
+          .getSuccess();
     });
 
     tearDown(() async {
