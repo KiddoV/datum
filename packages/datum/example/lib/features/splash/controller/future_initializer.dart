@@ -1,6 +1,15 @@
+import 'package:datum/datum.dart';
+import 'package:datum_hive/datum_hive.dart';
 import 'package:example/const/secrets.dart';
+import 'package:example/custom_connectivity_checker.dart';
+import 'package:example/custom_datum_logger.dart';
+import 'package:example/data/task/entity/task.dart';
+import 'package:example/data/user/adapters/supabase_adapter.dart';
+import 'package:example/features/simple_datum/controller/simple_datum_provider.dart';
+import 'package:example/my_datum_observer.dart';
 import 'package:example/shared/riverpod_ext/riverpod_observer/riverpod_obs.dart';
 import 'package:example/shared/riverpod_ext/riverpod_observer/talker_riverpod_settings.dart';
+import 'package:example/sync/isolate_stratergy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:example/i18n/strings.g.dart';
@@ -13,7 +22,7 @@ import 'package:example/features/splash/controller/box_encryption_key_pod.dart';
 import 'package:example/init.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-final futureInitializerPod = FutureProvider.autoDispose<ProviderContainer>((
+final futureInitializerPod = FutureProvider<ProviderContainer>((
   ref,
 ) async {
   ///Additional intial delay duration for app
@@ -42,11 +51,49 @@ final futureInitializerPod = FutureProvider.autoDispose<ProviderContainer>((
     'DatumAppBox',
     encryptionCipher: encryptionCipher,
   );
+  final config = DatumConfig(
+    enableLogging: true,
+    autoStartSync: true,
+    initialUserId: Supabase.instance.client.auth.currentUser?.id,
+    changeCacheDuration: Duration(milliseconds: 300),
+    autoSyncInterval: Duration(
+      minutes: 10,
+    ),
+    syncRequestStrategy: SkipConcurrentStrategy(),
+    syncExecutionStrategy: IsolateStrategy(
+      DatumSyncExecutionStrategy.sequential(),
+    ),
+  );
+  final datum = await Datum.initialize(
+    config: config,
+    connectivityChecker: CustomConnectivityChecker(),
+    logger: CustomDatumLogger(enabled: config.enableLogging),
+    observers: [
+      MyDatumObserver(),
+    ],
+    registrations: [
+      DatumRegistration<Task>(
+        localAdapter: IsolatedHiveLocalAdapter<Task>(
+          entityBoxName: "Task",
+          fromMap: (map) => Task.fromMap(map),
+          schemaVersion: 0,
+        ),
+        remoteAdapter: SupabaseRemoteAdapter(
+          tableName: 'tasks',
+          fromMap: Task.fromMap,
+        ),
+      ),
+    ],
+  );
+
   return ProviderContainer(
     overrides: [
       appBoxProvider.overrideWithValue(appBox),
       translationsPod.overrideWith((ref) => translations),
       enableInternetCheckerPod.overrideWithValue(false),
+      simpleDatumProvider.overrideWith(
+        (ref) => datum,
+      ),
     ],
     observers: [
       ///Added new talker riverpod observer

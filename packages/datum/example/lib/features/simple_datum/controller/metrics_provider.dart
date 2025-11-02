@@ -22,7 +22,7 @@ final storageSizeProvider = StreamProvider.autoDispose.family<int, String>(
 
 final allHealths = StreamProvider(
   (ref) async* {
-    final datum = await ref.watch(simpleDatumProvider.future);
+    final datum = ref.watch(simpleDatumProvider);
     yield* datum.allHealths;
   },
   name: 'allHealths',
@@ -30,7 +30,7 @@ final allHealths = StreamProvider(
 
 final metricsProvider = StreamProvider(
   (ref) async* {
-    final datum = await ref.watch(simpleDatumProvider.future);
+    final datum = ref.watch(simpleDatumProvider);
     yield* datum.metrics;
   },
   name: 'metricsProvider',
@@ -39,7 +39,7 @@ final metricsProvider = StreamProvider(
 final pendingOperationsProvider =
     StreamProvider.autoDispose.family<int, String>(
   (ref, userId) async* {
-    final datum = await ref.watch(simpleDatumProvider.future);
+    final datum = ref.watch(simpleDatumProvider);
     yield* datum.statusForUser(userId).map((snapshot) {
       return snapshot?.pendingOperations ?? 0;
     });

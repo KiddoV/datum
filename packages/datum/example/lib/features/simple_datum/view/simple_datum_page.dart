@@ -80,7 +80,7 @@ final tasksStreamProvider =
 final syncStatusProvider =
     StreamProvider.autoDispose.family<DatumSyncStatusSnapshot?, String>(
   (ref, userId) async* {
-    final datum = await ref.watch(simpleDatumProvider.future);
+    final datum = ref.watch(simpleDatumProvider);
 
     yield* datum.statusForUser(userId);
   },
@@ -238,7 +238,6 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
 
   @override
   Widget build(BuildContext context) {
-    final simpleDatumAsync = ref.watch(simpleDatumProvider);
     final userId = Supabase.instance.client.auth.currentUser?.id;
 
     return Scaffold(
@@ -315,42 +314,32 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
                 ),
         ],
       ),
-      floatingActionButton: simpleDatumAsync.maybeWhen(
-        data: (_) => FloatingActionButton(
-          onPressed: _createTask,
-          child: const Icon(Icons.add),
-        ),
-        orElse: () => null,
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createTask,
+        child: const Icon(Icons.add),
       ),
       body: Builder(builder: (context) {
-        return simpleDatumAsync.easyWhen(
-          data: (data) {
-            if (userId == null) {
-              return const Center(child: Text("Not logged in"));
-            }
-            final tasksAsync = ref.watch(tasksStreamProvider(userId));
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.all(8),
-                  child: Wrap(
-                    alignment: WrapAlignment.end,
-                    spacing: 8,
-                    children: [
-                      const SyncInfoWidget(),
-                    ],
-                  ),
-                ),
-                Expanded(
-                  child: TaskList(
-                      tasksAsync: tasksAsync,
-                      onUpdate: _updateTask,
-                      onDelete: _deleteTask),
-                ),
-              ],
-            );
-          },
+        final tasksAsync = ref.watch(tasksStreamProvider(userId));
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(8),
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 8,
+                children: [
+                  const SyncInfoWidget(),
+                ],
+              ),
+            ),
+            Expanded(
+              child: TaskList(
+                  tasksAsync: tasksAsync,
+                  onUpdate: _updateTask,
+                  onDelete: _deleteTask),
+            ),
+          ],
         );
       }),
     );
