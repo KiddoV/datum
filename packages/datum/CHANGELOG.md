@@ -1,3 +1,40 @@
+# 0.0.10
+
+## ✨ Features
+
+- **Batch Operations**: Added `createMany` and `updateMany` methods for performing batch create and update operations.
+- **Lifecycle Management**: Implemented `DatumProviderWithLifecycle` widget to manage Datum's lifecycle based on app state.
+- **Flexible Entity Implementation**: Introduced `DatumEntityMixin` and `RelationalDatumEntityMixin` to allow for more flexible entity implementation without requiring inheritance from a base class.
+- **Schema Versioning**: Added `schemaVersion` property to `IsolatedHiveLocalAdapter` for easier schema migration.
+- **Type Comparison**: Added a `sameTypes` method for type comparison.
+- **Dependencies**: Added `equatable` dependency for easier object comparison.
+
+## 🐛 Bug Fixes
+
+- **Logging**: Removed unnecessary debug logs from `tasksStreamProvider`.
+- **Initialization**: Ensured managers are initialized before `saveMany` operations.
+- **Memory Leaks**: Improved stream handling in `SupabaseRemoteAdapter` to prevent memory leaks.
+- **Error Handling**: Improved type safety and error handling in `fetchRelated` methods.
+
+## ♻️ Refactors
+
+- **Background Sync**: Enhanced `SupabaseRemoteAdapter` with `resubscribeToChanges` and `unsubscribeFromChanges` methods for better background sync and lifecycle management.
+- **Entity Handling**: Updated `DatumEntityBase` and related classes for better sync and versioning.
+- **Adapters**: Updated `HiveLocalAdapter` and `SupabaseRemoteAdapter` to use `DatumEntityBase` instead of `DatumEntity`.
+- **Task Entity**: Refactored the `Task` entity to use `DatumEntityMixin`.
+- **Sync Execution**: Updated the default sync execution strategy to `parallel`.
+- **Data Serialization**: Enhanced data serialization for local and remote persistence.
+
+## 📖 Documentation
+
+- **Datum Class**: Enhanced `Datum` class documentation for clarity and improved usage examples.
+- **Sync Options**: Enhanced `DatumSyncOptions` documentation for better clarity.
+- **General**: Improved overall documentation for clarity.
+
+## ✅ Tests
+
+- **Background Sync**: Added tests for background sync functionality.
+
 # 0.0.9
 
 ## ✨ Features

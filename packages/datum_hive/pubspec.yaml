@@ -24,7 +24,7 @@ resolution: workspace
 
 dependencies:
   collection: ^1.19.1
-  datum: ^0.0.9
+  datum: ^0.0.10
   flutter:
     sdk: flutter
   hive_ce_flutter: ^2.3.3
