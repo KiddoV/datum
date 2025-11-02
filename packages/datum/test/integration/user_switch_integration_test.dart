@@ -216,6 +216,8 @@ void main() {
         connectivity: connectivityChecker,
         localObservers: [mockObserver],
       );
+      _stubDefaultBehaviors(localAdapter, remoteAdapter, connectivityChecker);
+      _stubDefaultBehaviors(localAdapter, remoteAdapter, connectivityChecker);
       await manager.initialize();
 
       final user1Entity = TestEntity.create('e1', 'user1', 'User1 Op');
@@ -315,7 +317,12 @@ void _stubDefaultBehaviors(
   when(
     () => localAdapter.getLastSyncResult(any()),
   ).thenAnswer((_) async => null);
-}
+  when(
+    () => localAdapter.getSyncMetadata(any()),
+  ).thenAnswer((_) => Future.value(null));
+  when(
+    () => remoteAdapter.getSyncMetadata(any()),
+  ).thenAnswer((_) => Future.value(null));}
 
 /// Helper function to create a test operation.
 DatumSyncOperation<T> _createTestOperation<T extends DatumEntityBase>(

@@ -148,6 +148,8 @@ void main() {
       when(
         () => localAdapter.saveLastSyncResult(any(), any()),
       ).thenAnswer((_) async {});
+      when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
 
       // Default manager setup
       manager = DatumManager<TestEntity>(
@@ -226,6 +228,10 @@ void main() {
           .thenAnswer((_) async => null);
       when(() => isolatedLocalAdapter.saveLastSyncResult(any(), any()))
           .thenAnswer((_) async {});
+      when(() => isolatedLocalAdapter.getSyncMetadata(any()))
+          .thenAnswer((_) async => null);
+      when(() => isolatedRemoteAdapter.getSyncMetadata(any()))
+          .thenAnswer((_) async => null);
 
       final exception = Exception('Isolate push failed');
       final processedIds = <String>{};

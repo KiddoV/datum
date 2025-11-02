@@ -21,6 +21,7 @@ class DatumSyncEngine<T extends DatumEntityBase> {
   final IsolateHelper isolateHelper;
   final List<DatumObserver<T>> localObservers;
   final List<GlobalDatumObserver> globalObservers;
+  final String? deviceId;
 
   String? _lastActiveUserId;
 
@@ -46,6 +47,7 @@ class DatumSyncEngine<T extends DatumEntityBase> {
     required this.isolateHelper,
     this.localObservers = const [],
     this.globalObservers = const [],
+    this.deviceId,
   });
 
   /// Checks if the active user has changed and emits an event if so.
@@ -94,6 +96,37 @@ class DatumSyncEngine<T extends DatumEntityBase> {
     }
 
     await checkForUserSwitch(userId);
+
+    // If forceFullSync is true, bypass metadata comparison and proceed with sync.
+    if (options?.forceFullSync == true) {
+      logger.info('Sync for user $userId forced: forceFullSync option is true.');
+    } else {
+      // Fetch local and remote metadata to determine if a sync is necessary.
+      final localMetadata = await localAdapter.getSyncMetadata(userId);
+      final remoteMetadata = await remoteAdapter.getSyncMetadata(userId);
+
+      // Check if there are any pending local operations.
+      final pendingLocalOperations = await queueManager.getPendingCount(userId);
+
+      // Compare relevant metadata fields for skipping.
+      final metadataMatches = localMetadata != null &&
+          remoteMetadata != null &&
+          localMetadata.dataHash == remoteMetadata.dataHash &&
+          _deepCompareEntityCounts(localMetadata.entityCounts, remoteMetadata.entityCounts);
+
+      // If metadata matches and there are no pending local operations, skip the sync.
+      if (metadataMatches && pendingLocalOperations == 0) {
+        logger.info('Sync for user $userId skipped: No changes detected based on metadata and no pending local operations.');
+        return (
+          DatumSyncResult<T>.skipped(
+            userId,
+            snapshot.pendingOperations,
+            reason: 'No changes detected based on metadata',
+          ),
+          <DatumSyncEvent<T>>[],
+        );
+      }
+    }
 
     // Fetch the last sync result to get the previous total byte counts.
     final lastSyncResult = await localAdapter.getLastSyncResult(userId);
@@ -183,37 +216,48 @@ class DatumSyncEngine<T extends DatumEntityBase> {
       }
       return (result, generatedEvents);
     } catch (e, stack) {
-      // If the exception is already the type we use for event propagation,
-      // just re-throw it to avoid double-wrapping.
-      if (e is SyncExceptionWithEvents<T>) {
-        rethrow;
+      logger.error('Synchronization failed for user $userId: $e', stack);
+
+      // If the eventController is closed, it means the manager has been disposed
+      // during the sync. In this case, we should re-throw the original error
+      // directly, as there's no point in wrapping it with events that won't
+      // be processed.
+      if (eventController.isClosed) {
+        if (e is SyncExceptionWithEvents<T>) {
+          throw e.originalError;
+        } else {
+          rethrow;
+        }
       }
 
-      logger.error('Synchronization failed for user $userId: $e', stack);
-      if (!statusSubject.isClosed && !eventController.isClosed) {
-        // The final status is 'failed', not 'error'.
-        // 'error' is a health status, not a sync cycle status.
-        statusSubject.add(
-          statusSubject.value.copyWith(
-            status: DatumSyncStatus.failed, // The sync cycle failed
-            health: const DatumHealth(status: DatumSyncHealth.error),
-            errors: [e],
-          ),
-        );
-        final errorEvent = DatumSyncErrorEvent<T>(
-          userId: userId,
-          error: e,
-          stackTrace: stack,
-        );
-        generatedEvents.add(errorEvent);
-        _notifyObservers(errorEvent);
-      }
+      // If the eventController is still open, proceed with normal error handling:
+      // Update status, add error event to generatedEvents, notify observers,
+      // and wrap the exception in SyncExceptionWithEvents.
+      statusSubject.add(
+        statusSubject.value.copyWith(
+          status: DatumSyncStatus.failed, // The sync cycle failed
+          health: const DatumHealth(status: DatumSyncHealth.error),
+          errors: [e],
+        ),
+      );
+      final errorEvent = DatumSyncErrorEvent<T>(
+        userId: userId,
+        error: e is SyncExceptionWithEvents<T> ? e.originalError : e,
+        stackTrace: stack,
+      );
+      generatedEvents.add(errorEvent);
+      _notifyObservers(errorEvent);
+
       // Instead of a simple `rethrow`, we wrap the error in a custom
       // exception. This allows us to transport the `generatedEvents`
       // (which now includes the crucial error event) back up to the
       // DatumManager, which can process them before the user-facing Future
       // completes with an error.
-      throw SyncExceptionWithEvents(e, stack, generatedEvents);
+      if (e is SyncExceptionWithEvents<T>) {
+        rethrow; // Re-throw the existing SyncExceptionWithEvents
+      } else {
+        throw SyncExceptionWithEvents(e, stack, generatedEvents);
+      }
     }
   }
 
@@ -352,9 +396,6 @@ class DatumSyncEngine<T extends DatumEntityBase> {
       // we must rethrow the exception to let the sync process know that this
       // operation has failed.
       throw SyncExceptionWithEvents(e, stackTrace, generatedEvents);
-    } on SyncExceptionWithEvents<T> {
-      // If it's already the correct type, just rethrow it.
-      rethrow;
     } on Object catch (e, stackTrace) {
       final isRetryable = e is DatumException && operation.retryCount < config.errorRecoveryStrategy.maxRetries && await config.errorRecoveryStrategy.shouldRetry(e);
 
@@ -373,18 +414,6 @@ class DatumSyncEngine<T extends DatumEntityBase> {
       // from the queue to prevent it from blocking subsequent syncs.
       // A more advanced implementation might move it to a separate "dead-letter queue".
       if (!statusSubject.isClosed) {
-        // Generate the error event here, before re-throwing, to ensure it's
-        // captured by listeners even if the sync process terminates early.
-        if (!eventController.isClosed) {
-          generatedEvents.add(
-            DatumSyncErrorEvent<T>(
-              userId: operation.userId,
-              error: e,
-              stackTrace: stackTrace,
-            ),
-          );
-        }
-        _notifyPostOperationObservers(operation, success: false);
         statusSubject.add(
           statusSubject.value.copyWith(
             failedOperations: statusSubject.value.failedOperations + 1,
@@ -555,6 +584,9 @@ class DatumSyncEngine<T extends DatumEntityBase> {
     DatumSyncOperation<T> operation, {
     required bool success,
   }) {
+    if (eventController.isClosed) {
+      return;
+    }
     if (operation.data == null && operation.type != DatumOperationType.delete) {
       return;
     }
@@ -589,6 +621,9 @@ class DatumSyncEngine<T extends DatumEntityBase> {
   }
 
   void _notifyObservers(DatumSyncEvent<T> event) {
+    if (eventController.isClosed) {
+      return;
+    }
     switch (event) {
       case DatumSyncStartedEvent():
         for (final observer in localObservers) {
@@ -646,16 +681,38 @@ class DatumSyncEngine<T extends DatumEntityBase> {
   Future<void> _updateMetadata(String userId) async {
     try {
       final items = await localAdapter.readAll(userId: userId);
+      final existingMetadata = await localAdapter.getSyncMetadata(userId);
+
+      Map<String, DateTime>? updatedDevices = existingMetadata?.devices != null
+          ? Map<String, DateTime>.from(existingMetadata!.devices!)
+          : {};
+
+      if (deviceId != null) {
+        updatedDevices[deviceId!] = DateTime.now();
+      }
+
       final newMetadata = DatumSyncMetadata(
         userId: userId,
         lastSyncTime: DateTime.now(),
-        dataHash: 'testhash',
+        dataHash: 'testhash', // Placeholder for now
+        deviceId: deviceId, // Use the current deviceId for this sync
+        devices: updatedDevices.isEmpty ? null : updatedDevices,
         entityCounts: {
           entityName: DatumEntitySyncDetails(
             count: items.length,
-            hash: 'testhash',
+            hash: 'testhash', // Placeholder for hash
           ),
         },
+        // Preserve other fields from existing metadata or set defaults
+        lastSuccessfulSyncTime: existingMetadata?.lastSuccessfulSyncTime,
+        customMetadata: existingMetadata?.customMetadata,
+        syncStatus: existingMetadata?.syncStatus ?? SyncStatus.neverSynced,
+        syncVersion: existingMetadata?.syncVersion ?? 1,
+        serverTimestamp: existingMetadata?.serverTimestamp,
+        conflictCount: existingMetadata?.conflictCount ?? 0,
+        errorMessage: existingMetadata?.errorMessage,
+        retryCount: existingMetadata?.retryCount ?? 0,
+        syncDuration: existingMetadata?.syncDuration,
       );
       await localAdapter.updateSyncMetadata(newMetadata, userId);
       await remoteAdapter.updateSyncMetadata(newMetadata, userId);
@@ -667,7 +724,7 @@ class DatumSyncEngine<T extends DatumEntityBase> {
         'Failed to update sync metadata for user $userId: $e',
         stack,
       );
-      // Re-throw to allow the main sync loop's error handler to catch it.
+      // Re-throw to allow the main sync loop\'s error handler to catch it.
       rethrow;
     }
   }
@@ -701,6 +758,24 @@ class DatumSyncEngine<T extends DatumEntityBase> {
     statusSubject.add(statusSubject.value.copyWith(health: health));
 
     return health;
+  }
+  bool _deepCompareEntityCounts(
+    Map<String, DatumEntitySyncDetails>? local,
+    Map<String, DatumEntitySyncDetails>? remote,
+  ) {
+    if (local == null && remote == null) return true;
+    if (local == null || remote == null) return false;
+    if (local.length != remote.length) return false;
+
+    for (final entry in local.entries) {
+      final remoteDetails = remote[entry.key];
+      if (remoteDetails == null ||
+          entry.value.count != remoteDetails.count ||
+          entry.value.hash != remoteDetails.hash) {
+        return false;
+      }
+    }
+    return true;
   }
 }
 

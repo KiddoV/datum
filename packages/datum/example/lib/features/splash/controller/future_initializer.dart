@@ -58,12 +58,14 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     initialUserId: Supabase.instance.client.auth.currentUser?.id,
     changeCacheDuration: Duration(milliseconds: 300),
     autoSyncInterval: Duration(
-      minutes: 10,
+      seconds: 30,
     ),
-    syncRequestStrategy: SkipConcurrentStrategy(),
+    syncRequestStrategy: SequentialRequestStrategy(),
     syncExecutionStrategy: IsolateStrategy(
       DatumSyncExecutionStrategy.sequential(),
     ),
+    schemaVersion: 0,
+    migrations: [],
   );
   final datum = await Datum.initialize(
     config: config,

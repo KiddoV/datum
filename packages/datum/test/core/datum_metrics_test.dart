@@ -128,6 +128,15 @@ void main() {
       when(
         () => localAdapter.saveLastSyncResult(any(), any()),
       ).thenAnswer((_) async {});
+      when(
+        () => localAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) async => null);
+      when(
+        () => localAdapter.getAllUserIds(),
+      ).thenAnswer((_) => Future.value([]));
+      when(
+        () => remoteAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
 
       (await Datum.initialize(
         config: const DatumConfig(schemaVersion: 0),

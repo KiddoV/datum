@@ -78,7 +78,10 @@ void main() {
       });
       when(
         () => localAdapter.getSyncMetadata(any()),
-      ).thenAnswer((_) async => null);
+      ).thenAnswer((_) async => null as DatumSyncMetadata?);
+      when(
+        () => remoteAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) async => null as DatumSyncMetadata?);
       when(
         () => localAdapter.read(any(), userId: any(named: 'userId')),
       ).thenAnswer((_) async => null);

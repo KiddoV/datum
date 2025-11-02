@@ -1642,6 +1642,12 @@ void main() async {
       when(() => localAdapter.getLastSyncResult(any())).thenAnswer((_) async => null);
       when(() => localAdapter.saveLastSyncResult(any(), any())).thenAnswer((_) async {});
       when(() => remoteAdapter.dispose()).thenAnswer((_) async {});
+      when(
+        () => localAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) async => null);
+      when(
+        () => remoteAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) async => null);
 
       manager = DatumManager<TestEntity>(
         localAdapter: localAdapter,

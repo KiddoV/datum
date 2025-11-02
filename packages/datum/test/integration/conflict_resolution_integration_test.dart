@@ -116,7 +116,10 @@ void main() {
       ).thenAnswer((_) async {});
       when(
         () => localAdapter.getSyncMetadata(any()),
-      ).thenAnswer((_) async => null);
+      ).thenAnswer((_) async => null as DatumSyncMetadata?);
+      when(
+        () => remoteAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) async => null as DatumSyncMetadata?);
       when(
         () => localAdapter.updateSyncMetadata(any(), any()),
       ).thenAnswer((_) async {});

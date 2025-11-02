@@ -34,7 +34,7 @@ void main() {
     test('toString provides a useful representation', () {
       expect(
         details.toString(),
-        'DatumEntitySyncDetails(count: 10, hash: hash123)',
+        'DatumEntitySyncDetails(count: 10, hash: hash123, lastModified: null, pendingChanges: 0)',
       );
     });
   });

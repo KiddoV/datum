@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:datum/datum.dart';
 import 'package:example/bootstrap.dart';
-import 'package:recase/recase.dart';
+
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:recase/recase.dart';
 
 class SupabaseRemoteAdapter<T extends DatumEntityBase>
     extends RemoteAdapter<T> {
@@ -21,6 +22,9 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   RealtimeChannel? _channel;
   StreamController<DatumChangeDetail<T>>? _streamController;
 
+  // Store related entity channels for cleanup
+  final Map<String, RealtimeChannel> _relatedChannels = {};
+
   SupabaseClient get _client => _clientOverride ?? Supabase.instance.client;
   String get _metadataTableName => 'sync_metadata';
 
@@ -35,10 +39,6 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   @override
   Future<List<T>> readAll({String? userId, DatumSyncScope? scope}) async {
     PostgrestFilterBuilder queryBuilder = _client.from(tableName).select();
-
-    if (userId != null) {
-      queryBuilder = queryBuilder.eq('user_id', userId);
-    }
 
     // Apply filters from the sync scope, if provided.
     if (scope != null) {
@@ -58,13 +58,12 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
 
   @override
   Future<T?> read(String id, {String? userId}) async {
-    final response =
-        await _client.from(tableName).select().eq('id', id).maybeSingle();
+    final response = await _client.from(tableName).select().eq('id', id);
 
-    if (response == null) {
+    if (response.length > 1) {
       return null;
     }
-    return fromMap(_toCamelCase(response));
+    return fromMap(_toCamelCase(response.first));
   }
 
   @override
@@ -82,13 +81,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   }
 
   @override
-  Future<bool> isConnected() async {
-    // Supabase client does not have a direct connectivity check.
-    // This is usually handled by a separate connectivity package.
-    // For this implementation, we assume the Datum's connectivityChecker handles it.
-    return true;
-  }
-
+  Future<bool> isConnected() async => true;
   @override
   Future<void> create(T entity) async {
     final data = _toSnakeCase(entity.toDatumMap(target: MapTarget.remote));
@@ -137,7 +130,6 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
 
     await _client.from(_metadataTableName).upsert(
           data,
-          onConflict: 'user_id',
         );
   }
 
@@ -228,6 +220,12 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
       await _client.removeChannel(_channel!);
       _channel = null;
     }
+
+    // Unsubscribe from all related entity channels
+    for (final channel in _relatedChannels.values) {
+      await _client.removeChannel(channel);
+    }
+    _relatedChannels.clear();
   }
 
   @override
@@ -262,10 +260,6 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   @override
   Future<List<T>> query(DatumQuery query, {String? userId}) async {
     PostgrestFilterBuilder queryBuilder = _client.from(tableName).select();
-
-    if (userId != null) {
-      queryBuilder = queryBuilder.eq('user_id', userId);
-    }
 
     for (final condition in query.filters) {
       queryBuilder = _applyFilter(queryBuilder, condition);
@@ -325,6 +319,208 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
       return builder.filter(condition.operator.name, 'any', filters);
     }
     return builder;
+  }
+
+  @override
+  Future<List<R>> fetchRelated<R extends DatumEntityBase>(
+    RelationalDatumEntity parent,
+    String relationName,
+    RemoteAdapter<R> relatedAdapter,
+  ) async {
+    final relatedSupabaseAdapter = relatedAdapter as SupabaseRemoteAdapter<R>;
+    final relatedTableName = relatedSupabaseAdapter.tableName;
+
+    PostgrestFilterBuilder queryBuilder =
+        _client.from(relatedTableName).select();
+
+    final relation = parent.relations[relationName];
+
+    switch (relation) {
+      case BelongsTo(:var foreignKey, :var localKey):
+        final relatedKeyValue = parent.toDatumMap()[localKey];
+        if (relatedKeyValue == null) {
+          return [];
+        }
+        queryBuilder = queryBuilder.eq(foreignKey.snakeCase, relatedKeyValue);
+        break;
+      case HasMany(:final foreignKey, :final localKey):
+      case HasOne(:final foreignKey, :final localKey):
+        // The foreign key is in the related table, pointing to the parent.
+        final foreignKeyColumn = foreignKey.snakeCase;
+        final localKeyValue = parent.toDatumMap()[localKey];
+        if (localKeyValue == null) {
+          return [];
+        }
+        queryBuilder = queryBuilder.eq(foreignKeyColumn, localKeyValue);
+        break;
+      case ManyToMany(
+          :final otherForeignKey,
+          :final otherLocalKey,
+          :final thisForeignKey,
+          :final thisLocalKey,
+        ):
+        // Get the pivot table name from the pivot entity
+        final pivotAdapter = Datum.manager().remoteAdapter;
+        if (pivotAdapter is! SupabaseRemoteAdapter) {
+          throw ArgumentError('Pivot adapter must be a SupabaseRemoteAdapter');
+        }
+        final pivotTableName = pivotAdapter.tableName;
+
+        // Get parent ID
+        final parentIdValue = parent.toDatumMap()[thisLocalKey];
+        if (parentIdValue == null) {
+          return [];
+        }
+
+        // Query the junction table to find the IDs of related entities
+        final junctionRecords = await _client
+            .from(pivotTableName)
+            .select(otherForeignKey.snakeCase)
+            .eq(thisForeignKey.snakeCase, parentIdValue);
+
+        if (junctionRecords.isEmpty) {
+          return [];
+        }
+
+        // Extract the IDs of the related entities
+        final relatedIds = junctionRecords
+            .map((record) => record[otherForeignKey.snakeCase])
+            .whereType<String>()
+            .toList();
+
+        if (relatedIds.isEmpty) {
+          return [];
+        }
+
+        // Query the related table using the extracted IDs
+        queryBuilder =
+            queryBuilder.inFilter(otherLocalKey.snakeCase, relatedIds);
+        break;
+      case null:
+        throw ArgumentError(
+            'Relation "$relationName" not found for parent entity.');
+    }
+
+    final response = await queryBuilder;
+
+    return response
+        .map<R>((json) => relatedSupabaseAdapter.fromMap(_toCamelCase(json)))
+        .toList();
+  }
+
+  Stream<List<R>> watchRelated<R extends DatumEntityBase>(
+    RelationalDatumEntity parent,
+    String relationName,
+    RemoteAdapter<R> relatedAdapter,
+  ) {
+    final relatedSupabaseAdapter = relatedAdapter as SupabaseRemoteAdapter<R>;
+    final relatedTableName = relatedSupabaseAdapter.tableName;
+    final relation = parent.relations[relationName];
+
+    if (relation == null) {
+      throw ArgumentError(
+          'Relation "$relationName" not found for parent entity.');
+    }
+
+    // Create a stream controller for this relationship
+    late StreamController<List<R>> controller;
+    RealtimeChannel? channel;
+
+    Future<void> fetchAndEmit() async {
+      try {
+        final items =
+            await fetchRelated<R>(parent, relationName, relatedAdapter);
+        if (!controller.isClosed) {
+          controller.add(items);
+        }
+      } catch (e) {
+        if (!controller.isClosed) {
+          controller.addError(e);
+        }
+      }
+    }
+
+    void setupRealtimeSubscription() {
+      final channelName =
+          'related:$relatedTableName:${parent.id}:$relationName';
+
+      channel = _client.channel(channelName).onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: relatedTableName,
+            callback: (payload) {
+              talker
+                  .info('Related entity change detected in $relatedTableName');
+
+              // Re-fetch and emit updated data when changes occur
+              fetchAndEmit();
+            },
+          );
+
+      // For ManyToMany relationships, also watch the pivot table
+      if (relation is ManyToMany) {
+        final pivotAdapter = Datum.manager().remoteAdapter;
+        if (pivotAdapter is SupabaseRemoteAdapter) {
+          final pivotTableName = pivotAdapter.tableName;
+          final pivotChannelName =
+              'pivot:$pivotTableName:${parent.id}:$relationName';
+
+          final pivotChannel = _client
+              .channel(pivotChannelName)
+              .onPostgresChanges(
+                event: PostgresChangeEvent.all,
+                schema: 'public',
+                table: pivotTableName,
+                callback: (payload) {
+                  talker.info('Pivot table change detected in $pivotTableName');
+                  fetchAndEmit();
+                },
+              );
+
+          pivotChannel.subscribe();
+          _relatedChannels[pivotChannelName] = pivotChannel;
+        }
+      }
+
+      channel?.subscribe();
+      if (channel != null) {
+        _relatedChannels[channelName] = channel!;
+      }
+    }
+
+    controller = StreamController<List<R>>.broadcast(
+      onListen: () {
+        // Fetch initial data
+        fetchAndEmit();
+
+        // Setup realtime subscription
+        setupRealtimeSubscription();
+      },
+      onCancel: () async {
+        if (channel != null) {
+          await _client.removeChannel(channel!);
+          _relatedChannels
+              .remove('related:$relatedTableName:${parent.id}:$relationName');
+        }
+
+        // Clean up pivot channel if it exists
+        if (relation is ManyToMany) {
+          final pivotAdapter = Datum.manager().remoteAdapter;
+          if (pivotAdapter is SupabaseRemoteAdapter) {
+            final pivotTableName = pivotAdapter.tableName;
+            final pivotChannelName =
+                'pivot:$pivotTableName:${parent.id}:$relationName';
+            final pivotChannel = _relatedChannels[pivotChannelName];
+            if (pivotChannel != null) {
+              await _client.removeChannel(pivotChannel);
+              _relatedChannels.remove(pivotChannelName);
+            }
+          }
+        }
+      },
+    );
+
+    return controller.stream;
   }
 }
 

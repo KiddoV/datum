@@ -54,6 +54,8 @@ void main() {
       when(() => remoteAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
       when(() => localAdapter.saveLastSyncResult(any(), any())).thenAnswer((_) async {});
       when(() => localAdapter.getLastSyncResult(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) => Future.value(null));
+      when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) => Future.value(null));
       when(() => localAdapter.changeStream()).thenAnswer((_) => const Stream.empty());
       when(() => remoteAdapter.changeStream).thenAnswer((_) => const Stream.empty());
 

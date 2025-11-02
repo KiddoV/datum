@@ -118,6 +118,12 @@ void main() {
       when(
         () => localAdapter.saveLastSyncResult(any(), any()),
       ).thenAnswer((_) async {});
+      when(
+        () => localAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) => Future.value(null));
+      when(
+        () => remoteAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) => Future.value(null));
     });
 
     Future<DatumManager<TestEntity>> createManager({

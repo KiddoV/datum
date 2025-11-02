@@ -1,6 +1,7 @@
 import 'package:datum/datum.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'dart:async';
 
 import '../mocks/mock_connectivity_checker.dart';
 import '../mocks/test_entity.dart';
@@ -96,7 +97,7 @@ void main() {
       ).thenAnswer((_) async {});
       when(
         () => localAdapter.getSyncMetadata(any()),
-      ).thenAnswer((_) async => null);
+      ).thenAnswer((_) async => null as DatumSyncMetadata?);
       when(
         () => localAdapter.updateSyncMetadata(any(), any()),
       ).thenAnswer((_) async {});
@@ -185,6 +186,9 @@ void main() {
       when(
         () => remoteAdapter.updateSyncMetadata(any(), any()),
       ).thenAnswer((_) async {});
+      when(
+        () => remoteAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) async => null as DatumSyncMetadata?);
 
       await manager.initialize();
       return manager;
@@ -492,7 +496,7 @@ void main() {
 
       final pendingOpsList = <DatumSyncOperation<TestEntity>>[];
       // Stub the remote create to throw a non-retryable error
-      when(() => remoteAdapter.create(any())).thenThrow(nonRetryableException);
+      when(() => remoteAdapter.create(any())).thenAnswer((_) => Future.error(nonRetryableException));
 
       // Set up a pending operation in the queue
       final op = DatumSyncOperation<TestEntity>(
@@ -514,10 +518,16 @@ void main() {
 
       // 2. ACT & ASSERT
       // The synchronize call should fail by re-throwing the exception.
-      await expectLater(
-        () => testManager.synchronize('user1'),
-        throwsA(nonRetryableException),
-      );
+      Object? caughtException;
+      try {
+        await testManager.synchronize('user1');
+        fail('Expected an exception to be thrown.');
+      } catch (e) {
+        caughtException = e;
+      }
+
+      expect(caughtException, isA<SyncExceptionWithEvents<TestEntity>>());
+      expect((caughtException as SyncExceptionWithEvents<TestEntity>).originalError, nonRetryableException);
 
       // 3. VERIFY
       // Verify that the operation was NOT updated for a retry.
@@ -539,11 +549,23 @@ void main() {
 
     test('emits onSyncError event on synchronization failure', () async {
       // 1. ARRANGE
+      final testManager = await setupManager(
+        config: const DatumConfig(
+          errorRecoveryStrategy: DatumErrorRecoveryStrategy(
+            maxRetries: 0, // No retries
+            shouldRetry: _neverRetry, // Never retry for this test
+          ),
+        ),
+      );
       final exception = Exception('Remote is down');
       final entity = TestEntity.create('delta-e6', 'user1', 'Will Fail');
 
+      // Use a completer to capture the emitted error event.
+      final errorCompleter = Completer<DatumSyncErrorEvent>();
+      testManager.onSyncError.listen(errorCompleter.complete);
+
       // Stub the remote create to throw an error
-      when(() => remoteAdapter.create(any())).thenThrow(exception);
+      when(() => remoteAdapter.create(any())).thenAnswer((_) => Future.error(exception));
 
       // Set up a pending operation
       final op = DatumSyncOperation<TestEntity>(
@@ -559,28 +581,28 @@ void main() {
       ).thenAnswer((_) async => [op]);
 
       // 2. ACT & ASSERT
-      // Expect the event to be emitted
-      final errorEventFuture = expectLater(
-        manager.onSyncError,
-        emits(
-          isA<DatumSyncErrorEvent>().having((e) => e.userId, 'userId', 'user1').having((e) => e.error, 'error', exception),
-        ),
-      );
+      // Expect the synchronize call to throw the exception.
+      Object? caughtException;
+      try {
+        await testManager.synchronize('user1');
+        fail('Expected an exception to be thrown.');
+      } catch (e) {
+        caughtException = e;
+      }
 
-      // Expect the synchronize call to throw.
-      final syncThrowFuture = expectLater(
-        () => manager.synchronize('user1'),
-        // Check the exception type and message instead of the instance
-        // for a more robust test.
-        throwsA(isA<Exception>().having(
-          (e) => e.toString(),
-          'toString()',
-          exception.toString(),
-        )),
-      );
+      expect(caughtException, isA<SyncExceptionWithEvents<TestEntity>>());
+      expect((caughtException as SyncExceptionWithEvents<TestEntity>).originalError, exception);
 
-      // Await both futures concurrently to avoid a race condition.
-      await Future.wait([errorEventFuture, syncThrowFuture]);
+      // Await the captured error event.
+      final errorEvent = await errorCompleter.future.timeout(const Duration(seconds: 5));
+
+      // 3. ASSERT
+      // Assert the properties of the emitted event.
+      expect(errorEvent.userId, 'user1');
+      expect(errorEvent.error, isA<SyncExceptionWithEvents<TestEntity>>());
+      expect((errorEvent.error as SyncExceptionWithEvents<TestEntity>).originalError, exception);
+
+      await testManager.dispose();
     });
 
     test('cancels sync mid-process when manager is disposed', () async {
@@ -791,3 +813,5 @@ void main() {
 }
 
 Future<bool> _alwaysRetry(DatumException e) async => true;
+
+Future<bool> _neverRetry(DatumException e) async => false;

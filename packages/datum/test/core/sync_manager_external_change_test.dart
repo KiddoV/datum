@@ -516,6 +516,9 @@ void main() {
         () => localAdapter.getSyncMetadata(any()),
       ).thenAnswer((_) async => null);
       when(
+        () => remoteAdapter.getSyncMetadata(any()),
+      ).thenAnswer((_) async => null);
+      when(
         () => localAdapter.updateSyncMetadata(any(), any()),
       ).thenAnswer((_) async {});
       when(

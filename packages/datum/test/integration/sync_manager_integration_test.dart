@@ -159,6 +159,66 @@ void main() {
       expect(pendingCount, 0);
     });
 
+    test('updates DatumSyncMetadata after successful sync', () async {
+      // Arrange
+      final entity = TestEntity.create('entity1', 'user1', 'Test Item');
+      final op = DatumSyncOperation<TestEntity>(
+        id: 'op-sync',
+        userId: 'user1',
+        entityId: entity.id,
+        type: DatumOperationType.create,
+        timestamp: DateTime.now(),
+        data: entity,
+      );
+      final pendingOps = [op];
+
+      when(
+        () => localAdapter.getPendingOperations('user1'),
+      ).thenAnswer((_) async => pendingOps);
+      when(
+        () => localAdapter.removePendingOperation('op-sync'),
+      ).thenAnswer((_) async => pendingOps.remove(op));
+      when(() => remoteAdapter.create(any())).thenAnswer((_) async {});
+
+      // Act
+      await manager.synchronize('user1');
+
+      // Assert
+      // Verify that updateSyncMetadata was called on both adapters with a DatumSyncMetadata object
+      verify(() => localAdapter.updateSyncMetadata(any(that: isA<DatumSyncMetadata>()), 'user1')).called(1);
+      verify(() => remoteAdapter.updateSyncMetadata(any(that: isA<DatumSyncMetadata>()), 'user1')).called(1);
+    });
+
+    test('skips sync when metadata indicates no changes', () async {
+      // Arrange
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        lastSyncTime: DateTime.now(),
+        dataHash: 'identical-hash',
+      );
+
+      // Stub both adapters to return identical metadata.
+      when(
+        () => localAdapter.getSyncMetadata('user1'),
+      ).thenAnswer((_) async => metadata);
+      when(
+        () => remoteAdapter.getSyncMetadata('user1'),
+      ).thenAnswer((_) async => metadata);
+
+      // Act
+      final result = await manager.synchronize('user1');
+
+      // Assert
+      expect(result.wasSkipped, isTrue);
+      expect(result.skipReason, 'No changes detected based on metadata');
+
+      // Verify that no actual data operations were performed
+      verifyNever(() => remoteAdapter.readAll(userId: any(named: 'userId'), scope: any(named: 'scope')));
+      verifyNever(() => localAdapter.create(any()));
+      verifyNever(() => localAdapter.update(any()));
+      verifyNever(() => localAdapter.delete(any(), userId: any(named: 'userId')));
+    });
+
     test('pulls remote items during sync', () async {
       // Arrange
       final remoteEntity = TestEntity.create('entity2', 'user1', 'Remote Item');
@@ -731,6 +791,7 @@ void _stubDefaultBehaviors(
   when(
     () => localAdapter.saveLastSyncResult(any(), any()),
   ).thenAnswer((_) async {});
+  when(() => localAdapter.getAllRawData(userId: any(named: 'userId'))).thenAnswer((_) async => []);
   // Add missing stub for getLastSyncResult
   when(
     () => localAdapter.getLastSyncResult(any()),

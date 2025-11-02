@@ -164,4 +164,9 @@ void _stubDefaultBehaviors(
   when(
     () => local.getLastSyncResult(any()),
   ).thenAnswer((_) async => null);
-}
+  when(
+    () => local.getSyncMetadata(any()),
+  ).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
+  when(
+    () => remote.getSyncMetadata(any()),
+  ).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));}

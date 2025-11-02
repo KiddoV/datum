@@ -25,6 +25,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   final List<GlobalDatumObserver> _globalObservers = [];
   final List<DatumMiddleware<T>> _middlewares = [];
   final DatumSyncRequestStrategy _syncRequestStrategy;
+  final String? deviceId;
 
   // Internal state management
   final Map<String, Timer> _autoSyncTimers = {};
@@ -96,6 +97,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     List<DatumMiddleware<T>>? middlewares,
     List<GlobalDatumObserver>? globalObservers,
     DatumSyncRequestStrategy? syncRequestStrategy,
+    this.deviceId,
   })  : config = datumConfig ?? const DatumConfig(),
         _connectivity = connectivity,
         // The logger's enabled status should always respect the config.
@@ -141,6 +143,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
       isolateHelper: _isolateHelper,
       localObservers: _localObservers,
       globalObservers: _globalObservers,
+      deviceId: deviceId,
     );
   }
 
