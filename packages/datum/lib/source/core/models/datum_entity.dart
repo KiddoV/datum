@@ -40,7 +40,7 @@ sealed class DatumEntityBase extends Equatable {
   /// A flag indicating if this entity has been locally marked for **deletion**.
   bool get isDeleted;
 
-  /// Converts the entity to a **Map<String, dynamic>** for persistence.
+  /// Converts the entity to a `Map<String, dynamic>` for persistence.
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
 
   /// Creates a **new instance** of the entity with updated values.
@@ -112,7 +112,7 @@ mixin DatumEntityMixin implements DatumEntityBase {
   @override
   bool get isDeleted;
 
-  /// Converts the entity to a **Map<String, dynamic>** for persistence.
+  /// Converts the entity to a `Map<String, dynamic>` for persistence.
   ///
   /// The optional [target] parameter dictates which set of fields to include,
   /// e.g., excluding heavy local-only fields for remote sync.
