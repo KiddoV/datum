@@ -69,7 +69,11 @@ class Task extends DatumHiveEntity {
 }
 ```
 
-Then, initialize Hive and Datum:
+Then, initialize Hive and Datum based on your needs.
+
+### Using `HiveLocalAdapter`
+
+If you don't need to run Hive in a separate isolate, you can use `HiveLocalAdapter`.
 
 ```dart
 import 'package:datum/datum.dart';
@@ -83,7 +87,7 @@ import 'package:your_app/remote_adapters/supabase_remote_adapter.dart'; // Supab
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized(); // Required for Flutter apps
-  await Hive.initFlutter(); // Initialize Hive
+  await Hive.initFlutter(); // Initialize Hive for the main isolate
 
   // Example Datum configuration
   final config = DatumConfig(
@@ -100,18 +104,11 @@ Future<void> main() async {
     ],
     registrations: [
       DatumRegistration<Task>(
-        // Use IsolatedHiveLocalAdapter for better performance in Flutter
-        localAdapter: IsolatedHiveLocalAdapter<Task>(
-          entityBoxName: "tasks", // Unique name for your Hive box
+        localAdapter: HiveLocalAdapter<Task>(
+          entityBoxName: "tasks",
           fromMap: (map) => Task.fromMap(map),
-          schemaVersion: 0, // Increment this when your entity schema changes
+          schemaVersion: 0,
         ),
-        // Or use HiveLocalAdapter if you don't need isolation
-        // localAdapter: HiveLocalAdapter<Task>(
-        //   entityBoxName: "tasks",
-        //   fromMap: (map) => Task.fromMap(map),
-        //   schemaVersion: 0,
-        // ),
         remoteAdapter: SupabaseRemoteAdapter(
           tableName: 'tasks',
           fromMap: Task.fromMap,
@@ -128,6 +125,80 @@ Future<void> main() async {
   print(fetchedTask?.title);
 }
 ```
+
+### Using `IsolatedHiveLocalAdapter`
+
+For better performance in Flutter, especially with large datasets, you can use `IsolatedHiveLocalAdapter` to run Hive in a separate isolate.
+
+```dart
+import 'package:datum/datum.dart';
+import 'package:datum_hive/datum_hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:your_app/models/task.dart'; // Assuming Task is defined here
+import 'package:your_app/services/connectivity_checker.dart'; // CustomConnectivityChecker
+import 'package:your_app/services/datum_logger.dart'; // CustomDatumLogger
+import 'package:your_app/observers/my_datum_observer.dart'; // MyDatumObserver
+import 'package:your_app/remote_adapters/supabase_remote_adapter.dart'; // SupabaseRemoteAdapter
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Required for Flutter apps
+  await IsolatedHive.initFlutter(); // Initialize Hive for a separate isolate
+
+  // Example Datum configuration
+  final config = DatumConfig(
+    appName: 'MyAwesomeApp',
+    // ... other configurations
+  );
+
+  final datum = await Datum.initialize(
+    config: config,
+    connectivityChecker: CustomConnectivityChecker(),
+    logger: CustomDatumLogger(enabled: config.enableLogging),
+    observers: [
+      MyDatumObserver(),
+    ],
+    registrations: [
+      DatumRegistration<Task>(
+        localAdapter: IsolatedHiveLocalAdapter<Task>(
+          entityBoxName: "tasks", // Unique name for your Hive box
+          fromMap: (map) => Task.fromMap(map),
+          schemaVersion: 0, // Increment this when your entity schema changes
+        ),
+        remoteAdapter: SupabaseRemoteAdapter(
+          tableName: 'tasks',
+          fromMap: Task.fromMap,
+        ),
+      ),
+      // Add more DatumRegistrations for other entities
+    ],
+  );
+
+  // Now you can use Datum to interact with your data
+  final task = Task('123', 'tasks', title: 'Buy groceries', isComplete: false);
+  await datum.save(task);
+  final fetchedTask = await datum.get<Task>('123', 'tasks');
+  print(fetchedTask?.title);
+}
+```
+
+
+## Isolates and `IsolatedHive`
+
+Hive CE supports concurrent access across multiple isolates through the `IsolatedHive` interface.
+
+### The problem
+
+The normal Hive interface is not safe to use across multiple isolates. Concurrent writes are almost guaranteed to corrupt box data.
+
+Hive CE will print a warning in most cases when attempting to use Hive across multiple isolates.
+
+### Examples of multi-isolate usage
+
+You may be using multiple isolates without even realizing it. Here are some common use-cases that result in code running in multiple isolates:
+
+*   A Flutter desktop app with multiple windows
+*   Running background tasks with `flutter_workmanager`, `background_fetch`, etc.
+*   Push notification processing
 
 
 ## Additional information
