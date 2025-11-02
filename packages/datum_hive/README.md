@@ -1,39 +1,138 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+<p align="center">
+  <img src="https://zmozkivkhopoeutpnnum.supabase.co/storage/v1/object/public/images/datum_logo.png" alt="Datum Logo" width="200">
+</p>
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+# **Datum Hive**
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
 
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+A Hive-based persistence layer for the Datum ecosystem, enabling efficient local data storage and synchronization for Flutter applications.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- Seamless integration with Datum for local data persistence.
+- Leverages Hive's high performance and ease of use.
+- Supports offline-first capabilities for Datum entities.
+- Provides robust and reliable data storage.
 
 ## Getting started
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+### Prerequisites
+
+Ensure you have the `datum` package integrated into your Flutter project.
+
+### Installation
+
+Add `datum_hive` to your `pubspec.yaml` file:
+
+```yaml
+dependencies:
+  datum_hive: ^latest_version
+```
+
+Then, run `flutter pub get`.
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+To integrate `datum_hive` with your Datum setup, you'll typically initialize Datum with `IsolatedHiveLocalAdapter` or `HiveLocalAdapter` for your entities.
+
+First, define your Datum entity and a `fromMap` factory:
 
 ```dart
-const like = 'sample';
+import 'package:datum/datum.dart';
+import 'package:datum_hive/datum_hive.dart'; // For DatumHiveEntity
+import 'package:hive_flutter/hive_flutter.dart'; // For Hive.initFlutter()
+
+// Example Task entity
+class Task extends DatumHiveEntity {
+  Task(super.id, super.collection, {required this.title, required this.isComplete});
+
+  final String title;
+  final bool isComplete;
+
+  factory Task.fromMap(Map<String, dynamic> map) {
+    return Task(
+      map['id'] as String,
+      map['collection'] as String,
+      title: map['title'] as String,
+      isComplete: map['isComplete'] as bool,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toMap() {
+    return {
+      ...super.toMap(), // Include base DatumHiveEntity fields
+      'title': title,
+      'isComplete': isComplete,
+    };
+  }
+}
 ```
+
+Then, initialize Hive and Datum:
+
+```dart
+import 'package:datum/datum.dart';
+import 'package:datum_hive/datum_hive.dart';
+import 'package:hive_flutter/hive_flutter.dart';
+import 'package:your_app/models/task.dart'; // Assuming Task is defined here
+import 'package:your_app/services/connectivity_checker.dart'; // CustomConnectivityChecker
+import 'package:your_app/services/datum_logger.dart'; // CustomDatumLogger
+import 'package:your_app/observers/my_datum_observer.dart'; // MyDatumObserver
+import 'package:your_app/remote_adapters/supabase_remote_adapter.dart'; // SupabaseRemoteAdapter
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized(); // Required for Flutter apps
+  await Hive.initFlutter(); // Initialize Hive
+
+  // Example Datum configuration
+  final config = DatumConfig(
+    appName: 'MyAwesomeApp',
+    // ... other configurations
+  );
+
+  final datum = await Datum.initialize(
+    config: config,
+    connectivityChecker: CustomConnectivityChecker(),
+    logger: CustomDatumLogger(enabled: config.enableLogging),
+    observers: [
+      MyDatumObserver(),
+    ],
+    registrations: [
+      DatumRegistration<Task>(
+        // Use IsolatedHiveLocalAdapter for better performance in Flutter
+        localAdapter: IsolatedHiveLocalAdapter<Task>(
+          entityBoxName: "tasks", // Unique name for your Hive box
+          fromMap: (map) => Task.fromMap(map),
+          schemaVersion: 0, // Increment this when your entity schema changes
+        ),
+        // Or use HiveLocalAdapter if you don't need isolation
+        // localAdapter: HiveLocalAdapter<Task>(
+        //   entityBoxName: "tasks",
+        //   fromMap: (map) => Task.fromMap(map),
+        //   schemaVersion: 0,
+        // ),
+        remoteAdapter: SupabaseRemoteAdapter(
+          tableName: 'tasks',
+          fromMap: Task.fromMap,
+        ),
+      ),
+      // Add more DatumRegistrations for other entities
+    ],
+  );
+
+  // Now you can use Datum to interact with your data
+  final task = Task('123', 'tasks', title: 'Buy groceries', isComplete: false);
+  await datum.save(task);
+  final fetchedTask = await datum.get<Task>('123', 'tasks');
+  print(fetchedTask?.title);
+}
+```
+
 
 ## Additional information
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+For more information on Datum, visit the
+[Datum documentation](https://datum.dev).
+To contribute or report issues, please visit the [GitHub repository](https://github.com/Shreemanarjun/datum).
+For issue tracking, please visit [GitHub issues](https://github.com/Shreemanarjun/datum/issues).
