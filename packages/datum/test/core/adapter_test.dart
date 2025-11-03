@@ -261,5 +261,13 @@ void main() {
     test('default checkHealth returns ok', () async {
       expect(await adapter.checkHealth(), AdapterHealthStatus.healthy);
     });
+
+    test('default unsubscribeFromChanges method completes successfully', () {
+      expect(adapter.unsubscribeFromChanges(), completes);
+    });
+
+    test('default resubscribeToChanges method completes successfully', () {
+      expect(adapter.resubscribeToChanges(), completes);
+    });
   });
 }
