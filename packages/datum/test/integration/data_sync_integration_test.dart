@@ -492,7 +492,7 @@ void main() {
       );
 
       final entity = TestEntity.create('delta-e5', 'user1', 'Will Fail');
-      final nonRetryableException = Exception('Invalid data format');
+      final nonRetryableException = StorageException('Invalid data format');
 
       final pendingOpsList = <DatumSyncOperation<TestEntity>>[];
       // Stub the remote create to throw a non-retryable error
@@ -557,7 +557,7 @@ void main() {
           ),
         ),
       );
-      final exception = Exception('Remote is down');
+      final exception = NetworkException('Remote is down');
       final entity = TestEntity.create('delta-e6', 'user1', 'Will Fail');
 
       // Use a completer to capture the emitted error event.
