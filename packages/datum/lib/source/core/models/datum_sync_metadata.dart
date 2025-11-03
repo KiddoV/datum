@@ -78,6 +78,29 @@ enum SyncStatus {
 }
 
 /// Metadata describing the synchronization state for a specific user.
+///
+/// Below is a schema example for a `sync_metadata` table, which you can use as a
+/// reference for your database.
+///
+/// ```sql
+/// CREATE TABLE sync_metadata (
+///     userId TEXT PRIMARY KEY,
+///     lastSyncTime TEXT,
+///     lastSuccessfulSyncTime TEXT,
+///     dataHash TEXT,
+///     deviceId TEXT,
+///     devices TEXT,
+///     customMetadata TEXT,
+///     entityCounts TEXT,
+///     syncStatus TEXT NOT NULL,
+///     syncVersion INTEGER NOT NULL,
+///     serverTimestamp TEXT,
+///     conflictCount INTEGER NOT NULL,
+///     errorMessage TEXT,
+///     retryCount INTEGER NOT NULL,
+///     syncDuration INTEGER
+/// );
+/// ```
 @immutable
 class DatumSyncMetadata extends Equatable {
   /// Creates sync metadata.
