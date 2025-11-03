@@ -483,16 +483,16 @@ void main() {
       // Create a local manager for this test to avoid interfering with the
       // group's setUp/tearDown cycle.
       final testManager = await setupManager(
-        config: const DatumConfig(
+        config: DatumConfig(
           errorRecoveryStrategy: DatumErrorRecoveryStrategy(
             maxRetries: 3,
-            shouldRetry: _alwaysRetry,
+            shouldRetry: (e) => Future.value(e is NetworkException),
           ),
         ),
       );
 
       final entity = TestEntity.create('delta-e5', 'user1', 'Will Fail');
-      final nonRetryableException = StorageException('Invalid data format');
+      final nonRetryableException = AdapterException('mocked_local_adapter', 'Invalid data format');
 
       final pendingOpsList = <DatumSyncOperation<TestEntity>>[];
       // Stub the remote create to throw a non-retryable error
@@ -526,8 +526,8 @@ void main() {
         caughtException = e;
       }
 
-      expect(caughtException, isA<SyncExceptionWithEvents<TestEntity>>());
-      expect((caughtException as SyncExceptionWithEvents<TestEntity>).originalError, nonRetryableException);
+      expect(caughtException, isA<AdapterException>());
+      expect(caughtException, nonRetryableException);
 
       // 3. VERIFY
       // Verify that the operation was NOT updated for a retry.
@@ -590,8 +590,8 @@ void main() {
         caughtException = e;
       }
 
-      expect(caughtException, isA<SyncExceptionWithEvents<TestEntity>>());
-      expect((caughtException as SyncExceptionWithEvents<TestEntity>).originalError, exception);
+      expect(caughtException, isA<NetworkException>());
+      expect(caughtException, exception);
 
       // Await the captured error event.
       final errorEvent = await errorCompleter.future.timeout(const Duration(seconds: 5));
@@ -599,8 +599,8 @@ void main() {
       // 3. ASSERT
       // Assert the properties of the emitted event.
       expect(errorEvent.userId, 'user1');
-      expect(errorEvent.error, isA<SyncExceptionWithEvents<TestEntity>>());
-      expect((errorEvent.error as SyncExceptionWithEvents<TestEntity>).originalError, exception);
+      expect(errorEvent.error, isA<NetworkException>());
+      expect(errorEvent.error, exception);
 
       await testManager.dispose();
     });
@@ -811,7 +811,5 @@ void main() {
     });
   });
 }
-
-Future<bool> _alwaysRetry(DatumException e) async => true;
 
 Future<bool> _neverRetry(DatumException e) async => false;
