@@ -65,7 +65,7 @@ void runMetricsTest(
     when(() => mockConnectivityChecker.isConnected).thenAnswer((_) async => true);
 
 
-    final config = const DatumConfig(schemaVersion: 0, autoStartSync: false); // Disable auto-sync for predictable tests
+    const config = DatumConfig(schemaVersion: 0, autoStartSync: false); // Disable auto-sync for predictable tests
     final datumEither = await Datum.initialize(
       config: config,
       connectivityChecker: mockConnectivityChecker,
