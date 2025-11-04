@@ -35,6 +35,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   test: ^1.24.0
+  mockito: ^5.4.4
 
 dependency_overrides:
   test_api: ^0.7.7

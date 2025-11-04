@@ -342,25 +342,25 @@ class IsolatedHiveLocalAdapter<T extends DatumEntityBase>
 
   @override
   Stream<List<T>>? watchAll({String? userId, bool includeInitialData = true}) {
-    final Stream<BoxEvent> eventMaps = entityBox.watch();
+    final Stream<BoxEvent> eventStream = entityBox.watch();
 
-    return eventMaps.asyncExpand(
-      (event) async* {
-        // 1. Await the values from the box. Use a local variable for clarity.
-        final allValues = await entityBox.values;
+    Stream<List<T>> transformedStream = eventStream.asyncMap((event) async {
+      final allValues = await entityBox.values;
+      final filteredMaps = allValues.where(
+        (map) => userId == null || map['userId'] == userId,
+      );
+      return filteredMaps.map((map) => fromMap(_normalizeMap(map))).toList();
+    });
 
-        // 2. Filter the maps. The '?? []' handles the case where 'values' is null.
-        final filteredMaps = (allValues).where(
-          (map) => userId == null || map['userId'] == userId,
-        );
-
-        // 3. Transform the filtered maps into your entity objects.
-        final entities =
-            filteredMaps.map((map) => fromMap(_normalizeMap(map))).toList();
-
-        // 4. Yield the complete list as a single event on the stream.
-        yield entities;
-      },
-    );
+    if (includeInitialData) {
+      return transformedStream.transform(
+        StreamTransformer.fromBind((stream) async* {
+          yield await readAll(userId: userId); // Emit initial data
+          yield* stream; // Then emit subsequent changes
+        }),
+      );
+    } else {
+      return transformedStream;
+    }
   }
 }
