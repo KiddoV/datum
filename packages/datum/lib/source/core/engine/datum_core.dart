@@ -912,7 +912,7 @@ class Datum {
   }
 
   Future<void> dispose() async {
-    pauseAllSyncs();
+    pauseSync();
 
     await Future.wait([
       ..._managers.values.map((m) => m.dispose()),
@@ -924,10 +924,6 @@ class Datum {
   }
 
   void pauseSync() {
-    pauseAllSyncs();
-  }
-
-  void pauseAllSyncs() {
     logger.info('Pausing sync for all managers...');
     for (final manager in _managers.values) {
       manager.pauseSync();
@@ -935,10 +931,6 @@ class Datum {
   }
 
   void resumeSync() {
-    resumeAllSyncs();
-  }
-
-  void resumeAllSyncs() {
     logger.info('Resuming sync for all managers...');
     for (final manager in _managers.values) {
       manager.resumeSync();

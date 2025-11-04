@@ -7,37 +7,37 @@ import '../mocks/test_entity.dart';
 
 void main() {
   group('SyncExecutionStrategy', () {
-    late List<DatumSyncOperation<TestEntity>> operations;
-    late List<String> processedOrder;
-    late List<(int, int)> progressUpdates;
-    var isCancelled = false;
-
-    setUp(() {
-      operations = List.generate(
-        5,
-        (i) => DatumSyncOperation<TestEntity>(
-          id: 'op$i',
-          userId: 'user1',
-          entityId: 'e$i',
-          type: DatumOperationType.create,
-          timestamp: DateTime.now(),
-        ),
-      );
-      processedOrder = [];
-      progressUpdates = [];
-      isCancelled = false;
-    });
-
-    Future<void> processOperation(DatumSyncOperation<TestEntity> op) async {
-      await Future<void>.delayed(const Duration(milliseconds: 10));
-      processedOrder.add(op.id);
-    }
-
-    void onProgress(int completed, int total) {
-      progressUpdates.add((completed, total));
-    }
-
     group('SequentialStrategy', () {
+      late List<DatumSyncOperation<TestEntity>> operations;
+      late List<String> processedOrder;
+      late List<(int, int)> progressUpdates;
+      var isCancelled = false;
+
+      setUp(() {
+        operations = List.generate(
+          5,
+          (i) => DatumSyncOperation<TestEntity>(
+            id: 'op$i',
+            userId: 'user1',
+            entityId: 'e$i',
+            type: DatumOperationType.create,
+            timestamp: DateTime.now(),
+          ),
+        );
+        processedOrder = [];
+        progressUpdates = [];
+        isCancelled = false;
+      });
+
+      Future<void> processOperation(DatumSyncOperation<TestEntity> op) async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        processedOrder.add(op.id);
+      }
+
+      void onProgress(int completed, int total) {
+        progressUpdates.add((completed, total));
+      }
+
       test('processes all operations in order', () async {
         // Arrange
         const strategy = SequentialStrategy();
@@ -119,6 +119,36 @@ void main() {
     });
 
     group('ParallelStrategy', () {
+      late List<DatumSyncOperation<TestEntity>> operations;
+      late List<String> processedOrder;
+      late List<(int, int)> progressUpdates;
+      var isCancelled = false;
+
+      setUp(() {
+        operations = List.generate(
+          5,
+          (i) => DatumSyncOperation<TestEntity>(
+            id: 'op$i',
+            userId: 'user1',
+            entityId: 'e$i',
+            type: DatumOperationType.create,
+            timestamp: DateTime.now(),
+          ),
+        );
+        processedOrder = [];
+        progressUpdates = [];
+        isCancelled = false;
+      });
+
+      Future<void> processOperation(DatumSyncOperation<TestEntity> op) async {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+        processedOrder.add(op.id);
+      }
+
+      void onProgress(int completed, int total) {
+        progressUpdates.add((completed, total));
+      }
+
       test('processes all operations in batches', () async {
         // Arrange
         const strategy = ParallelStrategy(batchSize: 2);

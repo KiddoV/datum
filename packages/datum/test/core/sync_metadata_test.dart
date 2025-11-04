@@ -179,4 +179,173 @@ void main() {
       expect(metadata.hashCode, isNot(different.hashCode));
     });
   });
+
+  group('DatumSyncMetadata Getters and Methods', () {
+    final now = DateTime.now().toUtc();
+    final entityCounts = {
+      'tasks': const DatumEntitySyncDetails(count: 10, pendingChanges: 2),
+      'projects': const DatumEntitySyncDetails(count: 5, pendingChanges: 3),
+    };
+    final devices = {
+      'device1': now.subtract(const Duration(hours: 1)),
+      'device2': now,
+    };
+
+    test('isSyncing returns true when syncStatus is syncing', () {
+      const syncingMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        syncStatus: SyncStatus.syncing,
+      );
+      expect(syncingMetadata.isSyncing, isTrue);
+    });
+
+    test('isSyncing returns false when syncStatus is not syncing', () {
+      const notSyncingMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        syncStatus: SyncStatus.synced,
+      );
+      expect(notSyncingMetadata.isSyncing, isFalse);
+    });
+
+    test('isLastSyncSuccessful returns true when syncStatus is synced', () {
+      const syncedMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        syncStatus: SyncStatus.synced,
+      );
+      expect(syncedMetadata.isLastSyncSuccessful, isTrue);
+    });
+
+    test('isLastSyncSuccessful returns false when syncStatus is not synced', () {
+      const notSyncedMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        syncStatus: SyncStatus.failed,
+      );
+      expect(notSyncedMetadata.isLastSyncSuccessful, isFalse);
+    });
+
+    test('hasConflicts returns true when conflictCount is greater than 0', () {
+      const conflictMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        conflictCount: 1,
+      );
+      expect(conflictMetadata.hasConflicts, isTrue);
+    });
+
+    test('hasConflicts returns false when conflictCount is 0', () {
+      const noConflictMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        conflictCount: 0,
+      );
+      expect(noConflictMetadata.hasConflicts, isFalse);
+    });
+
+    test('isNeverSynced returns true when syncStatus is neverSynced', () {
+      const neverSyncedMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        syncStatus: SyncStatus.neverSynced,
+      );
+      expect(neverSyncedMetadata.isNeverSynced, isTrue);
+    });
+
+    test('isNeverSynced returns false when syncStatus is not neverSynced', () {
+      const syncedMetadata = DatumSyncMetadata(
+        userId: 'user1',
+        syncStatus: SyncStatus.synced,
+      );
+      expect(syncedMetadata.isNeverSynced, isFalse);
+    });
+
+    test('totalPendingChanges calculates correctly with entityCounts', () {
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        entityCounts: entityCounts,
+      );
+      expect(metadata.totalPendingChanges, 5); // 2 + 3
+    });
+
+    test('totalPendingChanges returns 0 when entityCounts is null', () {
+      const metadata = DatumSyncMetadata(userId: 'user1');
+      expect(metadata.totalPendingChanges, 0);
+    });
+
+    test('allDeviceIds returns correct list when devices is not null', () {
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        devices: devices,
+      );
+      expect(metadata.allDeviceIds, containsAll(['device1', 'device2']));
+      expect(metadata.allDeviceIds.length, 2);
+    });
+
+    test('allDeviceIds returns deviceId when devices is null and deviceId is not null', () {
+      const metadata = DatumSyncMetadata(
+        userId: 'user1',
+        deviceId: 'singleDevice',
+      );
+      expect(metadata.allDeviceIds, ['singleDevice']);
+    });
+
+    test('allDeviceIds returns empty list when devices and deviceId are null', () {
+      const metadata = DatumSyncMetadata(userId: 'user1');
+      expect(metadata.allDeviceIds, isEmpty);
+    });
+
+    test('deviceCount returns correct count when devices is not null', () {
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        devices: devices,
+      );
+      expect(metadata.deviceCount, 2);
+    });
+
+    test('deviceCount returns 1 when devices is null and deviceId is not null', () {
+      const metadata = DatumSyncMetadata(
+        userId: 'user1',
+        deviceId: 'singleDevice',
+      );
+      expect(metadata.deviceCount, 1);
+    });
+
+    test('deviceCount returns 0 when devices and deviceId are null', () {
+      const metadata = DatumSyncMetadata(userId: 'user1');
+      expect(metadata.deviceCount, 0);
+    });
+
+    test('getDeviceLastSync returns correct DateTime for existing device', () {
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        devices: devices,
+      );
+      expect(metadata.getDeviceLastSync('device1'), now.subtract(const Duration(hours: 1)));
+    });
+
+    test('getDeviceLastSync returns null for non-existing device', () {
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        devices: devices,
+      );
+      expect(metadata.getDeviceLastSync('device3'), isNull);
+    });
+
+    test('hasDeviceSynced returns true for existing device', () {
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        devices: devices,
+      );
+      expect(metadata.hasDeviceSynced('device1'), isTrue);
+    });
+
+    test('hasDeviceSynced returns false for non-existing device', () {
+      final metadata = DatumSyncMetadata(
+        userId: 'user1',
+        devices: devices,
+      );
+      expect(metadata.hasDeviceSynced('device3'), isFalse);
+    });
+
+    test('hasDeviceSynced returns false when devices is null', () {
+      const metadata = DatumSyncMetadata(userId: 'user1');
+      expect(metadata.hasDeviceSynced('device1'), isFalse);
+    });
+  });
 }

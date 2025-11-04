@@ -512,11 +512,14 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   Future<(T, DatumSyncResult<T>)> pushAndSync({
     required T item,
     required String userId,
+    DataSource source = DataSource.local,
+    bool forceRemoteSync = false,
     DatumSyncOptions? syncOptions,
+    DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
-    final savedItem = await push(item: item, userId: userId);
-    final syncResult = await synchronize(userId, options: syncOptions);
+    final savedItem = await push(item: item, userId: userId, source: source, forceRemoteSync: forceRemoteSync);
+    final syncResult = await synchronize(userId, options: syncOptions, scope: scope);
     return (savedItem, syncResult);
   }
 
@@ -530,12 +533,15 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   Future<(T, DatumSyncResult<T>)> updateAndSync({
     required T item,
     required String userId,
+    DataSource source = DataSource.local,
+    bool forceRemoteSync = false,
     DatumSyncOptions? syncOptions,
+    DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
     // `push` handles both create and update, so this is equivalent to pushAndSync.
-    final savedItem = await push(item: item, userId: userId);
-    final syncResult = await synchronize(userId, options: syncOptions);
+    final savedItem = await push(item: item, userId: userId, source: source, forceRemoteSync: forceRemoteSync);
+    final syncResult = await synchronize(userId, options: syncOptions, scope: scope);
     return (savedItem, syncResult);
   }
 
@@ -543,16 +549,19 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     required List<T> items,
     required String userId,
     bool andSync = false,
+    DataSource source = DataSource.local,
+    bool forceRemoteSync = false,
     DatumSyncOptions? syncOptions,
+    DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
     final savedItems = <T>[];
     for (final item in items) {
-      final savedItem = await push(item: item, userId: userId);
+      final savedItem = await push(item: item, userId: userId, source: source, forceRemoteSync: forceRemoteSync);
       savedItems.add(savedItem);
     }
     if (andSync) {
-      await synchronize(userId, options: syncOptions);
+      await synchronize(userId, options: syncOptions, scope: scope);
     }
     return savedItems;
   }

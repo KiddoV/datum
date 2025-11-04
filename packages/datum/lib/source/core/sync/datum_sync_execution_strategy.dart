@@ -55,12 +55,21 @@ class SequentialStrategy implements DatumSyncExecutionStrategy {
     void Function(int completed, int total) onProgress,
   ) async {
     var completedOps = 0;
+    final totalOps = operations.length;
     // Iterate over a copy to prevent concurrent modification errors.
     for (final operation in operations.toList()) {
-      if (isCancelled()) break;
-      await processOperation(operation);
-      completedOps++;
-      onProgress(completedOps, operations.length);
+      if (isCancelled()) {
+        break;
+      }
+      try {
+        await processOperation(operation);
+        completedOps++;
+        onProgress(completedOps, totalOps);
+      } catch (e) {
+        // If an error occurs, rethrow it to be handled by the caller.
+        // This ensures that the sync process stops on failure.
+        rethrow;
+      }
     }
   }
 }

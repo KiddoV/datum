@@ -77,6 +77,7 @@ void main() {
     });
 
     setUp(() async {
+      Datum.resetForTesting();
       localAdapter = MockLocalAdapter<TestEntity>();
       remoteAdapter = MockRemoteAdapter<TestEntity>();
       connectivityChecker = MockConnectivityChecker();
@@ -94,6 +95,7 @@ void main() {
       when(
         () => localAdapter.getStoredSchemaVersion(),
       ).thenAnswer((_) async => 0);
+      when(() => localAdapter.create(any())).thenAnswer((_) async {});
       // Stubbing a method call
       when(
         () => localAdapter.changeStream(),
@@ -107,7 +109,7 @@ void main() {
       ).thenAnswer((_) async => []);
       when(
         () => remoteAdapter.readAll(userId: any(named: 'userId')),
-      ).thenAnswer((_) async => []);
+      ).thenAnswer((_) async => [TestEntity.create('e1', userId, 'Test')]);
       when(
         () => localAdapter.readAll(userId: any(named: 'userId')),
       ).thenAnswer((_) async => []);
@@ -147,12 +149,12 @@ void main() {
         (l, s) => throw l,
         (r) => datum = r,
       );
+      await Future<void>.delayed(Duration.zero);
       manager = Datum.manager<TestEntity>();
     });
 
     tearDown(() async {
       await datum.dispose();
-      Datum.resetForTesting();
     });
     test('emits healthy -> syncing -> healthy on successful sync', () async {
       final expectation = expectLater(
