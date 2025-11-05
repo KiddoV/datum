@@ -1,6 +1,7 @@
 import 'package:datum/source/adapter/local_adapter.dart';
 import 'package:datum/source/adapter/remote_adapter.dart';
 import 'package:datum/source/config/datum_config.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:datum/source/core/manager/datum_manager.dart';
 import 'package:datum/source/core/models/datum_change_detail.dart';
 import 'package:datum/source/core/models/datum_entity.dart';
@@ -148,8 +149,10 @@ void main() {
       when(
         () => localAdapter.saveLastSyncResult(any(), any()),
       ).thenAnswer((_) async {});
-      when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
-      when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.getSyncMetadata(any()))
+          .thenAnswer((_) async => null);
+      when(() => remoteAdapter.getSyncMetadata(any()))
+          .thenAnswer((_) async => null);
 
       // Default manager setup
       manager = DatumManager<TestEntity>(
@@ -233,7 +236,9 @@ void main() {
       when(() => isolatedRemoteAdapter.getSyncMetadata(any()))
           .thenAnswer((_) async => null);
 
-      final exception = Exception('Isolate push failed');
+      final exception = UnknownException(
+        message: 'Isolate push failed',
+      );
       final processedIds = <String>{};
 
       // Re-create manager for this specific strategy
@@ -300,10 +305,10 @@ void main() {
         //
         // Therefore, we must check the exception's type and properties
         // (like its message via `toString()`) to ensure the test is robust.
-        throwsA(isA<Exception>().having(
-          (e) => e.toString(),
-          'toString()',
-          'Exception: Isolate push failed',
+        throwsA(isA<UnknownException>().having(
+          (e) => e.message,
+          'message',
+          'Isolate push failed',
         )),
       );
 

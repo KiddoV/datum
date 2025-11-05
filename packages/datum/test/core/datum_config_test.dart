@@ -1,4 +1,5 @@
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -153,19 +154,22 @@ void main() {
       final shouldRetry = config.errorRecoveryStrategy.shouldRetry;
 
       test('returns true for a retryable NetworkException', () async {
-        final exception = NetworkException('Connection timeout', isRetryable: true);
+        final exception = NetworkException(message: 'Connection timeout', isRetryable: true);
         final result = await shouldRetry(exception);
         expect(result, isTrue);
       });
 
       test('returns false for a non-retryable NetworkException', () async {
-        final exception = NetworkException('Bad request', isRetryable: false);
+        final exception = NetworkException(message: 'Bad request', isRetryable: false);
         final result = await shouldRetry(exception);
         expect(result, isFalse);
       });
 
       test('returns false for other DatumException types', () async {
-        final exception = AdapterException('TestAdapter', 'Read failed');
+        final exception = AdapterException(
+          message: 'TestAdapter',
+          error: 'Read failed',
+        );
         final result = await shouldRetry(exception);
         expect(result, isFalse);
       });

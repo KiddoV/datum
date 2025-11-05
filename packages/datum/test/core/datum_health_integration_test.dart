@@ -1,5 +1,6 @@
 import 'package:datum/source/config/datum_config.dart';
 import 'package:datum/source/core/engine/datum_core.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:datum/source/core/health/datum_health.dart';
 import 'package:datum/source/core/manager/datum_manager.dart';
 import 'package:datum/source/core/models/conflict_context.dart';
@@ -183,7 +184,7 @@ void main() {
     });
 
     test('emits healthy -> syncing -> error on failed sync', () async {
-      final exception = Exception('Remote is down');
+      final exception = DatumException(message: 'Remote is down', code: DatumExceptionCode.unknown);
       when(
         () => remoteAdapter.readAll(
           userId: any(named: 'userId'),

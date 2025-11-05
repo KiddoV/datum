@@ -1,3 +1,4 @@
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:datum/source/core/models/datum_operation.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
@@ -263,8 +264,8 @@ void main() {
 
           // Arrange
           const strategy = ParallelStrategy(batchSize: 2, failFast: false);
-          final exception1 = Exception('Processing failed 1');
-          final exception2 = Exception('Processing failed 2');
+          final exception1 = UnknownException(message: 'Processing failed 1');
+          final exception2 = UnknownException(message: 'Processing failed 2');
           // Re-initialize operations to ensure test isolation
           operations = List.generate(
             5,

@@ -1,4 +1,5 @@
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'dart:async';
@@ -348,7 +349,7 @@ void main() {
           userId: any(named: 'userId'),
         ),
       ).thenThrow(
-        EntityNotFoundException('Entity delta-e3 not found on remote.'),
+        EntityNotFoundException(message: 'Entity delta-e3 not found on remote.'),
       );
 
       // The fallback-to-push logic is now internal to the sync engine.
@@ -446,7 +447,7 @@ void main() {
           delta: any(named: 'delta'),
           userId: any(named: 'userId'),
         ),
-      ).thenThrow(NetworkException('Simulated network failure'));
+      ).thenThrow(NetworkException(message: 'Simulated network failure'));
 
       var op = DatumSyncOperation<TestEntity>(
         id: 'op-update',
@@ -492,7 +493,7 @@ void main() {
       );
 
       final entity = TestEntity.create('delta-e5', 'user1', 'Will Fail');
-      final nonRetryableException = AdapterException('mocked_local_adapter', 'Invalid data format');
+      final nonRetryableException = AdapterException(message: 'mocked_local_adapter', error: 'Invalid data format');
 
       final pendingOpsList = <DatumSyncOperation<TestEntity>>[];
       // Stub the remote create to throw a non-retryable error
@@ -557,7 +558,7 @@ void main() {
           ),
         ),
       );
-      final exception = NetworkException('Remote is down');
+      final exception = NetworkException(message: 'Remote is down');
       final entity = TestEntity.create('delta-e6', 'user1', 'Will Fail');
 
       // Use a completer to capture the emitted error event.

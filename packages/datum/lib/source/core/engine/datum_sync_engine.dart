@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 
 import 'package:rxdart/rxdart.dart';
 
@@ -109,10 +110,7 @@ class DatumSyncEngine<T extends DatumEntityBase> {
       final pendingLocalOperations = await queueManager.getPendingCount(userId);
 
       // Compare relevant metadata fields for skipping.
-      final metadataMatches = localMetadata != null &&
-          remoteMetadata != null &&
-          localMetadata.dataHash == remoteMetadata.dataHash &&
-          _deepCompareEntityCounts(localMetadata.entityCounts, remoteMetadata.entityCounts);
+      final metadataMatches = localMetadata != null && remoteMetadata != null && localMetadata.dataHash == remoteMetadata.dataHash && _deepCompareEntityCounts(localMetadata.entityCounts, remoteMetadata.entityCounts);
 
       // If metadata matches and there are no pending local operations, skip the sync.
       if (metadataMatches && pendingLocalOperations == 0) {
@@ -683,9 +681,7 @@ class DatumSyncEngine<T extends DatumEntityBase> {
       final items = await localAdapter.readAll(userId: userId);
       final existingMetadata = await localAdapter.getSyncMetadata(userId);
 
-      Map<String, DateTime>? updatedDevices = existingMetadata?.devices != null
-          ? Map<String, DateTime>.from(existingMetadata!.devices!)
-          : {};
+      Map<String, DateTime>? updatedDevices = existingMetadata?.devices != null ? Map<String, DateTime>.from(existingMetadata!.devices!) : {};
 
       if (deviceId != null) {
         updatedDevices[deviceId!] = DateTime.now();
@@ -759,6 +755,7 @@ class DatumSyncEngine<T extends DatumEntityBase> {
 
     return health;
   }
+
   bool _deepCompareEntityCounts(
     Map<String, DatumEntitySyncDetails>? local,
     Map<String, DatumEntitySyncDetails>? remote,
@@ -769,9 +766,7 @@ class DatumSyncEngine<T extends DatumEntityBase> {
 
     for (final entry in local.entries) {
       final remoteDetails = remote[entry.key];
-      if (remoteDetails == null ||
-          entry.value.count != remoteDetails.count ||
-          entry.value.hash != remoteDetails.hash) {
+      if (remoteDetails == null || entry.value.count != remoteDetails.count || entry.value.hash != remoteDetails.hash) {
         return false;
       }
     }

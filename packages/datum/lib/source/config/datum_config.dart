@@ -1,8 +1,8 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:equatable/equatable.dart';
 import 'package:datum/source/core/migration/migration.dart';
 import 'package:datum/source/core/models/datum_entity.dart';
-import 'package:datum/source/core/models/datum_exception.dart';
 import 'package:datum/source/core/models/error_strategy.dart';
 import 'package:datum/source/core/models/user_switch_models.dart';
 import 'package:datum/source/core/resolver/conflict_resolution.dart';
@@ -192,5 +192,5 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
 
 /// The default retry condition: only retry on a retryable NetworkException.
 Future<bool> _defaultShouldRetry(DatumException error) async {
-  return Future.value(error is NetworkException && error.isRetryable);
+  return Future.value(error is NetworkException && (error).isRetryable);
 }

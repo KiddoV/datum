@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:rxdart/rxdart.dart' show MergeStream, Rx, SwitchMapExtension;
 
 class MockLocalAdapter<T extends DatumEntityBase> implements LocalAdapter<T> {
@@ -734,11 +735,11 @@ class MockRemoteAdapter<T extends DatumEntityBase> implements RemoteAdapter<T> {
 
   Future<void> _push(T item) async {
     if (!isConnectedValue) {
-      throw NetworkException('No connection', isRetryable: true);
+      throw NetworkException(message: 'No connection', isRetryable: true);
     }
     await Future<void>.delayed(_processingDelay);
     if (_failedIds.contains(item.id)) {
-      throw NetworkException('Simulated push failure for ${item.id}');
+      throw NetworkException(message: 'Simulated push failure for ${item.id}');
     }
     final bool exists = _remoteStorage[item.userId]?.containsKey(item.id) ?? false;
     _remoteStorage.putIfAbsent(item.userId, () => {})[item.id] = item;
@@ -761,10 +762,10 @@ class MockRemoteAdapter<T extends DatumEntityBase> implements RemoteAdapter<T> {
     required Map<String, dynamic> delta,
     String? userId,
   }) async {
-    if (!isConnectedValue) throw NetworkException('No connection');
+    if (!isConnectedValue) throw NetworkException(message: 'No connection', isRetryable: true);
     await Future<void>.delayed(_processingDelay);
     if (_failedIds.contains(id)) {
-      throw NetworkException('Simulated patch failure for $id');
+      throw NetworkException(message: 'Simulated patch failure for $id');
     }
     if (fromJson == null) {
       throw StateError(
@@ -785,7 +786,7 @@ class MockRemoteAdapter<T extends DatumEntityBase> implements RemoteAdapter<T> {
 
   @override
   Future<void> delete(String id, {String? userId}) async {
-    if (!isConnectedValue) throw NetworkException('No connection');
+    if (!isConnectedValue) throw NetworkException(message: 'No connection');
     await Future<void>.delayed(_processingDelay);
     final item = _remoteStorage[userId ?? '']?.remove(id);
     if (item != null) {
@@ -830,7 +831,7 @@ class MockRemoteAdapter<T extends DatumEntityBase> implements RemoteAdapter<T> {
 
   @override
   Future<List<T>> query(DatumQuery query, {String? userId}) async {
-    if (!isConnectedValue) throw NetworkException('No connection');
+    if (!isConnectedValue) throw NetworkException(message: 'No connection');
     // Pass the userId to readAll. If it's null, readAll will correctly
     // fetch from all users, which is the desired behavior for relational queries.
     final allItems = await readAll(userId: userId);

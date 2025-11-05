@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:rxdart/rxdart.dart';
@@ -1440,7 +1441,7 @@ void main() async {
         () async {
           await manager.initialize();
           // Arrange
-          final exception = Exception('Remote push failed');
+          final exception = UnknownException(message: 'Remote push failed');
           final op = DatumSyncOperation<TestEntity>(
             id: 'op1',
             userId: userId,
@@ -1464,7 +1465,7 @@ void main() async {
             // Instead of checking for the exact exception instance,
             // check for the type and a property (like the message) to make
             // the test more robust against stack trace differences.
-            throwsA(isA<Exception>().having((e) => e.toString(), 'toString()', 'Exception: Remote push failed')),
+            throwsA(isA<UnknownException>().having((e) => e.message, 'message', 'Remote push failed')),
           );
 
           // Assert
@@ -1664,7 +1665,9 @@ void main() async {
 
     test('correctly processes events and re-throws original error from SyncExceptionWithEvents', () async {
       // Arrange
-      final originalError = Exception('Permanent remote failure');
+      final originalError = UnknownException(
+        message: 'Permanent remote failure',
+      );
       final pendingOp = DatumSyncOperation<TestEntity>(
           id: 'op1',
           userId: 'user1',
@@ -1688,7 +1691,22 @@ void main() async {
 
       // Act & Assert
       final errorEventFuture = expectLater(manager.onSyncError, emits(isA<DatumSyncErrorEvent>().having((e) => e.error, 'error', originalError)));
-      final syncThrowsFuture = expectLater(() => manager.synchronize('user1'), throwsA(originalError));
+      final syncThrowsFuture = expectLater(
+        () => manager.synchronize('user1'),
+        throwsA(
+          isA<UnknownException>()
+              .having(
+                (e) => e.code,
+                'code',
+                DatumExceptionCode.unknown,
+              )
+              .having(
+                (e) => e.message,
+                "message",
+                'Permanent remote failure',
+              ),
+        ),
+      );
 
       await Future.wait([errorEventFuture, syncThrowsFuture]);
     });

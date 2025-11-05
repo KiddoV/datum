@@ -1,4 +1,5 @@
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 
 /// A record representing the outcome of a migration execution.
 typedef MigrationResult = ({
@@ -90,7 +91,8 @@ class MigrationExecutor<T extends DatumEntityBase> {
       return migrations.firstWhere((m) => m.fromVersion == fromVersion);
     } on StateError {
       throw MigrationException(
-        'Migration path broken: No migration found from version $fromVersion. Please provide a migration that starts at this version.',
+        message: 'Migration path broken: No migration found from version $fromVersion. Please provide a migration that starts at this version.',
+        code: DatumExceptionCode.migrationError,
       );
     }
   }

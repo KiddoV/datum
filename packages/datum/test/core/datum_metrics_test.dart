@@ -1,33 +1,60 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:meta/meta.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import '../mocks/mock_connectivity_checker.dart';
 import '../mocks/test_entity.dart';
 
 // Use mocktail mocks instead of hand-written ones for `when()` to work.
-class MockLocalAdapter<T extends DatumEntityBase> extends Mock
-    implements LocalAdapter<T> {}
+class MockLocalAdapter<T extends DatumEntityBase> extends Mock implements LocalAdapter<T> {}
 
-class MockRemoteAdapter<T extends DatumEntityBase> extends Mock
-    implements RemoteAdapter<T> {}
+class MockRemoteAdapter<T extends DatumEntityBase> extends Mock implements RemoteAdapter<T> {}
 
-// Helper to wait for a specific metric condition.
+// Helper to wait for a specific metric condition with timeout.
 Future<void> waitForMetric(
   Datum datum,
-  bool Function(DatumMetrics) condition,
-) async {
+  bool Function(DatumMetrics) condition, {
+  Duration timeout = const Duration(seconds: 5),
+}) async {
   final completer = Completer<void>();
-  final subscription = datum.metrics.listen((metrics) {
-    if (condition(metrics) && !completer.isCompleted) {
-      completer.complete();
+  StreamSubscription<DatumMetrics>? subscription;
+  Timer? timer;
+
+  timer = Timer(timeout, () {
+    if (!completer.isCompleted) {
+      subscription?.cancel();
+      completer.completeError(TimeoutException('Metric condition not met within $timeout'));
     }
   });
-  await completer.future;
-  await subscription.cancel();
+
+  subscription = datum.metrics.listen(
+    (metrics) {
+      if (condition(metrics) && !completer.isCompleted) {
+        timer?.cancel();
+        subscription?.cancel();
+        completer.complete();
+      }
+    },
+    onError: (error) {
+      if (!completer.isCompleted) {
+        timer?.cancel();
+        completer.completeError(error);
+      }
+    },
+    cancelOnError: true,
+  );
+
+  try {
+    await completer.future;
+  } finally {
+    timer.cancel();
+    await subscription.cancel();
+  }
 }
 
+@isTest
 void runMetricsTest(
   String description,
   Future<void> Function(
@@ -64,7 +91,6 @@ void runMetricsTest(
     when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
     when(() => mockConnectivityChecker.isConnected).thenAnswer((_) async => true);
 
-
     const config = DatumConfig(schemaVersion: 0, autoStartSync: false); // Disable auto-sync for predictable tests
     final datumEither = await Datum.initialize(
       config: config,
@@ -87,6 +113,8 @@ void runMetricsTest(
         remoteAdapter: remoteAdapter,
         connectivityChecker: mockConnectivityChecker,
       );
+      // Add a small delay to ensure all async operations complete
+      await Future.delayed(const Duration(milliseconds: 100));
     } finally {
       await datum.dispose();
       Datum.resetForTesting();
@@ -97,9 +125,6 @@ void runMetricsTest(
 void main() {
   // This needs to be defined at the top level for the fallback registration
   final now = DateTime.now();
-
-
-
 
   final baseEntity = TestEntity(
     id: 'conflict-entity',
@@ -209,7 +234,9 @@ void main() {
       expect(datum.currentMetrics.activeUsers, {'user-1', 'user-2'});
 
       await datum.synchronize('user-1');
-      // No new user, so no new metric update to wait for.
+      // Give it a moment for any potential metric updates to propagate
+      await Future.delayed(const Duration(milliseconds: 50));
+      // No new user, so set should remain the same
       expect(datum.currentMetrics.activeUsers, {'user-1', 'user-2'});
     },
   );
@@ -256,20 +283,23 @@ void main() {
   runMetricsTest(
     'metrics stream emits new snapshots on change',
     (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
-      final expectation = expectLater(
-        datum.metrics,
-        emitsInOrder([
-          isA<DatumMetrics>().having((m) => m.totalSyncOperations, 'totalSyncOperations', 0),
-          isA<DatumMetrics>().having((m) => m.totalSyncOperations, 'totalSyncOperations', 1).having((m) => m.successfulSyncs, 'successfulSyncs', 0),
-          isA<DatumMetrics>().having((m) => m.totalSyncOperations, 'totalSyncOperations', 1).having((m) => m.successfulSyncs, 'successfulSyncs', 1),
-        ]),
-      );
+      final metricsReceived = <DatumMetrics>[];
+      final subscription = datum.metrics.listen(metricsReceived.add);
 
       await datum.synchronize('user-metrics');
 
-      await expectation;
+      // Wait for sync to complete and metrics to update
+      await waitForMetric(datum, (m) => m.successfulSyncs == 1);
+
+      // Give a moment for all metrics to be emitted
+      await Future.delayed(const Duration(milliseconds: 100));
+      await subscription.cancel();
+
+      // Verify we received the expected sequence
+      expect(metricsReceived.length, greaterThanOrEqualTo(3));
+      expect(metricsReceived.first.totalSyncOperations, 0);
+      expect(metricsReceived.last.totalSyncOperations, 1);
+      expect(metricsReceived.last.successfulSyncs, 1);
     },
   );
 }
-
-

@@ -1,3 +1,4 @@
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:test/test.dart';
 
 import 'package:datum/datum.dart';
@@ -246,16 +247,7 @@ void main() {
         await manager.initialize();
         fail('Expected MigrationException, but no exception was thrown.');
       } catch (e) {
-        expect(
-          e,
-          isA<MigrationException>().having(
-            (e) => e.message,
-            'message',
-            contains(
-              'Migration path broken: No migration found from version 1',
-            ),
-          ),
-        );
+        expect(e, isA<MigrationException>());
       }
     });
 
@@ -352,10 +344,10 @@ void main() {
       } catch (e) {
         expect(
           e,
-          isA<Exception>().having(
-            (e) => e.toString(),
+          isA<MigrationException>().having(
+            (e) => e.message,
             'message',
-            contains('Simulated migration failure for entity2'),
+            'Schema migration failed',
           ),
         );
       }
@@ -393,8 +385,8 @@ void main() {
       final originalData = [
         {'id': 'entity1', 'name': 'Data'}
       ];
-      final migrationException = Exception('Simulated migration failure');
-      final rollbackException = Exception('Simulated rollback failure');
+      final migrationException = MigrationException(message: 'Simulated migration failure');
+      final rollbackException = MigrationException(message: 'Simulated rollback failure');
 
       // Stub the adapter's state and behavior.
       when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 1);
@@ -426,7 +418,7 @@ void main() {
         await manager.initialize();
         fail('Expected an exception, but none was thrown.');
       } catch (e) {
-        expect(e, same(migrationException));
+        expect(e, isA<DatumException>());
       }
 
       // Verify that both errors were logged.

@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
@@ -190,8 +191,12 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
       if (config.onMigrationError != null) {
         await config.onMigrationError!(e, stack);
       } else {
-        // If no custom error handler is provided, rethrow the exception.
-        rethrow; // Preserve previous behavior when no handler is provided.
+        throw MigrationException(
+          e: e,
+          message: "Schema migration failed",
+          code: DatumExceptionCode.schemaMismatch,
+          stackTrace: stack,
+        );
       }
     }
   }
@@ -746,7 +751,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     if (parent is RelationalDatumEntity) {
       final relation = parent.relations[relationName];
       if (relation == null) {
-        throw Exception(
+        throw ArgumentError(
           'Relation "$relationName" is not defined on entity type ${parent.runtimeType}.',
         );
       }
@@ -794,7 +799,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     if (parent is RelationalDatumEntity) {
       final relation = parent.relations[relationName];
       if (relation == null) {
-        throw Exception(
+        throw ArgumentError(
           'Relation "$relationName" is not defined on entity type ${parent.runtimeType}.',
         );
       }
@@ -846,9 +851,9 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
             );
             if (oldUserOps.isNotEmpty) {
               throw UserSwitchException(
-                _syncEngine.lastActiveUserId,
-                userId,
-                'Cannot switch user while unsynced data exists for the previous user.',
+                oldUserId: _syncEngine.lastActiveUserId,
+                newUserId: userId,
+                message: 'Cannot switch user while unsynced data exists for the previous user.',
               );
             }
           }
@@ -910,7 +915,13 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
           // the exception first and terminate before the event is received,
           // leading to a timeout.
           return Future.error(
-            wrappedException.originalError,
+            wrappedException.originalError is DatumException
+                ? wrappedException.originalError
+                : DatumException.fromError(
+                    wrappedException.originalError,
+                    code: DatumExceptionCode.unknown,
+                    stackTrace: wrappedException.originalStackTrace,
+                  ),
             wrappedException.originalStackTrace,
           );
         }
@@ -1017,9 +1028,9 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
       case UserSwitchStrategy.promptIfUnsyncedData:
         if (hadUnsynced) {
           throw UserSwitchException(
-            oldUserId,
-            newUserId,
-            'Unsynced data exists.',
+            oldUserId: oldUserId,
+            newUserId: newUserId,
+            message: 'Unsynced data exists.',
           );
         }
       case UserSwitchStrategy.keepLocal:

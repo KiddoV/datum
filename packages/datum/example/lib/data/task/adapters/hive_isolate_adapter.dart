@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:flutter/foundation.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
@@ -131,7 +132,8 @@ class IsolatedHiveLocalAdapter<T extends DatumEntityBase>
       String? userId}) async {
     final existing = await entityBox.get(id);
     if (existing == null) {
-      throw EntityNotFoundException('Entity with id $id not found for patch.');
+      throw EntityNotFoundException(
+          message: 'Entity with id $id not found for patch.');
     }
     final json = _normalizeMap(existing)..addAll(delta);
     final patchedItem = fromMap(json);

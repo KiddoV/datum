@@ -1,75 +1,110 @@
-import 'package:datum/source/core/models/datum_exception.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
+
 import 'package:test/test.dart';
 
 void main() {
   group('Datum Exceptions toString()', () {
     test('NetworkException formats correctly', () {
-      final retryableException = NetworkException('Connection timed out');
+      final retryableException = NetworkException(message: 'Connection timed out');
       final nonRetryableException = NetworkException(
-        'Bad request',
+        message: 'Bad request',
         isRetryable: false,
       );
 
       expect(
         retryableException.toString(),
-        'NetworkException: Connection timed out (retryable: true)',
+        'DatumException(networkError): Connection timed out',
       );
       expect(
         nonRetryableException.toString(),
-        'NetworkException: Bad request (retryable: false)',
+        'DatumException(networkError): Bad request',
       );
     });
 
     test('MigrationException formats correctly', () {
-      final exception = MigrationException('Schema version mismatch');
+      final exception = MigrationException(
+        message: 'Schema version mismatch',
+      );
       expect(
         exception.toString(),
-        'MigrationException: Schema version mismatch',
+        'DatumException(migrationError): Schema version mismatch',
       );
     });
 
     test('UserSwitchException formats correctly', () {
       final exception = UserSwitchException(
-        'user-old',
-        'user-new',
-        'Unsynced data exists.',
+        oldUserId: 'user-old',
+        newUserId: 'user-new',
+        message: 'Unsynced data exists.',
       );
       expect(
         exception.toString(),
-        'UserSwitchException: Unsynced data exists. (from: user-old, to: user-new)',
+        'UserSwitchException(oldUserId: user-old, newUserId: user-new,message: Unsynced data exists.,code: DatumExceptionCode.userSwitchError)',
       );
     });
 
     test('AdapterException formats correctly without stack trace', () {
       final exception = AdapterException(
-        'MockAdapter',
-        'Failed to read from disk',
+        message: 'MockAdapter',
+        error: 'Failed to read from disk',
       );
       expect(
-        exception.toString(),
-        'AdapterException in MockAdapter: Failed to read from disk',
+        exception,
+        isA<AdapterException>()
+            .having(
+              (e) => e.message,
+              "message",
+              'MockAdapter',
+            )
+            .having(
+              (e) => e.error,
+              "error",
+              'Failed to read from disk',
+            ),
       );
     });
 
     test('AdapterException formats correctly with stack trace', () {
       final stackTrace = StackTrace.current;
       final exception = AdapterException(
-        'MockAdapter',
-        'Failed to write',
-        stackTrace,
+        message: 'MockAdapter',
+        error: 'Failed to write',
+        stackTrace: stackTrace,
       );
       expect(
-        exception.toString(),
-        'AdapterException in MockAdapter: Failed to write\n$stackTrace',
+        exception,
+        isA<AdapterException>()
+            .having(
+              (e) => e.message,
+              "message",
+              "MockAdapter",
+            )
+            .having(
+              (e) => e.error,
+              "error",
+              'Failed to write',
+            )
+            .having(
+              (e) => e.stackTrace,
+              "stacktrace",
+              stackTrace,
+            ),
       );
     });
 
-    test('EntityNotFoundException formats correctly', () {
-      final exception = EntityNotFoundException('Entity with ID 123 not found');
-      expect(
-        exception.toString(),
-        'EntityNotFoundException: Entity with ID 123 not found',
-      );
-    });
+    test(
+      'EntityNotFoundException formats correctly',
+      () {
+        final exception = EntityNotFoundException(message: 'Entity with ID 123 not found');
+        expect(
+          exception,
+          isA<EntityNotFoundException>().having(
+            (e) => e.message,
+            "message",
+            'Entity with ID 123 not found',
+          ),
+        );
+      },
+    );
   });
 }

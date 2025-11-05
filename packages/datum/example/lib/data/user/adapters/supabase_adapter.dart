@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:example/bootstrap.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -114,7 +115,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
         .maybeSingle();
     if (response == null) {
       throw EntityNotFoundException(
-        'Failed to patch item: record not found or RLS policy prevented selection.',
+        message:
+            'Failed to patch item: record not found or RLS policy prevented selection.',
       );
     }
     return fromMap(_toCamelCase(response));

@@ -563,7 +563,7 @@ void main() {
       expect(
         () => postManager.fetchRelated<User>(testPost, 'invalid_relation'),
         throwsA(
-          isA<Exception>().having(
+          isA<ArgumentError>().having(
             (e) => e.toString(),
             'message',
             contains('is not defined on entity type Post'),

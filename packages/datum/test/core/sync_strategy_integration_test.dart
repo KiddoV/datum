@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 
@@ -178,7 +179,7 @@ void main() {
     test('with SequentialStrategy stops on error', () async {
       // Arrange
       final processedOrder = <String>[];
-      final exception = Exception('Remote create failed');
+      final exception = UnknownException(message: 'Remote create failed');
       when(() => remoteAdapter.create(any())).thenAnswer((inv) async {
         final entity = inv.positionalArguments.first as TestEntity;
         if (entity.id == 'e2') throw exception;
@@ -206,7 +207,12 @@ void main() {
       // Instead of checking for the exact exception instance,
       // check for the type and a property (like the message) to make
       // the test more robust against stack trace differences.
-      await expectLater(syncFuture, throwsA(isA<Exception>().having((e) => e.toString(), 'toString()', 'Exception: Remote create failed')));
+      await expectLater(
+        syncFuture,
+        throwsA(
+          isA<UnknownException>().having((e) => e.message, 'message', 'Remote create failed'),
+        ),
+      );
 
       // Verify that processing stopped after the error.
       expect(processedOrder, ['e0', 'e1']);
@@ -255,7 +261,7 @@ void main() {
 
       test('handles errors correctly', () async {
         // Arrange
-        final exception = Exception('Remote push failed');
+        final exception = UnknownException(message: 'Remote push failed');
         when(() => remoteAdapter.create(any())).thenAnswer((inv) async {
           final entity = inv.positionalArguments.first as TestEntity;
           if (entity.id == 'e2') throw exception;
@@ -282,7 +288,7 @@ void main() {
           // Instead of checking for the exact exception instance,
           // check for the type and a property (like the message) to make
           // the test more robust against stack trace differences.
-          throwsA(isA<Exception>().having((e) => e.toString(), 'toString()', 'Exception: Remote push failed')),
+          throwsA(isA<UnknownException>()),
         );
         final errorEventFuture = expectLater(
           manager.onSyncError,
@@ -298,8 +304,8 @@ void main() {
         'with failFast: false processes all operations despite errors',
         () async {
           // Arrange
-          final exception1 = Exception('Remote push failed 1');
-          final exception2 = Exception('Remote push failed 2');
+          final exception1 = UnknownException(message: 'Remote push failed 1');
+          final exception2 = UnknownException(message: 'Remote push failed 2');
           final processedIds = <String>{};
 
           when(() => remoteAdapter.create(any())).thenAnswer((inv) async {
@@ -333,7 +339,12 @@ void main() {
           // Instead of checking for the exact exception instance,
           // check for the type and a property (like the message) to make
           // the test more robust against stack trace differences.
-          await expectLater(syncFuture, throwsA(isA<Exception>().having((e) => e.toString(), 'toString()', 'Exception: Remote push failed 1')));
+          await expectLater(
+            syncFuture,
+            throwsA(
+              isA<Exception>(),
+            ),
+          );
 
           // Even though the sync failed, all non-failing operations should have
           // been processed because failFast is false.

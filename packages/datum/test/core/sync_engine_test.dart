@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -367,7 +368,7 @@ void main() {
       () async {
         // Arrange
         final exception = EntityNotFoundException(
-          'Entity e1 not found on remote.',
+          message: 'Entity e1 not found on remote.',
         );
         final operation = DatumSyncOperation<TestEntity>(
           id: 'op1',

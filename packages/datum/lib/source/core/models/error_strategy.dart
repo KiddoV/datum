@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
-import 'package:datum/source/core/models/datum_exception.dart';
+
+import 'package:datum/source/core/errors/datum_exception.dart';
 
 /// Abstract base class for retry backoff strategies.
 abstract class DatumBackoffStrategy {

@@ -5,6 +5,7 @@ import 'dart:async';
 // import 'package:test_api/src/backend/invoker.dart';
 import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
+import 'package:datum/source/core/errors/datum_exception.dart';
 
 // import '_isolate_runner_io.dart' if (dart.library.html) '_isolate_runner_web.dart';
 
@@ -142,7 +143,12 @@ class ParallelStrategy implements DatumSyncExecutionStrategy {
     // After all batches are processed, if we collected any errors (in non-failFast mode),
     // throw the first one to signal that the overall sync failed.
     if (errors.isNotEmpty) {
-      throw errors.first;
+      throw errors.first is DatumException
+          ? errors.first
+          : DatumException.fromError(
+              errors.first,
+              code: DatumExceptionCode.unknown,
+            );
     }
   }
 }

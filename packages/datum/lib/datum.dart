@@ -29,7 +29,6 @@ export 'source/core/models/conflict_context.dart';
 export 'source/core/models/data_source.dart';
 export 'source/core/models/datum_change_detail.dart';
 export 'source/core/models/datum_entity.dart';
-export 'source/core/models/datum_exception.dart';
 export 'source/core/models/datum_index_config.dart';
 export 'source/core/models/datum_metrics.dart';
 export 'source/core/models/datum_operation.dart';

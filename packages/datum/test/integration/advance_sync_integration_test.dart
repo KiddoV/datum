@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:datum/datum.dart';
@@ -236,7 +237,7 @@ void main() {
 
       // Make the remote adapter throw a retryable network exception for 'fail1'
       final retryableException = NetworkException(
-        'Simulated network failure',
+        message: 'Simulated network failure',
         isRetryable: true,
       );
       // Stub the successful create call
