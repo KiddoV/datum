@@ -734,7 +734,9 @@ class Datum {
     final current = _getSnapshot(userId);
     final updated = updater(current);
     _snapshots[userId] = updated;
-    _statusSubject.add(_snapshots);
+    if (!_statusSubject.isClosed) {
+      _statusSubject.add(_snapshots);
+    }
   }
 
   // CRUD operations remain the same but now use DatumEntityBase
