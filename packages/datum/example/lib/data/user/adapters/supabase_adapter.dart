@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:example/bootstrap.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';

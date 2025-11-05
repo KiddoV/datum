@@ -105,7 +105,7 @@ class HiveLocalAdapter<T extends DatumEntityBase> extends LocalAdapter<T> {
   Future<T> patch({required String id, required Map<String, dynamic> delta, String? userId}) async {
     final existing = entityBox.get(id);
     if (existing == null) {
-      throw EntityNotFoundException('Entity with id $id not found for patch.');
+      throw EntityNotFoundException(message: 'Entity with id $id not found for patch.');
     }
     final json = _normalizeMap(existing)..addAll(delta);
     final patchedItem = fromMap(json);

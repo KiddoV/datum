@@ -1,5 +1,4 @@
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/errors/datum_exception.dart';
 
 /// A record representing the outcome of a migration execution.
 typedef MigrationResult = ({

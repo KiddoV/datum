@@ -3,7 +3,6 @@ import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:rxdart/rxdart.dart' show MergeStream, Rx, SwitchMapExtension;
 
 class MockLocalAdapter<T extends DatumEntityBase> implements LocalAdapter<T> {

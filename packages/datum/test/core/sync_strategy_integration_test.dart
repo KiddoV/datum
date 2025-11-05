@@ -1,7 +1,6 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
 

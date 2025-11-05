@@ -2,7 +2,6 @@
 import 'dart:convert';
 
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
