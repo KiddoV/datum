@@ -367,7 +367,7 @@ void main() {
       'logs an error when a delete operation fails with EntityNotFoundException',
       () async {
         // Arrange
-        final exception = EntityNotFoundException(
+        const exception = EntityNotFoundException(
           message: 'Entity e1 not found on remote.',
         );
         final operation = DatumSyncOperation<TestEntity>(

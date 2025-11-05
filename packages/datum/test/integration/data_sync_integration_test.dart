@@ -349,7 +349,7 @@ void main() {
           userId: any(named: 'userId'),
         ),
       ).thenThrow(
-        EntityNotFoundException(message: 'Entity delta-e3 not found on remote.'),
+        const EntityNotFoundException(message: 'Entity delta-e3 not found on remote.'),
       );
 
       // The fallback-to-push logic is now internal to the sync engine.
@@ -447,7 +447,7 @@ void main() {
           delta: any(named: 'delta'),
           userId: any(named: 'userId'),
         ),
-      ).thenThrow(NetworkException(message: 'Simulated network failure'));
+      ).thenThrow(const NetworkException(message: 'Simulated network failure'));
 
       var op = DatumSyncOperation<TestEntity>(
         id: 'op-update',
@@ -493,7 +493,7 @@ void main() {
       );
 
       final entity = TestEntity.create('delta-e5', 'user1', 'Will Fail');
-      final nonRetryableException = AdapterException(message: 'mocked_local_adapter', error: 'Invalid data format');
+      const nonRetryableException = AdapterException(message: 'mocked_local_adapter', error: 'Invalid data format');
 
       final pendingOpsList = <DatumSyncOperation<TestEntity>>[];
       // Stub the remote create to throw a non-retryable error
@@ -558,7 +558,7 @@ void main() {
           ),
         ),
       );
-      final exception = NetworkException(message: 'Remote is down');
+      const exception = NetworkException(message: 'Remote is down');
       final entity = TestEntity.create('delta-e6', 'user1', 'Will Fail');
 
       // Use a completer to capture the emitted error event.

@@ -1,4 +1,5 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'package:equatable/equatable.dart';
 enum DatumExceptionCode {
   /// An unknown or unhandled error occurred.
   unknown,
@@ -58,7 +59,7 @@ enum DatumExceptionCode {
 /// Base exception class for all errors originating from the Datum library.
 ///
 /// Provides a standardized way to categorize and handle errors.
-class DatumException implements Exception {
+class DatumException extends Equatable implements Exception {
   /// A unique code identifying the type of exception.
   final DatumExceptionCode code;
 
@@ -70,11 +71,17 @@ class DatumException implements Exception {
   final Map<String, dynamic>? details;
 
   /// Creates a [DatumException].
-  DatumException({
+  const DatumException({
     required this.code,
     required this.message,
     this.details,
   });
+
+  @override
+  List<Object?> get props => [code, message, details];
+
+  @override
+  bool get stringify => true;
 
   @override
   String toString() {
@@ -108,34 +115,43 @@ class DatumException implements Exception {
 /// Exception thrown when a network-related error occurs.
 class NetworkException extends DatumException {
   final bool isRetryable;
-  NetworkException({
+  const NetworkException({
     required super.message,
     super.details,
     this.isRetryable = true,
   }) : super(code: DatumExceptionCode.networkError);
+
+  @override
+  List<Object?> get props => [...super.props, isRetryable];
 }
 
 /// Exception thrown when a conflict is detected during synchronization.
 class ConflictException extends DatumException {
-  ConflictException({
+  const ConflictException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.conflictDetected);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when an entity with the specified ID is not found.
 class EntityNotFoundException extends DatumException {
-  EntityNotFoundException({
+  const EntityNotFoundException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.entityNotFound);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when an error occurs within an adapter implementation.
 class AdapterException extends DatumException {
   final String error;
   final StackTrace? stackTrace;
-  AdapterException({
+  const AdapterException({
     required super.message,
     super.details = const {},
     required this.error,
@@ -143,87 +159,120 @@ class AdapterException extends DatumException {
   }) : super(code: DatumExceptionCode.adapterError);
 
   @override
+  List<Object?> get props => [...super.props, error, stackTrace];
+
+  @override
   String toString() => 'AdapterException(error: $error, stackTrace: $stackTrace)';
 }
 
 /// Exception thrown when an error occurs during data serialization or deserialization.
 class SerializationException extends DatumException {
-  SerializationException({
+  const SerializationException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.serializationError);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when authentication fails.
 class AuthenticationException extends DatumException {
-  AuthenticationException({
+  const AuthenticationException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.authenticationError);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when authorization fails.
 class AuthorizationException extends DatumException {
-  AuthorizationException({
+  const AuthorizationException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.authorizationError);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when a validation error occurs.
 class ValidationException extends DatumException {
-  ValidationException({
+  const ValidationException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.validationError);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when an operation times out.
 class TimeoutException extends DatumException {
-  TimeoutException({
+  const TimeoutException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.timeout);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when an operation is cancelled.
 class CancellationException extends DatumException {
-  CancellationException({
+  const CancellationException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.cancelled);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when a precondition for an operation is not met.
 class PreconditionFailedException extends DatumException {
-  PreconditionFailedException({
+  const PreconditionFailedException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.preconditionFailed);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when the server responds with an error.
 class ServerException extends DatumException {
-  ServerException({
+  const ServerException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.serverError);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when the client makes a bad request.
 class BadRequestException extends DatumException {
-  BadRequestException({
+  const BadRequestException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.badRequest);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 /// Exception thrown when the requested resource is unavailable.
 class UnavailableException extends DatumException {
-  UnavailableException({
+  const UnavailableException({
     required super.message,
     super.details,
   }) : super(code: DatumExceptionCode.unavailable);
+
+  @override
+  List<Object?> get props => [...super.props];
 }
 
 // Exception thrown when migration failed
@@ -235,7 +284,13 @@ class MigrationException extends DatumException {
     super.code = DatumExceptionCode.migrationError,
     required super.message,
     this.stackTrace,
-  });
+  }) : super(details: {
+          if (e != null) 'e': e.toString(),
+          if (stackTrace != null) 'stackTrace': stackTrace.toString(),
+        });
+
+  @override
+  List<Object?> get props => [...super.props, e, stackTrace];
 }
 
 // Exception thrown when user switch failed
@@ -243,12 +298,15 @@ class UserSwitchException extends DatumException {
   final String? oldUserId;
   final String newUserId;
 
-  UserSwitchException({
+  const UserSwitchException({
     super.code = DatumExceptionCode.userSwitchError,
     required super.message,
     required this.oldUserId,
     required this.newUserId,
   });
+
+  @override
+  List<Object?> get props => [...super.props, oldUserId, newUserId];
 
   @override
   String toString() => 'UserSwitchException(oldUserId: $oldUserId, newUserId: $newUserId,message: $message,code: $code)';
@@ -261,5 +319,8 @@ class UnknownException extends DatumException {
     super.code = DatumExceptionCode.unknown,
     required super.message,
     this.error,
-  });
+  }) : super(details: error != null ? {'error': error} : null);
+
+  @override
+  List<Object?> get props => [...super.props, error];
 }

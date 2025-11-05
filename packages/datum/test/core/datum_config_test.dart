@@ -154,19 +154,19 @@ void main() {
       final shouldRetry = config.errorRecoveryStrategy.shouldRetry;
 
       test('returns true for a retryable NetworkException', () async {
-        final exception = NetworkException(message: 'Connection timeout', isRetryable: true);
+        const exception = NetworkException(message: 'Connection timeout', isRetryable: true);
         final result = await shouldRetry(exception);
         expect(result, isTrue);
       });
 
       test('returns false for a non-retryable NetworkException', () async {
-        final exception = NetworkException(message: 'Bad request', isRetryable: false);
+        const exception = NetworkException(message: 'Bad request', isRetryable: false);
         final result = await shouldRetry(exception);
         expect(result, isFalse);
       });
 
       test('returns false for other DatumException types', () async {
-        final exception = AdapterException(
+        const exception = AdapterException(
           message: 'TestAdapter',
           error: 'Read failed',
         );

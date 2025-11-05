@@ -160,7 +160,7 @@ class Datum {
   final DatumConfig config;
 
   // Updated: Use DatumEntityBase instead of DatumEntity
-  final Map<Type, DatumManager<DatumEntityBase>> _managers = {};
+  final Map<Type, dynamic> _managers = {};
   final Map<Type, AdapterPair> _adapterPairs = {};
   final DatumConnectivityChecker connectivityChecker;
   final List<GlobalDatumObserver> globalObservers = [];
@@ -188,7 +188,7 @@ class Datum {
     if (_managers.isEmpty) {
       return Stream.value({});
     }
-    final healthStreams = _managers.values.map((m) => m.health).toList();
+    final healthStreams = _managers.values.map((m) => (m as DatumManager<DatumEntityBase>).health).toList();
     final types = _managers.keys.toList();
 
     return CombineLatestStream.list(healthStreams).map((healthList) {
@@ -371,7 +371,7 @@ class Datum {
     if (_managers.isNotEmpty) {
       logBuffer.writeln('├─ ❤️  Initial Health Status');
       for (final managerEntry in _managers.entries) {
-        final health = managerEntry.value.currentStatus.health;
+        final health = (managerEntry.value as DatumManager<DatumEntityBase>).currentStatus.health;
         logBuffer.writeln('│  └─ ${_cyan(managerEntry.key)}: ${_green(health.status.name)}');
       }
     }
@@ -390,10 +390,10 @@ class Datum {
       logBuffer.writeln('│  ├─ 👤 User: ${_cyan(userId)}');
       DatumSyncMetadata? metadata;
       if (_managers.isNotEmpty) {
-        metadata = await _managers.values.first.localAdapter.getSyncMetadata(userId);
+        metadata = await (_managers.values.first as DatumManager<DatumEntityBase>).localAdapter.getSyncMetadata(userId);
       }
 
-      final lastSyncResult = _managers.isNotEmpty ? await _managers.values.first.getLastSyncResult(userId) : null;
+      final lastSyncResult = _managers.isNotEmpty ? await (_managers.values.first as DatumManager<DatumEntityBase>).getLastSyncResult(userId) : null;
 
       if (metadata?.lastSyncTime != null) {
         logBuffer.writeln('│  │  ├─ 🕒 Last Sync: ${_cyan(formatDuration(DateTime.now().difference(metadata!.lastSyncTime!)))} ago');
@@ -416,7 +416,7 @@ class Datum {
       var userHasContent = false;
       for (final managerEntry in _managers.entries) {
         final entityType = managerEntry.key;
-        final manager = managerEntry.value;
+        final manager = managerEntry.value as DatumManager<DatumEntityBase>;
         final count = await manager.getPendingCount(userId);
         final itemCount = (await manager.localAdapter.readAll(userId: userId)).length;
         final storageSize = await manager.localAdapter.getStorageSize(userId: userId);
@@ -586,10 +586,10 @@ class Datum {
   /// Provides access to the specific manager for an entity type.
   static DatumManager<T> manager<T extends DatumEntityBase>() {
     final manager = instance._managers[T];
-    if (manager is DatumManager<T>) {
-      return manager;
+    if (manager == null) {
+      throw StateError('Entity type $T is not registered.');
     }
-    throw StateError('Entity type $T is not registered or has a manager of the wrong type.');
+    return manager as DatumManager<T>;
   }
 
   /// Provides access to a manager for a given entity [Type].

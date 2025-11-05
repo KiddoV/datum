@@ -5,8 +5,8 @@ import 'package:test/test.dart';
 void main() {
   group('Datum Exceptions toString()', () {
     test('NetworkException formats correctly', () {
-      final retryableException = NetworkException(message: 'Connection timed out');
-      final nonRetryableException = NetworkException(
+      const retryableException = NetworkException(message: 'Connection timed out');
+      const nonRetryableException = NetworkException(
         message: 'Bad request',
         isRetryable: false,
       );
@@ -32,7 +32,7 @@ void main() {
     });
 
     test('UserSwitchException formats correctly', () {
-      final exception = UserSwitchException(
+      const exception = UserSwitchException(
         oldUserId: 'user-old',
         newUserId: 'user-new',
         message: 'Unsynced data exists.',
@@ -44,7 +44,7 @@ void main() {
     });
 
     test('AdapterException formats correctly without stack trace', () {
-      final exception = AdapterException(
+      const exception = AdapterException(
         message: 'MockAdapter',
         error: 'Failed to read from disk',
       );
@@ -95,7 +95,7 @@ void main() {
     test(
       'EntityNotFoundException formats correctly',
       () {
-        final exception = EntityNotFoundException(message: 'Entity with ID 123 not found');
+        const exception = EntityNotFoundException(message: 'Entity with ID 123 not found');
         expect(
           exception,
           isA<EntityNotFoundException>().having(

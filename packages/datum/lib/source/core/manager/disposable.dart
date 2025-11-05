@@ -28,8 +28,8 @@ mixin Disposable {
     if (_disposed) return;
     _disposed = true;
     await Future.wait([
-      ..._managedControllers.map((c) => c.close()),
-      ..._managedSubscriptions.map((s) => s.cancel()),
+      ..._managedControllers.map((c) async => await c.close()),
+      ..._managedSubscriptions.map((s) async => await s.cancel()),
     ]);
   }
 

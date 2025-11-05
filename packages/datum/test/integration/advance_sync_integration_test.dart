@@ -236,7 +236,7 @@ void main() {
       final failEntity = TestEntity.create('fail1', 'user1', 'Will Fail');
 
       // Make the remote adapter throw a retryable network exception for 'fail1'
-      final retryableException = NetworkException(
+      const retryableException = NetworkException(
         message: 'Simulated network failure',
         isRetryable: true,
       );

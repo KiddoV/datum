@@ -184,7 +184,7 @@ void main() {
     });
 
     test('emits healthy -> syncing -> error on failed sync', () async {
-      final exception = DatumException(message: 'Remote is down', code: DatumExceptionCode.unknown);
+      const exception = DatumException(message: 'Remote is down', code: DatumExceptionCode.unknown);
       when(
         () => remoteAdapter.readAll(
           userId: any(named: 'userId'),
