@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:datum/datum.dart';
 import 'package:example/bootstrap.dart';
 import 'package:example/data/task/entity/task.dart';
@@ -14,22 +16,44 @@ import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
 
+// ============================================================================
+// PROVIDERS
+// ============================================================================
+
 final simpleDatumControllerProvider =
     NotifierProvider.autoDispose<SimpleDatumController, void>(
   SimpleDatumController.new,
   name: 'simpleDatumControllerProvider',
 );
 
-/// A provider that acts as an event channel to signal UI updates.
-/// The UI will listen to this and show a snackbar when the value changes.
 final syncResultEventProvider =
     StateProvider<DatumSyncResult<DatumEntityBase>?>(
-  (
-    ref,
-  ) =>
-      null,
+  (ref) => null,
   name: "syncResultEventProvider",
 );
+
+final tasksStreamProvider =
+    StreamProvider.autoDispose.family<List<Task>, String>(
+  (ref, userId) async* {
+    yield* Datum.manager<Task>()
+            .watchAll(userId: userId, includeInitialData: true) ??
+        const Stream.empty();
+  },
+  name: 'tasksStreamProvider',
+);
+
+final syncStatusProvider =
+    StreamProvider.autoDispose.family<DatumSyncStatusSnapshot?, String>(
+  (ref, userId) async* {
+    final datum = ref.watch(simpleDatumProvider);
+    yield* datum.statusForUser(userId);
+  },
+  name: 'syncStatusProvider',
+);
+
+// ============================================================================
+// CONTROLLER
+// ============================================================================
 
 class SimpleDatumController extends AutoDisposeNotifier<void> {
   SimpleDatumController();
@@ -66,26 +90,188 @@ class SimpleDatumController extends AutoDisposeNotifier<void> {
   }
 }
 
-final tasksStreamProvider =
-    StreamProvider.autoDispose.family<List<Task>, String?>(
-  (ref, userId) async* {
-    // watchAll can return null if the adapter doesn't support it
-    yield* Datum.manager<Task>()
-            .watchAll(userId: userId, includeInitialData: true) ??
-        const Stream.empty();
-  },
-  name: 'tasksStreamProvider',
-);
+// ============================================================================
+// REUSABLE WIDGETS
+// ============================================================================
 
-final syncStatusProvider =
-    StreamProvider.autoDispose.family<DatumSyncStatusSnapshot?, String>(
-  (ref, userId) async* {
-    final datum = ref.watch(simpleDatumProvider);
+/// Reusable sync button widget
+class SyncButton extends ConsumerWidget {
+  final String userId;
+  final VoidCallback onSyncStart;
+  final Function(DatumSyncResult<DatumEntityBase>) onSyncComplete;
+  final Function(dynamic) onSyncError;
 
-    yield* datum.statusForUser(userId);
-  },
-  name: 'syncStatusProvider',
-);
+  const SyncButton({
+    super.key,
+    required this.userId,
+    required this.onSyncStart,
+    required this.onSyncComplete,
+    required this.onSyncError,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return ref.watch(syncStatusProvider(userId)).easyWhen(
+          data: (status) {
+            if (status?.status == DatumSyncStatus.syncing) {
+              return Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: Tooltip(
+                    message:
+                        'Syncing... ${(status!.progress * 100).toStringAsFixed(0)}%',
+                    child: CircularProgressIndicator(
+                      value: status.progress > 0 ? status.progress : null,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                ),
+              );
+            }
+            return Tooltip(
+              message: 'Push and pull changes with remote',
+              child: IconButton(
+                icon: const Icon(Icons.sync),
+                onPressed: () => _handleSync(ref),
+              ),
+            );
+          },
+          loadingWidget: () => const Padding(
+            padding: EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          ),
+        );
+  }
+
+  Future<void> _handleSync(WidgetRef ref) async {
+    ref.invalidate(syncStatusProvider(userId));
+    onSyncStart();
+    try {
+      final result = await Datum.instance.synchronize(userId);
+      onSyncComplete(result);
+    } catch (e) {
+      onSyncError(e);
+    }
+  }
+}
+
+/// Reusable pull/refresh button widget
+class PullButton extends StatelessWidget {
+  final String userId;
+  final VoidCallback onPullStart;
+  final Function(DatumSyncResult<DatumEntityBase>) onPullComplete;
+  final Function(dynamic) onPullError;
+
+  const PullButton({
+    super.key,
+    required this.userId,
+    required this.onPullStart,
+    required this.onPullComplete,
+    required this.onPullError,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Pull latest changes from remote',
+      child: IconButton(
+        icon: const Icon(Icons.cloud_download_outlined),
+        onPressed: _handlePull,
+      ),
+    );
+  }
+
+  Future<void> _handlePull() async {
+    onPullStart();
+    try {
+      final result = await Datum.instance.synchronize(
+        userId,
+        options: const DatumSyncOptions(
+          direction: SyncDirection.pullOnly,
+        ),
+      );
+      onPullComplete(result);
+    } catch (e) {
+      onPullError(e);
+    }
+  }
+}
+
+/// Reusable task dialog
+class TaskDialog extends StatelessWidget {
+  final Task? task;
+  final String title;
+  final String confirmText;
+  final Function(String title, String description) onConfirm;
+
+  const TaskDialog({
+    super.key,
+    this.task,
+    required this.title,
+    required this.confirmText,
+    required this.onConfirm,
+  });
+
+  static Future<void> show({
+    required BuildContext context,
+    Task? task,
+    required String title,
+    required String confirmText,
+    required Function(String title, String description) onConfirm,
+  }) async {
+    final titleController = TextEditingController(text: task?.title ?? '');
+    final descriptionController =
+        TextEditingController(text: task?.description ?? '');
+
+    final didConfirm = await showShadDialog<bool>(
+      context: context,
+      builder: (context) => ShadDialog(
+        title: Text(title),
+        actions: [
+          ShadButton.ghost(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ShadButton(
+            onPressed: () {
+              if (titleController.text.isNotEmpty) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: Text(confirmText),
+          ),
+        ],
+        child: TaskForm(
+          task: task,
+          titleController: titleController,
+          descriptionController: descriptionController,
+        ),
+      ),
+    );
+
+    if (didConfirm == true && titleController.text.isNotEmpty) {
+      onConfirm(titleController.text, descriptionController.text);
+    }
+
+    titleController.dispose();
+    descriptionController.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    throw UnimplementedError('Use TaskDialog.show() instead');
+  }
+}
+
+// ============================================================================
+// MAIN PAGE
+// ============================================================================
 
 @RoutePage()
 class SimpleDatumPage extends ConsumerStatefulWidget {
@@ -97,256 +283,132 @@ class SimpleDatumPage extends ConsumerStatefulWidget {
 
 class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
     with GlobalHelper {
-  // Controllers are now managed in the _TaskForm widget.
-  Future<void> _createTask() async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
+  late final AppLifecycleListener _appLifecycleListener;
+  late ProviderSubscription _syncResultSubscription;
+  late StreamSubscription<AuthState> _authSubscription;
 
-    final didCreate = await showShadDialog<bool>(
-      context: context,
-      builder: (context) => ShadDialog(
-          // Using a key to access form state from the outside is not ideal.
-          title: const Text('Create Task'),
-          actions: [
-            ShadButton.ghost(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ShadButton(
-              onPressed: () {
-                if (titleController.text.isNotEmpty) {
-                  Navigator.of(context).pop(true);
-                }
-              },
-              child: const Text('Create'),
-            ),
-          ],
-          child: TaskForm(
-            titleController: titleController,
-            descriptionController: descriptionController,
-          )),
+  @override
+  void initState() {
+    super.initState();
+    _initializeLifecycleListener();
+    _initializeSyncResultListener();
+    _initializeAuthListener();
+  }
+
+  void _initializeLifecycleListener() {
+    _appLifecycleListener = AppLifecycleListener(
+      onStateChange: (value) {
+        talker.debug("State $value");
+        if (Datum.isInitialized) {
+          // Add your initialization logic here if needed
+        }
+      },
     );
+  }
 
-    final title = titleController.text;
-    final description = descriptionController.text;
-    titleController.dispose();
-    descriptionController.dispose();
+  void _initializeSyncResultListener() {
+    _syncResultSubscription = ref.listenManual(
+      syncResultEventProvider,
+      (previous, next) {
+        if (next != null) {
+          _handleSyncResult(next);
+        }
+      },
+    );
+  }
 
-    if (didCreate == true && titleController.text.isNotEmpty) {
-      try {
-        await ref
-            .read(simpleDatumControllerProvider.notifier)
-            .createTask(title: title, description: description);
-        // The snackbar is now handled by the listener on syncResultEventProvider
-      } catch (e) {
-        showErrorSnack(child: Text('Error creating task: $e'));
-      }
-    }
+  void _initializeAuthListener() {
+    _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
+      (authState) {
+        if (!Datum.isInitialized) return;
+
+        if (authState.event == AuthChangeEvent.signedOut) {
+          Datum.instance.pauseSync();
+        } else if (authState.event == AuthChangeEvent.tokenRefreshed) {
+          Datum.instance.resumeSync();
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    _syncResultSubscription.close();
+    _authSubscription.cancel();
+    _appLifecycleListener.dispose();
+    super.dispose();
+  }
+
+  // ============================================================================
+  // TASK OPERATIONS
+  // ============================================================================
+
+  Future<void> _createTask() async {
+    if (!mounted) return;
+
+    await TaskDialog.show(
+      context: context,
+      title: 'Create Task',
+      confirmText: 'Create',
+      onConfirm: (title, description) async {
+        try {
+          await ref
+              .read(simpleDatumControllerProvider.notifier)
+              .createTask(title: title, description: description);
+        } catch (e) {
+          if (mounted) {
+            showErrorSnack(child: Text('Error creating task: $e'));
+          }
+        }
+      },
+    );
   }
 
   Future<void> _updateTask(Task task) async {
-    final titleController = TextEditingController();
-    final descriptionController = TextEditingController();
+    if (!mounted) return;
 
-    final didUpdate = await showShadDialog<bool>(
+    await TaskDialog.show(
       context: context,
-      builder: (context) => ShadDialog(
-          title: const Text('Update Task'),
-          actions: [
-            ShadButton.ghost(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ShadButton(
-              onPressed: () {
-                if (titleController.text.isNotEmpty) {
-                  Navigator.of(context).pop(true);
-                }
-              },
-              child: const Text('Update'),
-            ),
-          ],
-          child: TaskForm(
-            task: task,
-            titleController: titleController,
-            descriptionController: descriptionController,
-          )),
+      task: task,
+      title: 'Update Task',
+      confirmText: 'Update',
+      onConfirm: (title, description) async {
+        final updatedTask = task.copyWith(
+          title: title,
+          description: description,
+          modifiedAt: DateTime.now(),
+        );
+        try {
+          await ref
+              .read(simpleDatumControllerProvider.notifier)
+              .updateTask(updatedTask);
+        } catch (e) {
+          if (mounted) {
+            showErrorSnack(child: Text('Error updating task: $e'));
+          }
+        }
+      },
     );
-
-    final title = titleController.text;
-    final description = descriptionController.text;
-    titleController.dispose();
-    descriptionController.dispose();
-
-    if (didUpdate == true && title.isNotEmpty) {
-      final updatedTask = task.copyWith(
-        description: description,
-        title: title,
-        modifiedAt: DateTime.now(),
-      );
-      try {
-        await ref.read(simpleDatumControllerProvider.notifier).updateTask(
-            updatedTask); // This is now a void method. The listener will handle the result.
-      } catch (e) {
-        showErrorSnack(child: Text('Error updating task: $e'));
-      }
-    }
   }
 
   Future<void> _deleteTask(Task task) async {
     try {
       await ref.read(simpleDatumControllerProvider.notifier).deleteTask(task);
-      // The snackbar is now handled by the listener on syncResultEventProvider
     } catch (e) {
-      showErrorSnack(child: Text('Error deleting task: $e'));
+      if (mounted) {
+        showErrorSnack(child: Text('Error deleting task: $e'));
+      }
     }
   }
 
-  late final AppLifecycleListener appLifecycleListener;
-  late ProviderSubscription sub;
-  @override
-  void initState() {
-    super.initState();
-    appLifecycleListener = AppLifecycleListener(
-      onStateChange: (value) {
-        talker.debug("State $value");
-        if (Datum.isInitialized) {
-          Datum.instance.resumeSync();
-          Datum.manager<Task>().initialize();
-        }
-      },
-    );
-    // Listen to the event provider to show snackbars.
-    sub = ref.listenManual(syncResultEventProvider, (previous, next) {
-      if (next != null) {
-        _handleSyncResult(next);
-      }
-    });
-  }
+  // ============================================================================
+  // SYNC HANDLERS
+  // ============================================================================
 
-  @override
-  void reassemble() {
-    super.reassemble();
-  }
-
-  @override
-  void dispose() {
-    sub.close();
-    appLifecycleListener.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Simple Datum'),
-        actions: [
-          if (userId != null)
-            Tooltip(
-              message: 'Pull latest changes from remote',
-              child: IconButton(
-                icon: const Icon(Icons.cloud_download_outlined),
-                onPressed: () async {
-                  showInfoSnack(child: const Text('Refreshing...'));
-                  try {
-                    final result = await Datum.instance.synchronize(
-                      userId,
-                      options: const DatumSyncOptions(
-                        direction: SyncDirection.pullOnly,
-                      ),
-                    );
-                    _handleSyncResult(result, operation: 'Refresh');
-                  } catch (e) {
-                    showErrorSnack(child: Text('Refresh failed: $e'));
-                  }
-                },
-              ),
-            ),
-          if (userId != null)
-            ref.watch(syncStatusProvider(userId)).easyWhen(
-                  data: (status) {
-                    if (status?.status == DatumSyncStatus.syncing) {
-                      return Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: Tooltip(
-                            message:
-                                'Syncing... ${(status!.progress * 100).toStringAsFixed(0)}%',
-                            child: CircularProgressIndicator(
-                              value:
-                                  status.progress > 0 ? status.progress : null,
-                              strokeWidth: 2,
-                            ),
-                          ),
-                        ),
-                      );
-                    }
-                    return Tooltip(
-                      message: 'Push and pull changes with remote',
-                      child: IconButton(
-                        icon: const Icon(Icons.sync),
-                        onPressed: () async {
-                          ref.invalidate(syncStatusProvider(userId));
-                          showInfoSnack(child: const Text('Syncing...'));
-                          try {
-                            final result =
-                                await Datum.instance.synchronize(userId);
-                            _handleSyncResult(result, operation: 'Sync');
-                          } catch (e) {
-                            showErrorSnack(child: Text('Sync failed: $e'));
-                          }
-                        },
-                      ),
-                    );
-                  },
-                  loadingWidget: () => const Padding(
-                    padding: EdgeInsets.all(16.0),
-                    child: SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2)),
-                  ),
-                ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _createTask,
-        child: const Icon(Icons.add),
-      ),
-      body: Builder(builder: (context) {
-        final tasksAsync = ref.watch(tasksStreamProvider(userId));
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Wrap(
-                alignment: WrapAlignment.end,
-                spacing: 8,
-                children: [
-                  const SyncInfoWidget(),
-                ],
-              ),
-            ),
-            Expanded(
-              child: TaskList(
-                  tasksAsync: tasksAsync,
-                  onUpdate: _updateTask,
-                  onDelete: _deleteTask),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-
-  void _handleSyncResult(DatumSyncResult<DatumEntityBase> result,
-      {String operation = 'Sync'}) {
+  void _handleSyncResult(
+    DatumSyncResult<DatumEntityBase> result, {
+    String operation = 'Sync',
+  }) {
     ref.read(lastSyncResultProvider.notifier).update(result);
 
     if (!mounted) return;
@@ -357,31 +419,143 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
     }
 
     if (result.isSuccess) {
-      final itemsSynced = result.syncedCount > 0
-          ? '${result.syncedCount} item(s) pushed. '
-          : 'No local changes to push. ';
-
-      final bytesPushed = result.bytesPushedInCycle > 0
-          ? '↑${(result.bytesPushedInCycle / 1024).toStringAsFixed(2)}KB'
-          : '';
-
-      final bytesPulled = result.bytesPulledInCycle > 0
-          ? '↓${(result.bytesPulledInCycle / 1024).toStringAsFixed(2)}KB'
-          : '';
-
-      final dataTransferMessage =
-          [bytesPushed, bytesPulled].where((s) => s.isNotEmpty).join(' ');
-
-      final message = [
-        '$operation complete. $itemsSynced',
-        if (dataTransferMessage.isNotEmpty) dataTransferMessage
-      ].join(' ').replaceAll(' .', '.'); // Clean up spacing
-
-      showSuccessSnack(child: Text(message.trim()));
+      final message = _buildSuccessMessage(result, operation);
+      showSuccessSnack(child: Text(message));
     } else {
       showErrorSnack(
-          child: Text(
-              '$operation failed. ${result.failedCount} item(s) failed to sync.'));
+        child: Text(
+          '$operation failed. ${result.failedCount} item(s) failed to sync.',
+        ),
+      );
     }
+  }
+
+  String _buildSuccessMessage(
+    DatumSyncResult<DatumEntityBase> result,
+    String operation,
+  ) {
+    final itemsSynced = result.syncedCount > 0
+        ? '${result.syncedCount} item(s) pushed. '
+        : 'No local changes to push. ';
+
+    final bytesPushed = result.bytesPushedInCycle > 0
+        ? '↑${(result.bytesPushedInCycle / 1024).toStringAsFixed(2)}KB'
+        : '';
+
+    final bytesPulled = result.bytesPulledInCycle > 0
+        ? '↓${(result.bytesPulledInCycle / 1024).toStringAsFixed(2)}KB'
+        : '';
+
+    final dataTransferMessage =
+        [bytesPushed, bytesPulled].where((s) => s.isNotEmpty).join(' ');
+
+    final message = [
+      '$operation complete. $itemsSynced',
+      if (dataTransferMessage.isNotEmpty) dataTransferMessage,
+    ].join(' ').replaceAll(' .', '.');
+
+    return message.trim();
+  }
+
+  // ============================================================================
+  // UI BUILD
+  // ============================================================================
+
+  @override
+  Widget build(BuildContext context) {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+
+    return Scaffold(
+      appBar: _buildAppBar(userId),
+      floatingActionButton: FloatingActionButton(
+        onPressed: _createTask,
+        child: const Icon(Icons.add),
+      ),
+      body: userId != null
+          ? _buildAuthenticatedBody(userId)
+          : const _LoggedOutView(),
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(String? userId) {
+    return AppBar(
+      title: const Text('Simple Datum'),
+      actions: [
+        if (userId != null) ...[
+          PullButton(
+            userId: userId,
+            onPullStart: () =>
+                showInfoSnack(child: const Text('Refreshing...')),
+            onPullComplete: (result) =>
+                _handleSyncResult(result, operation: 'Refresh'),
+            onPullError: (e) =>
+                showErrorSnack(child: Text('Refresh failed: $e')),
+          ),
+          SyncButton(
+            userId: userId,
+            onSyncStart: () => showInfoSnack(child: const Text('Syncing...')),
+            onSyncComplete: (result) =>
+                _handleSyncResult(result, operation: 'Sync'),
+            onSyncError: (e) => showErrorSnack(child: Text('Sync failed: $e')),
+          ),
+        ],
+        IconButton(
+          icon: const Icon(Icons.logout),
+          onPressed: _handleLogout,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAuthenticatedBody(String userId) {
+    final tasksAsync = ref.watch(tasksStreamProvider(userId));
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const Padding(
+          padding: EdgeInsets.all(8),
+          child: Wrap(
+            alignment: WrapAlignment.end,
+            spacing: 8,
+            children: [SyncInfoWidget()],
+          ),
+        ),
+        Expanded(
+          child: RefreshIndicator(
+            onRefresh: () {
+              talker.debug(userId);
+              return ref.refresh(tasksStreamProvider(userId).future);
+            },
+            child: TaskList(
+              tasksAsync: tasksAsync,
+              onUpdate: _updateTask,
+              onDelete: _deleteTask,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    await Supabase.instance.client.auth.signOut(
+      scope: SignOutScope.global,
+    );
+  }
+}
+
+// ============================================================================
+// LOGGED OUT VIEW
+// ============================================================================
+
+class _LoggedOutView extends StatelessWidget {
+  const _LoggedOutView();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Center(
+      child: Text("User logged out"),
+    );
   }
 }

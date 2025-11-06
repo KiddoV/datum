@@ -73,6 +73,7 @@ class FakeLocalAdapterPost extends Fake implements LocalAdapter<Post> {}
 
 // New mocks for RelationalTestEntity
 class FakeRemoteAdapterRelationalTestEntity extends Fake implements RemoteAdapter<RelationalTestEntity> {}
+
 class FakeLocalAdapterRelationalTestEntity extends Fake implements LocalAdapter<RelationalTestEntity> {}
 
 void main() {

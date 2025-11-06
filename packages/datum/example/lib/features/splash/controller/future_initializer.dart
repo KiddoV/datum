@@ -66,6 +66,9 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     ),
     schemaVersion: 0,
     migrations: [],
+    onMigrationError: (error, stackTrace) async {
+      talker.error(error, stackTrace);
+    },
   );
   final datum = await Datum.initialize(
     config: config,

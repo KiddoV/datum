@@ -3,8 +3,7 @@ import 'package:test/test.dart';
 
 void main() {
   group('DatumEither', () {
-    group('Success',
-        () {
+    group('Success', () {
       const success = Success<String, int>(42);
 
       test('isSuccess returns true', () {

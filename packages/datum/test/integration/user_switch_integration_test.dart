@@ -322,7 +322,8 @@ void _stubDefaultBehaviors(
   ).thenAnswer((_) => Future.value(null));
   when(
     () => remoteAdapter.getSyncMetadata(any()),
-  ).thenAnswer((_) => Future.value(null));}
+  ).thenAnswer((_) => Future.value(null));
+}
 
 /// Helper function to create a test operation.
 DatumSyncOperation<T> _createTestOperation<T extends DatumEntityBase>(

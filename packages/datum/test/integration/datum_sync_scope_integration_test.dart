@@ -169,4 +169,5 @@ void _stubDefaultBehaviors(
   ).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
   when(
     () => remote.getSyncMetadata(any()),
-  ).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));}
+  ).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
+}

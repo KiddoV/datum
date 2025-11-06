@@ -37,6 +37,15 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   }
 
   @override
+  Future<AdapterHealthStatus> checkHealth() async {
+    final auth =
+        Supabase.instance.client.auth.currentSession?.accessToken == null;
+    return auth == true
+        ? AdapterHealthStatus.unhealthy
+        : AdapterHealthStatus.healthy;
+  }
+
+  @override
   Future<List<T>> readAll({String? userId, DatumSyncScope? scope}) async {
     PostgrestFilterBuilder queryBuilder = _client.from(tableName).select();
 

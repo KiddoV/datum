@@ -48,8 +48,7 @@ sealed class DatumEither<L, R> {
   R getSuccess() {
     return switch (this) {
       Success<L, R>(value: final r) => r,
-      Failure<L, R>() =>
-        throw StateError('Cannot get success value from a Failure.'),
+      Failure<L, R>() => throw StateError('Cannot get success value from a Failure.'),
     };
   }
 
