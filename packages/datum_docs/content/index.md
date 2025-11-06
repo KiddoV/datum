@@ -87,10 +87,13 @@ Let's explore the core functionalities available directly through `Datum.instanc
 
 #### 3.2. Basic CRUD Operations
 
-Perform Create, Read, Update, and Delete operations directly on `Datum.instance`. Datum handles the local persistence and queues changes for synchronization with your remote backend.
+Perform Create, Read, Update, and Delete operations through entity managers. Datum handles the local persistence and queues changes for synchronization with your remote backend.
 
 ```dart
 // Assuming Datum has been initialized as shown above
+
+// Get the manager for Task entities
+final taskManager = Datum.manager<Task>();
 
 // CREATE: Add a new task
 Future<void> addNewTask(String title, String userId) async {
@@ -102,13 +105,13 @@ Future<void> addNewTask(String title, String userId) async {
     version: 1,
     title: title,
   );
-  await Datum.instance.create<Task>(newTask);
+  await taskManager.push(item: newTask, userId: userId);
   print('Created task: "${newTask.title}" (ID: ${newTask.id})');
 }
 
 // READ (single): Retrieve a task by its ID
 Future<Task?> getTaskDetails(String taskId, String userId) async {
-  final task = await Datum.instance.read<Task>(taskId, userId: userId);
+  final task = await taskManager.read(taskId, userId: userId);
   if (task != null) {
     print('Read task: "${task.title}" (Version: ${task.version})');
   } else {
@@ -119,7 +122,7 @@ Future<Task?> getTaskDetails(String taskId, String userId) async {
 
 // READ (all): Retrieve all tasks for a user
 Future<List<Task>> getAllUserTasks(String userId) async {
-  final tasks = await Datum.instance.readAll<Task>(userId: userId);
+  final tasks = await taskManager.readAll(userId: userId);
   print('Found ${tasks.length} tasks for user $userId.');
   return tasks;
 }
@@ -131,13 +134,13 @@ Future<void> updateTaskTitle(Task task, String newTitle) async {
     modifiedAt: DateTime.now(),
     version: task.version + 1,
   );
-  await Datum.instance.update<Task>(updatedTask);
+  await taskManager.push(item: updatedTask, userId: task.userId);
   print('Updated task ID ${task.id} to: "${updatedTask.title}"');
 }
 
 // DELETE: Remove a task by its ID
 Future<void> removeTask(String taskId, String userId) async {
-  final success = await Datum.instance.delete<Task>(id: taskId, userId: userId);
+  final success = await taskManager.delete(id: taskId, userId: userId);
   if (success) {
     print('Deleted task with ID: $taskId');
   } else {

@@ -4,16 +4,36 @@ title: Datum Initialization
 
 Before using Datum, you must initialize it with your configuration, connectivity checker, and entity registrations. This typically happens once at your application's startup.
 
+## 1. Define Your Entities
 
+First, create your data models by extending `DatumEntity` or `RelationalDatumEntity`. See the [Entity Definition Guide](entity_define.md) for detailed instructions.
+
+## 2. Implement Adapters
+
+Create local and remote adapters for each entity type. See the [Local Adapter Implementation Guide](local_adapter_implement.md) and [Remote Adapter Implementation Guide](remote_adapter_implement.md) for details.
 
 ## 3. Implement a Connectivity Checker
 
 Datum needs to know the network status to manage synchronization. Implement the `DatumConnectivityChecker` interface to provide this information.
 
 ```dart
+import 'package:connectivity_plus/connectivity_plus.dart';
+
 class MyConnectivityChecker implements DatumConnectivityChecker {
+  final Connectivity _connectivity = Connectivity();
+
   @override
-  Future<bool> get isConnected async => true; // Replace with actual connectivity check
+  Future<bool> get isConnected async {
+    final result = await _connectivity.checkConnectivity();
+    return !result.contains(ConnectivityResult.none);
+  }
+
+  @override
+  Stream<bool> get onStatusChange {
+    return _connectivity.onConnectivityChanged.map((results) {
+      return !results.contains(ConnectivityResult.none);
+    });
+  }
 }
 ```
 
@@ -23,38 +43,86 @@ Finally, initialize Datum in your application's bootstrap code (e.g., `main.dart
 
 ```dart
 import 'package:datum/datum.dart';
-import 'package:uuid/uuid.dart'; // For generating unique IDs
 import 'package:flutter/widgets.dart'; // If in a Flutter app
 
 // In your main.dart or application bootstrap:
 Future<void> bootstrapApp() async {
   // Ensure Flutter widgets are initialized if you are in a Flutter app.
-  // WidgetsFlutterBinding.ensureInitialized();
+  WidgetsFlutterBinding.ensureInitialized();
 
-  await Datum.initialize(
+  final result = await Datum.initialize(
     config: const DatumConfig(
       enableLogging: true,
       schemaVersion: 1, // Increment this when your entity schema changes
-      // Add other global configurations as needed, e.g., conflict resolution strategy.
+      autoStartSync: true, // Automatically sync on startup
+      autoSyncInterval: Duration(minutes: 15), // Sync every 15 minutes
     ),
     connectivityChecker: MyConnectivityChecker(),
     registrations: [
       // Register each DatumEntity type with its adapters
       DatumRegistration<Task>(
-        localAdapter: MyLocalAdapter<Task>(),
-        remoteAdapter: MyRemoteAdapter<Task>(),
-        // Optional: You can also provide specific conflictResolver, middlewares, or observers here.
+        localAdapter: HiveLocalAdapter<Task>(),
+        remoteAdapter: RestRemoteAdapter<Task>(),
+        // Optional: Provide entity-specific configuration
+        config: const DatumConfig(
+          defaultConflictResolver: LastWriteWinsResolver<Task>(),
+        ),
+        // Optional: Add middlewares for data transformation
+        middlewares: [EncryptionMiddleware<Task>()],
+        // Optional: Add observers for entity lifecycle events
+        observers: [TaskObserver()],
       ),
-      // Add registrations for other entities (e.g., User, Project)
-      // DatumRegistration<User>(
-      //   localAdapter: MyLocalAdapter<User>(),
-      //   remoteAdapter: MyRemoteAdapter<User>(),
-      // ),
+      // Add registrations for other entities
+      DatumRegistration<User>(
+        localAdapter: HiveLocalAdapter<User>(),
+        remoteAdapter: RestRemoteAdapter<User>(),
+      ),
     ],
-    // Optional: globalObservers can be provided here to observe all entity changes.
+    // Optional: Add global observers for all entities
+    observers: [GlobalAnalyticsObserver()],
   );
 
-  // Your application can now safely use Datum.instance to access registered entities and perform operations.
-  // runApp(const MyApp()); // If in a Flutter app, you can now run your app.
+  // Handle initialization result
+  switch (result) {
+    case Success(datum: final datum):
+      // Initialization successful
+      print('Datum initialized successfully!');
+
+      // Your application can now use Datum.manager<T>() to access registered entities
+      runApp(const MyApp());
+
+    case Failure(error: final error, stackTrace: final stack):
+      // Initialization failed
+      print('Datum initialization failed: $error');
+      // Handle error appropriately for your app
+  }
 }
 ```
+
+## 5. Using Datum After Initialization
+
+Once initialized, access entity managers through the static `Datum.manager<T>()` method:
+
+```dart
+// Get a manager for a specific entity type
+final taskManager = Datum.manager<Task>();
+
+// Perform operations
+await taskManager.push(item: myTask, userId: 'user123');
+final tasks = await taskManager.readAll(userId: 'user123');
+
+// Global operations across all entities
+final syncResult = await Datum.instance.synchronize('user123');
+```
+
+## Configuration Options
+
+The `DatumConfig` class provides extensive configuration options:
+
+- **Synchronization**: `autoSyncInterval`, `syncTimeout`, `defaultSyncDirection`
+- **User Management**: `defaultUserSwitchStrategy`, `initialUserId`
+- **Error Handling**: `errorRecoveryStrategy`, `onMigrationError`
+- **Performance**: `remoteEventDebounceTime`, `changeCacheDuration`
+- **Schema Management**: `schemaVersion`, `migrations`
+
+See the [Config Module Documentation](../modules/config.md) for complete details.
