@@ -7,6 +7,8 @@ import '../mocks/mock_connectivity_checker.dart';
 
 import 'non_relational_test_entity.dart';
 
+class MockDatumManager<T extends DatumEntityBase> extends Mock implements DatumManager<T> {}
+
 /// A simple User entity for testing relationships.
 class User extends RelationalDatumEntity {
   @override
@@ -46,8 +48,8 @@ class User extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-        'posts': const HasMany('userId'), // A user has many posts.
-        'profile': const HasOne('userId'), // A user has one profile.
+        'posts': HasMany(this, 'userId'), // A user has many posts.
+        'profile': HasOne(this, 'userId'), // A user has one profile.
       };
 
   @override
@@ -74,7 +76,7 @@ class User extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
 }
 
 /// A Post entity that "belongs to" a User.
@@ -129,7 +131,7 @@ class Post extends RelationalDatumEntity {
 
   // Define the relationship
   @override
-  Map<String, Relation> get relations => {'author': const BelongsTo('userId')};
+  Map<String, Relation> get relations => {'author': BelongsTo(this, 'userId')};
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -156,7 +158,26 @@ class Post extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    if (oldVersion is! Post) return toDatumMap();
+
+    final diff = <String, dynamic>{};
+
+    if (title != oldVersion.title) {
+      diff['title'] = title;
+    }
+    if (modifiedAt != oldVersion.modifiedAt) {
+      diff['modifiedAt'] = modifiedAt.toIso8601String();
+    }
+    if (version != oldVersion.version) {
+      diff['version'] = version;
+    }
+    if (isDeleted != oldVersion.isDeleted) {
+      diff['isDeleted'] = isDeleted;
+    }
+
+    return diff.isEmpty ? null : diff;
+  }
 }
 
 /// A Profile entity that "belongs to" a User.
@@ -199,7 +220,7 @@ class Profile extends RelationalDatumEntity {
 
   // Define the relationship
   @override
-  Map<String, Relation> get relations => {'user': const BelongsTo('userId')};
+  Map<String, Relation> get relations => {'user': BelongsTo(this, 'userId')};
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -231,7 +252,171 @@ class Profile extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    if (oldVersion is! Profile) return toDatumMap();
+
+    final diff = <String, dynamic>{};
+
+    if (bio != oldVersion.bio) {
+      diff['bio'] = bio;
+    }
+    if (modifiedAt != oldVersion.modifiedAt) {
+      diff['modifiedAt'] = modifiedAt.toIso8601String();
+    }
+    if (version != oldVersion.version) {
+      diff['version'] = version;
+    }
+    if (isDeleted != oldVersion.isDeleted) {
+      diff['isDeleted'] = isDeleted;
+    }
+
+    return diff.isEmpty ? null : diff;
+  }
+}
+
+/// A pivot entity for ManyToMany relationships.
+class PostTag extends RelationalDatumEntity {
+  @override
+  final String id;
+  @override
+  final String userId;
+  final String postId;
+  final String tagId;
+  @override
+  final DateTime modifiedAt;
+  @override
+  final DateTime createdAt;
+  @override
+  final int version;
+  @override
+  final bool isDeleted;
+
+  @override
+  List<Object?> get props => [
+        ...super.props,
+        id,
+        userId,
+        postId,
+        tagId,
+        modifiedAt,
+        createdAt,
+        version,
+        isDeleted,
+      ];
+
+  const PostTag({
+    required this.id,
+    required this.userId,
+    required this.postId,
+    required this.tagId,
+    required this.modifiedAt,
+    required this.createdAt,
+    this.version = 1,
+    this.isDeleted = false,
+  });
+
+  @override
+  Map<String, Relation> get relations => {}; // Pivot entities typically don't have relations
+
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
+        'id': id,
+        'userId': userId,
+        'postId': postId,
+        'tagId': tagId,
+        'modifiedAt': modifiedAt.toIso8601String(),
+        'createdAt': createdAt.toIso8601String(),
+        'version': version,
+        'isDeleted': isDeleted,
+      };
+
+  @override
+  PostTag copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) {
+    return PostTag(
+      id: id,
+      userId: userId,
+      postId: postId,
+      tagId: tagId,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      createdAt: createdAt,
+      version: version ?? this.version,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+
+  @override
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
+}
+
+/// A Tag entity for ManyToMany relationships.
+class Tag extends RelationalDatumEntity {
+  @override
+  final String id;
+  @override
+  final String userId;
+  final String name;
+  @override
+  final DateTime modifiedAt;
+  @override
+  final DateTime createdAt;
+  @override
+  final int version;
+  @override
+  final bool isDeleted;
+
+  @override
+  List<Object?> get props => [
+        ...super.props,
+        id,
+        userId,
+        name,
+        modifiedAt,
+        createdAt,
+        version,
+        isDeleted,
+      ];
+
+  const Tag({
+    required this.id,
+    required this.userId,
+    required this.name,
+    required this.modifiedAt,
+    required this.createdAt,
+    this.version = 1,
+    this.isDeleted = false,
+  });
+
+  @override
+  Map<String, Relation> get relations => {
+        'posts': ManyToMany(this, PostTag(id: 'pivot', userId: 'user-1', postId: 'post-1', tagId: 'tag-1', modifiedAt: DateTime(2023), createdAt: DateTime(2023)), 'tagId', 'postId'), // ManyToMany with posts through PostTag
+      };
+
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
+        'id': id,
+        'userId': userId,
+        'name': name,
+        'modifiedAt': modifiedAt.toIso8601String(),
+        'createdAt': createdAt.toIso8601String(),
+        'version': version,
+        'isDeleted': isDeleted,
+      };
+
+  @override
+  Tag copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) {
+    return Tag(
+      id: id,
+      userId: userId,
+      name: name,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      createdAt: createdAt,
+      version: version ?? this.version,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+
+  @override
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
 }
 
 /// A local adapter that intentionally does not implement fetchRelated.
@@ -413,7 +598,29 @@ void main() {
       Datum.resetForTesting();
     });
 
-    test('fetches a "belongsTo" related entity successfully', () async {
+    test(
+      'isRelational property returns true for RelationalDatumEntity and false for DatumEntity',
+      () async {
+        final relationalEntity = User(
+          id: 'relational-1',
+          name: 'Relational User',
+          modifiedAt: DateTime(2023),
+          createdAt: DateTime(2023),
+        );
+        final nonRelationalEntity = NonRelationalTestEntity(
+          id: 'non-relational-1',
+          userId: 'user-1',
+          name: 'Some data',
+          modifiedAt: DateTime(2023),
+          createdAt: DateTime(2023),
+        );
+
+        expect(relationalEntity.isRelational, isTrue);
+        expect(nonRelationalEntity.isRelational, isFalse);
+      },
+    );
+
+    test('fetches "belongsTo" related entities successfully', () async {
       // Initialize Datum for this test
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),

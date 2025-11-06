@@ -1,78 +1,228 @@
-import 'package:datum/source/core/models/datum_entity.dart';
+import 'package:datum/datum.dart';
 
-/// A sealed class representing the different types of relationships between entities.
-sealed class Relation {
-  const Relation();
+// A sealed class representing the different types of relationships between entities.
+sealed class Relation<T extends DatumEntityBase> {
+  final RelationalDatumEntity _parent;
+  const Relation(this._parent);
+
+  dynamic get value;
+
+  DatumManager<T> getRelatedManager();
 }
 
-/// Represents a one-to-one or one-to-many relationship.
-///
-/// [foreignKey]: The field on the current entity that holds the ID of the related entity.
-/// [localKey]: The field on the *related* entity that the `foreignKey` points to.
-/// Defaults to 'id'.
-///
-/// For example, a `Post` entity might have a `BelongsTo('userId')` to link to a `User`.
-class BelongsTo extends Relation {
+class BelongsTo<T extends DatumEntityBase> extends Relation<T> {
   final String foreignKey;
   final String localKey;
-  const BelongsTo(this.foreignKey, {this.localKey = 'id'});
+  T? _value;
+  bool _isLoaded = false;
+
+  BelongsTo(super._parent, this.foreignKey, {this.localKey = 'id', T? value}) : _value = value {
+    if (value != null) {
+      _isLoaded = true;
+    }
+  }
+
+  @override
+  T? get value => _value;
+
+  void set(T? value) {
+    _value = value;
+    _isLoaded = true;
+  }
+
+  Future<T?> fetch() async {
+    if (_isLoaded) {
+      return _value;
+    }
+    final foreignKeyValue = _parent.toDatumMap()[foreignKey];
+    if (foreignKeyValue == null) {
+      return null;
+    }
+    final manager = getRelatedManager();
+    final related = await manager.read(foreignKeyValue, userId: _parent.userId);
+    _value = related;
+    _isLoaded = true;
+    return related;
+  }
+
+  @override
+  DatumManager<T> getRelatedManager() {
+    return Datum.manager<T>();
+  }
 }
 
-/// Represents a one-to-many relationship from the "one" side.
-///
-/// [foreignKey]: The field on the *related* entity that holds the ID of this entity.
-/// [localKey]: The field on *this* entity that the `foreignKey` on the related
-/// entity points to. Defaults to 'id'.
-///
-/// Example: A `User` entity might have a `HasMany('userId')` to link to all of
-/// its `Post` entities, where each `Post` has a `userId` field.
-class HasMany extends Relation {
+class HasMany<T extends DatumEntityBase> extends Relation<T> {
   final String foreignKey;
   final String localKey;
-  const HasMany(this.foreignKey, {this.localKey = 'id'});
+  List<T>? _value;
+  bool _isLoaded = false;
+
+  HasMany(super._parent, this.foreignKey, {this.localKey = 'id', List<T>? value}) : _value = value {
+    if (value != null) {
+      _isLoaded = true;
+    }
+  }
+
+  @override
+  List<T>? get value => _value;
+
+  void set(List<T>? value) {
+    _value = value;
+    _isLoaded = true;
+  }
+
+  Future<List<T>?> fetch() async {
+    if (_isLoaded) {
+      return _value;
+    }
+    final localKeyValue = _parent.toDatumMap()[localKey];
+    if (localKeyValue == null) {
+      return [];
+    }
+    final manager = getRelatedManager();
+    final related = await manager.query(
+      DatumQuery(filters: [Filter(foreignKey, FilterOperator.equals, localKeyValue)]),
+      source: DataSource.local,
+      userId: _parent.userId,
+    );
+    _value = related;
+    _isLoaded = true;
+    return related;
+  }
+
+  @override
+  DatumManager<T> getRelatedManager() {
+    return Datum.manager<T>();
+  }
 }
 
-/// Represents a one-to-one relationship from the "one" side.
-///
-/// This is the inverse of a `BelongsTo` relationship.
-///
-/// [foreignKey]: The field on the *related* entity that holds the ID of this entity.
-/// [localKey]: The field on *this* entity that the `foreignKey` on the related
-/// entity points to. Defaults to 'id'.
-///
-/// Example: A `User` entity might have a `HasOne('userId')` to link to a single
-/// `Profile` entity, where the `Profile` has a unique `userId` field.
-class HasOne extends Relation {
+class HasOne<T extends DatumEntityBase> extends Relation<T> {
   final String foreignKey;
   final String localKey;
-  const HasOne(this.foreignKey, {this.localKey = 'id'});
+  T? _value;
+  bool _isLoaded = false;
+
+  HasOne(super._parent, this.foreignKey, {this.localKey = 'id', T? value}) : _value = value {
+    if (value != null) {
+      _isLoaded = true;
+    }
+  }
+
+  @override
+  T? get value => _value;
+
+  void set(T? value) {
+    _value = value;
+    _isLoaded = true;
+  }
+
+  Future<T?> fetch() async {
+    if (_isLoaded) {
+      return _value;
+    }
+    final localKeyValue = _parent.toDatumMap()[localKey];
+    if (localKeyValue == null) {
+      return null;
+    }
+    final manager = getRelatedManager();
+    final related = await manager.read(localKeyValue, userId: _parent.userId);
+    _value = related;
+    _isLoaded = true;
+    return related;
+  }
+
+  @override
+  DatumManager<T> getRelatedManager() {
+    return Datum.manager<T>();
+  }
 }
 
-/// Represents a many-to-many relationship.
-///
-/// [pivotEntity]: A const instance of the entity that acts as the join table.
-/// [thisForeignKey]: The field in the pivot entity that references this entity's ID.
-/// [thisLocalKey]: The field on *this* entity that `thisForeignKey` points to.
-/// Defaults to 'id'.
-/// [otherForeignKey]: The field in the pivot entity that references the related entity's ID.
-/// [otherLocalKey]: The field on the *related* entity that `otherForeignKey`
-/// points to. Defaults to 'id'.
-///
-/// Example: A `Post` entity could have a `ManyToMany(PostTag.constInstance, 'postId', 'tagId')`
-/// to link to `Tag` entities.
-class ManyToMany extends Relation {
+class ManyToMany<T extends DatumEntityBase> extends Relation<T> {
   final DatumEntityBase pivotEntity;
+
   final String thisForeignKey;
+
   final String otherForeignKey;
+
   final String thisLocalKey;
+
   final String otherLocalKey;
-  const ManyToMany(
+
+  List<T>? _value;
+
+  bool _isLoaded = false;
+
+  ManyToMany(
+    super._parent,
     this.pivotEntity,
     this.thisForeignKey,
     this.otherForeignKey, {
     this.thisLocalKey = 'id',
     this.otherLocalKey = 'id',
-  });
+    List<T>? value,
+  }) : _value = value {
+    if (value != null) {
+      _isLoaded = true;
+    }
+  }
+
+  @override
+  List<T>? get value => _value;
+
+  void set(List<T>? value) {
+    _value = value;
+
+    _isLoaded = true;
+  }
+
+  Future<List<T>?> fetch() async {
+    if (_isLoaded) {
+      return _value;
+    }
+
+    final thisLocalKeyValue = _parent.toDatumMap()[thisLocalKey];
+    if (thisLocalKeyValue == null) {
+      return [];
+    }
+
+    // Get the manager for the pivot entity
+    final pivotManager = Datum.managerByType(pivotEntity.runtimeType);
+
+    // Query the pivot entity to find related pivot entities
+    final pivotEntities = await pivotManager.query(
+      DatumQuery(filters: [Filter(thisForeignKey, FilterOperator.equals, thisLocalKeyValue)]),
+      source: DataSource.local,
+      userId: _parent.userId,
+    );
+
+    // Extract the foreign keys of the related entities from the pivot entities
+    final otherForeignKeys = pivotEntities.map((e) => e.toDatumMap()[otherForeignKey]).nonNulls.toList();
+
+    if (otherForeignKeys.isEmpty) {
+      _value = [];
+      _isLoaded = true;
+      return _value;
+    }
+
+    // Get the manager for the target entity type
+    final relatedManager = getRelatedManager();
+
+    // Query the target entity manager to get the related entities
+    final related = await relatedManager.query(
+      DatumQuery(filters: [Filter('id', FilterOperator.isIn, otherForeignKeys)]),
+      source: DataSource.local,
+      userId: _parent.userId,
+    );
+
+    _value = related;
+    _isLoaded = true;
+    return related;
+  }
+
+  @override
+  DatumManager<T> getRelatedManager() {
+    return Datum.manager<T>();
+  }
 }
 
 /// An extension of [DatumEntity] that includes support for defining relationships.
@@ -99,7 +249,7 @@ class ManyToMany extends Relation {
 /// class Post extends RelationalDatumEntity {
 ///   final String userId; // Foreign key
 ///   @override
-///   Map<String, Relation> get relations => {'author': BelongsTo('userId')};
+///   Map<String, Relation> get relations => {'author': BelongsTo<User>(this, 'userId')};
 /// }
 /// ```
 ///
@@ -112,35 +262,65 @@ class ManyToMany extends Relation {
 /// class User extends RelationalDatumEntity {
 ///   @override
 ///   Map<String, Relation> get relations => {
-///     'profile': HasOne('userId'), // A Profile has a `userId` field
-///     'posts': HasMany('userId'),   // A Post has a `userId` field
+///     'profile': HasOne<Profile>(this, 'userId'), // A Profile has a `userId` field
+///     'posts': HasMany<Post>(this, 'userId'),   // A Post has a `userId` field
 ///   };
 /// }
 /// ```
 ///
 /// ---
-// ///
-// /// Entities that have relationships with other syncable entities should extend this
-// /// class instead of [DatumEntity] directly.
-// abstract class RelationalDatumEntity extends DatumEntity {
-//   /// Creates a `const` [RelationalDatumEntity].
-//   const RelationalDatumEntity();
+///
+/// Entities that have relationships with other syncable entities should extend this
+/// class instead of [DatumEntity] directly.
+abstract class RelationalDatumEntity extends DatumEntity {
+  /// Creates a `const` [RelationalDatumEntity].
+  const RelationalDatumEntity();
 
-//   /// Indicates whether this entity supports relationships. Always `true` for this class.
-//   @override
-//   bool get isRelational => true;
+  /// Indicates whether this entity supports relationships. Always `true` for this class.
+  @override
+  bool get isRelational => true;
 
-//   /// A map defining all relationships for this entity.
-//   ///
-//   /// The key is a descriptive name for the relation, and the value is an
-//   /// instance of a [Relation] subclass (`BelongsTo`, `HasMany`, `ManyToMany`).
-//   ///
-//   /// Example:
-//   /// ```dart
-//   /// @override
-//   /// Map<String, Relation> get relations => {
-//   ///   'author': BelongsTo('userId'),
-//   /// };
-//   /// ```
-//   Map<String, Relation> get relations => {};
-// }
+  /// A map defining all relationships for this entity.
+  ///
+  /// The key is a descriptive name for the relation, and the value is an
+  /// instance of a [Relation] subclass (`BelongsTo`, `HasMany`, `ManyToMany`).
+  ///
+  /// Example:
+  /// ```dart
+  /// @override
+  /// Map<String, Relation> get relations => {
+  ///   'author': BelongsTo<User>(this, 'userId'),
+  /// };
+  /// ```
+  Map<String, Relation> get relations => {};
+
+  /// Converts the entity to a `Map<String, dynamic>` for persistence.
+  ///
+  /// The optional [target] parameter dictates which set of fields to include,
+  /// e.g., excluding heavy local-only fields for remote sync.
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
+
+  /// Creates a **new instance** of the entity with updated values.
+  ///
+  /// This method is primarily used to update the sync-related fields
+  /// like [modifiedAt], [version], and [isDeleted] during a sync operation.
+  ///
+  /// **Subclasses must override** this method to include their own fields
+  /// in the copy process.
+  @override
+  RelationalDatumEntity copyWith({
+    DateTime? modifiedAt,
+    int? version,
+    bool? isDeleted,
+  });
+
+  /// Computes the **difference** between the current entity state and an
+  /// [oldVersion] of the entity.
+  ///
+  /// Returns a **`Map<String, dynamic>`** containing only the fields that have
+  /// changed, with their new values.
+  /// Returns `null` if the entities are identical (no changes detected).
+  @override
+  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion);
+}

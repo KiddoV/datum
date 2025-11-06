@@ -1,6 +1,4 @@
-import 'package:datum/source/core/events/datum_event.dart';
-import 'package:datum/source/core/models/conflict_context.dart';
-import 'package:datum/source/core/models/datum_entity.dart';
+import 'package:datum/datum.dart';
 
 /// Event emitted when the engine detects a
 /// conflict between local and remote data.

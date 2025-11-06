@@ -33,8 +33,8 @@ class User extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-        'posts': const HasMany('userId'), // A user has many posts.
-        'profile': const HasOne('userId'), // A user has one profile.
+        'posts': HasMany(this, 'userId'), // A user has many posts.
+        'profile': HasOne(this, 'userId'), // A user has one profile.
       };
 
   @override
@@ -60,8 +60,47 @@ class User extends RelationalDatumEntity {
     );
   }
 
-  @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+    @override
+
+    Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+
+      if (oldVersion is! User) return toDatumMap();
+
+
+
+      final diff = <String, dynamic>{};
+
+
+
+      if (name != oldVersion.name) {
+
+        diff['name'] = name;
+
+      }
+
+      if (modifiedAt != oldVersion.modifiedAt) {
+
+        diff['modifiedAt'] = modifiedAt.toIso8601String();
+
+      }
+
+      if (version != oldVersion.version) {
+
+        diff['version'] = version;
+
+      }
+
+      if (isDeleted != oldVersion.isDeleted) {
+
+        diff['isDeleted'] = isDeleted;
+
+      }
+
+
+
+      return diff.isEmpty ? null : diff;
+
+    }
 
   @override
   bool operator ==(covariant User other) {
@@ -73,6 +112,91 @@ class User extends RelationalDatumEntity {
   @override
   int get hashCode {
     return id.hashCode ^ userId.hashCode ^ name.hashCode ^ modifiedAt.hashCode ^ createdAt.hashCode ^ version.hashCode ^ isDeleted.hashCode;
+  }
+}
+
+/// A simple non-relational entity for testing the `isRelational` property.
+class NonRelationalTestEntity extends DatumEntity {
+  @override
+  final String id;
+  @override
+  final String userId;
+  final String data;
+  @override
+  final DateTime modifiedAt;
+  @override
+  final DateTime createdAt;
+  @override
+  final int version;
+  @override
+  final bool isDeleted;
+
+  const NonRelationalTestEntity({
+    required this.id,
+    required this.userId,
+    required this.data,
+    required this.modifiedAt,
+    required this.createdAt,
+    this.version = 1,
+    this.isDeleted = false,
+  });
+
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
+        'id': id,
+        'userId': userId,
+        'data': data,
+        'modifiedAt': modifiedAt.toIso8601String(),
+        'createdAt': createdAt.toIso8601String(),
+        'version': version,
+        'isDeleted': isDeleted,
+      };
+
+  @override
+  NonRelationalTestEntity copyWith({
+    String? id,
+    String? userId,
+    String? data,
+    DateTime? modifiedAt,
+    DateTime? createdAt,
+    int? version,
+    bool? isDeleted,
+  }) {
+    return NonRelationalTestEntity(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      data: data ?? this.data,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      createdAt: createdAt ?? this.createdAt,
+      version: version ?? this.version,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
+
+  @override
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
+
+  @override
+  bool operator ==(covariant NonRelationalTestEntity other) {
+    if (identical(this, other)) return true;
+    return other.id == id &&
+        other.userId == userId &&
+        other.data == data &&
+        other.modifiedAt == modifiedAt &&
+        other.createdAt == createdAt &&
+        other.version == version &&
+        other.isDeleted == isDeleted;
+  }
+
+  @override
+  int get hashCode {
+    return id.hashCode ^
+        userId.hashCode ^
+        data.hashCode ^
+        modifiedAt.hashCode ^
+        createdAt.hashCode ^
+        version.hashCode ^
+        isDeleted.hashCode;
   }
 }
 
@@ -105,8 +229,8 @@ class Post extends RelationalDatumEntity {
   // Define the relationships
   @override
   Map<String, Relation> get relations => {
-        'author': const BelongsTo('userId'),
-        'tags': ManyToMany(PostTag.constInstance, 'postId', 'tagId'),
+        'author': BelongsTo(this, 'userId'),
+        'tags': ManyToMany(this, PostTag.constInstance, 'postId', 'tagId'),
       };
 
   @override
@@ -119,9 +243,27 @@ class Post extends RelationalDatumEntity {
         'version': version,
         'isDeleted': isDeleted,
       };
-
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    if (oldVersion is! Post) return toDatumMap();
+
+    final diff = <String, dynamic>{};
+
+    if (title != oldVersion.title) {
+      diff['title'] = title;
+    }
+    if (modifiedAt != oldVersion.modifiedAt) {
+      diff['modifiedAt'] = modifiedAt.toIso8601String();
+    }
+    if (version != oldVersion.version) {
+      diff['version'] = version;
+    }
+    if (isDeleted != oldVersion.isDeleted) {
+      diff['isDeleted'] = isDeleted;
+    }
+
+    return diff.isEmpty ? null : diff;
+  }
 
   @override
   Post copyWith({
@@ -185,7 +327,7 @@ class Tag extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-        'posts': ManyToMany(PostTag.constInstance, 'tagId', 'postId'),
+        'posts': ManyToMany(this, PostTag.constInstance, 'tagId', 'postId'),
       };
 
   @override
@@ -200,10 +342,47 @@ class Tag extends RelationalDatumEntity {
       };
 
   @override
-  Tag copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) => this;
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    if (oldVersion is! Tag) return toDatumMap();
+
+    final diff = <String, dynamic>{};
+
+    if (name != oldVersion.name) {
+      diff['name'] = name;
+    }
+    if (modifiedAt != oldVersion.modifiedAt) {
+      diff['modifiedAt'] = modifiedAt.toIso8601String();
+    }
+    if (version != oldVersion.version) {
+      diff['version'] = version;
+    }
+    if (isDeleted != oldVersion.isDeleted) {
+      diff['isDeleted'] = isDeleted;
+    }
+
+    return diff.isEmpty ? null : diff;
+  }
 
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+  Tag copyWith({
+    String? id,
+    String? userId,
+    String? name,
+    DateTime? modifiedAt,
+    DateTime? createdAt,
+    int? version,
+    bool? isDeleted,
+  }) {
+    return Tag(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      name: name ?? this.name,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      createdAt: createdAt ?? this.createdAt,
+      version: version ?? this.version,
+      isDeleted: isDeleted ?? this.isDeleted,
+    );
+  }
 
   @override
   bool operator ==(covariant Tag other) {
@@ -264,10 +443,44 @@ class PostTag extends RelationalDatumEntity {
       };
 
   @override
-  PostTag copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) => this;
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    if (oldVersion is! PostTag) return toDatumMap();
+
+    final diff = <String, dynamic>{};
+
+    if (postId != oldVersion.postId) {
+      diff['postId'] = postId;
+    }
+    if (tagId != oldVersion.tagId) {
+      diff['tagId'] = tagId;
+    }
+    if (modifiedAt != oldVersion.modifiedAt) {
+      diff['modifiedAt'] = modifiedAt.toIso8601String();
+    }
+    if (version != oldVersion.version) {
+      diff['version'] = version;
+    }
+    if (isDeleted != oldVersion.isDeleted) {
+      diff['isDeleted'] = isDeleted;
+    }
+
+    return diff.isEmpty ? null : diff;
+  }
 
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+  PostTag copyWith({
+    DateTime? modifiedAt,
+    int? version,
+    bool? isDeleted,
+  }) {
+    return PostTag(
+      id: id,
+      postId: postId,
+      tagId: tagId,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      createdAt: createdAt,
+    );
+  }
 }
 
 /// A Profile entity that "belongs to" a User.
@@ -298,7 +511,7 @@ class Profile extends RelationalDatumEntity {
 
   // Define the relationship
   @override
-  Map<String, Relation> get relations => {'user': const BelongsTo('userId')};
+  Map<String, Relation> get relations => {'user': BelongsTo(this, 'userId')};
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -330,7 +543,26 @@ class Profile extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntity oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    if (oldVersion is! Profile) return toDatumMap();
+
+    final diff = <String, dynamic>{};
+
+    if (bio != oldVersion.bio) {
+      diff['bio'] = bio;
+    }
+    if (modifiedAt != oldVersion.modifiedAt) {
+      diff['modifiedAt'] = modifiedAt.toIso8601String();
+    }
+    if (version != oldVersion.version) {
+      diff['version'] = version;
+    }
+    if (isDeleted != oldVersion.isDeleted) {
+      diff['isDeleted'] = isDeleted;
+    }
+
+    return diff.isEmpty ? null : diff;
+  }
 }
 
 void main() {
@@ -443,6 +675,28 @@ void main() {
     tearDown(() {
       Datum.resetForTesting();
     });
+
+    test(
+      'isRelational property returns true for RelationalDatumEntity and false for DatumEntity',
+      () async {
+        final relationalEntity = User(
+          id: 'relational-1',
+          name: 'Relational User',
+          modifiedAt: DateTime(2023),
+          createdAt: DateTime(2023),
+        );
+        final nonRelationalEntity = NonRelationalTestEntity(
+          id: 'non-relational-1',
+          userId: 'user-1',
+          data: 'Some data',
+          modifiedAt: DateTime(2023),
+          createdAt: DateTime(2023),
+        );
+
+        expect(relationalEntity.isRelational, isTrue);
+        expect(nonRelationalEntity.isRelational, isFalse);
+      },
+    );
 
     test(
       'fetches "belongsTo" related entity successfully from local',

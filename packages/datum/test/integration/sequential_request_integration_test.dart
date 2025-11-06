@@ -67,15 +67,19 @@ void main() {
         await Datum.instance.dispose();
         Datum.resetForTesting();
       }
+      // Ensure SequentialRequestStrategy queues are disposed
+      const strategy = SequentialRequestStrategy();
+      strategy.dispose();
     });
 
     test('concurrent synchronize calls are executed sequentially', () async {
       // Arrange
       final syncCompleters = [Completer<void>(), Completer<void>()];
       final syncExecutionOrder = <int>[];
+      final firstSyncStarted = Completer<void>();
 
       // Initialize Datum with the SequentialRequestStrategy
-      await Datum.initialize(
+      final result = await Datum.initialize(
         config: const DatumConfig(enableLogging: false, syncRequestStrategy: SequentialRequestStrategy()),
         connectivityChecker: connectivityChecker,
         registrations: [
@@ -85,13 +89,17 @@ void main() {
           ),
         ],
       );
-      manager = Datum.manager<TestEntity>(); // Get manager from Datum facade
+      if (result.isFailure()) {
+        fail('Datum initialization failed: ${result.errorOrNull}');
+      }
+      manager = Datum.manager<TestEntity>();
 
       // Stub the remote adapter to be slow and record execution order.
       when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope'))).thenAnswer((_) async {
         if (syncExecutionOrder.isEmpty) {
           // First sync call
           syncExecutionOrder.add(1);
+          firstSyncStarted.complete(); // Signal that first sync has started
           await syncCompleters[0].future; // Block until told to continue
         } else {
           // Second sync call
@@ -101,12 +109,17 @@ void main() {
       });
 
       // Act
-      // Fire two sync calls concurrently.
+      // Start the first sync call
       final future1 = manager.synchronize(userId);
+
+      // Wait for the first sync to actually start executing
+      await firstSyncStarted.future;
+
+      // Now start the second sync call
       final future2 = manager.synchronize(userId);
 
-      // Give the first call a moment to start and enter the queue.
-      await Future<void>.delayed(const Duration(milliseconds: 50));
+      // Give a small delay to ensure the second sync is queued
+      await Future<void>.delayed(const Duration(milliseconds: 10));
 
       // Unblock the first sync. The second one should start immediately after.
       syncCompleters[0].complete();
@@ -124,7 +137,7 @@ void main() {
       final syncCompleter = Completer<void>();
 
       // Initialize Datum with the SkipConcurrentStrategy
-      await Datum.initialize(
+      final result = await Datum.initialize(
         config: const DatumConfig(enableLogging: false, syncRequestStrategy: SkipConcurrentStrategy()),
         connectivityChecker: connectivityChecker,
         registrations: [
@@ -134,7 +147,10 @@ void main() {
           ),
         ],
       );
-      manager = Datum.manager<TestEntity>(); // Get manager from Datum facade
+      if (result.isFailure()) {
+        fail('Datum initialization failed: ${result.errorOrNull}');
+      }
+      manager = Datum.manager<TestEntity>();
 
       // Stub the remote adapter to be slow.
       when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope'))).thenAnswer((_) async {

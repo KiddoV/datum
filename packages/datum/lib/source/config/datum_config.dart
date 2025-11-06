@@ -2,12 +2,14 @@
 import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:equatable/equatable.dart';
 import 'package:datum/source/core/migration/migration.dart';
-import 'package:datum/source/core/models/datum_entity.dart';
+
 import 'package:datum/source/core/models/error_strategy.dart';
 import 'package:datum/source/core/models/user_switch_models.dart';
 import 'package:datum/source/core/resolver/conflict_resolution.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
 import 'package:datum/source/core/manager/datum_sync_request_strategy.dart';
+
+import '../core/models/datum_entity.dart';
 
 /// A handler for migration errors.
 typedef MigrationErrorHandler = Future<void> Function(Object error, StackTrace stackTrace);

@@ -1,9 +1,6 @@
 import 'dart:async';
 
-import 'package:datum/source/core/models/conflict_context.dart';
-import 'package:datum/source/core/resolver/merge_resolver.dart';
-import 'package:datum/source/core/models/datum_entity.dart';
-import 'package:datum/source/core/resolver/conflict_resolution.dart';
+import 'package:datum/datum.dart';
 
 /// A resolver that delegates the conflict decision to the user via a prompt.
 class UserPromptResolver<T extends DatumEntityBase> implements DatumConflictResolver<T> {

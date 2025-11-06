@@ -15,6 +15,10 @@ class MockMiddleware<T extends DatumEntityBase> extends Mock implements DatumMid
 
 class MockObserver<T extends DatumEntityBase> extends Mock implements DatumObserver<T> {}
 
+class _TestMiddleware<T extends DatumEntityBase> extends DatumMiddleware<T> {
+  // Uses the default implementations from the abstract class
+}
+
 void main() {
   group('DatumMiddleware', () {
     late DatumManager<TestEntity> manager;
@@ -412,6 +416,17 @@ void main() {
       // Simulate the initial data being emitted
       streamController.add([stored]);
       await streamController.close();
+    });
+
+    test('default middleware implementations return item unchanged', () async {
+      // Test the default implementations of the abstract class
+      final testMiddleware = _TestMiddleware<TestEntity>();
+
+      final result1 = await testMiddleware.transformBeforeSave(entity);
+      expect(result1, equals(entity));
+
+      final result2 = await testMiddleware.transformAfterFetch(entity);
+      expect(result2, equals(entity));
     });
   });
 }

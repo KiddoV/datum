@@ -1,8 +1,4 @@
-import 'package:datum/source/core/models/conflict_context.dart';
-import 'package:datum/source/core/models/user_switch_models.dart';
-import 'package:datum/source/core/resolver/conflict_resolution.dart';
-import 'package:datum/source/core/models/datum_entity.dart';
-import 'package:datum/source/core/models/datum_sync_result.dart';
+import 'package:datum/datum.dart';
 
 /// An observer class to monitor operations within [DatumManager].
 ///

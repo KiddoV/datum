@@ -111,11 +111,11 @@ import 'package:rxdart/rxdart.dart';
 /// class hierarchy, you can use mixins. This approach provides greater flexibility.
 ///
 /// - **For simple models**: Use [DatumEntityMixin].
-/// - **For models with relationships**: Use both [DatumEntityMixin] and [RelationalDatumEntityMixin].
+/// - **For models with relationships**: Extend [RelationalDatumEntity].
 ///
 /// ```dart
 /// // A model with relationships using mixins
-/// class Comment with Equatable, DatumEntityMixin, RelationalDatumEntityMixin {
+
 ///   @override
 ///   final String id;
 ///   @override

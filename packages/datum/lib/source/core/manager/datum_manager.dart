@@ -637,7 +637,73 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     _ensureInitialized();
     final adapter = (source == DataSource.local ? localAdapter : remoteAdapter) as dynamic;
     final entities = await adapter.query(query, userId: userId) as List<T>;
+
+    if (query.withRelated.isNotEmpty && entities.isNotEmpty) {
+      await _fetchAndStitchRelations(entities, query.withRelated, source, userId);
+    }
+
     return Future.wait(entities.map(_applyPostFetchTransforms));
+  }
+
+  Future<void> _fetchAndStitchRelations(List<T> entities, List<String> relations, DataSource source, String? userId) async {
+    if (entities.isEmpty || entities.first is! RelationalDatumEntity) {
+      return;
+    }
+
+    for (final relationName in relations) {
+      final firstEntity = entities.first as RelationalDatumEntity;
+      final relation = firstEntity.relations[relationName];
+
+      if (relation == null) {
+        _logger.warn('Relation "$relationName" not found on entity ${T.toString()}');
+        continue;
+      }
+
+      final relatedManager = relation.getRelatedManager();
+
+      if (relation is BelongsTo) {
+        final foreignKeyName = relation.foreignKey;
+        final foreignKeyValues = entities.map((e) => (e as RelationalDatumEntity).toDatumMap()[foreignKeyName]).nonNulls.toSet().toList();
+
+        if (foreignKeyValues.isNotEmpty) {
+          final relatedEntities = await relatedManager.query(
+            DatumQuery(filters: [Filter(relation.localKey, FilterOperator.isIn, foreignKeyValues)]),
+            source: source,
+            userId: userId,
+          );
+          final relatedEntitiesById = {for (var e in relatedEntities) e.id: e};
+
+          for (final entity in entities) {
+            final relationalEntity = entity as RelationalDatumEntity;
+            final foreignKeyValue = relationalEntity.toDatumMap()[foreignKeyName];
+            final relatedEntity = relatedEntitiesById[foreignKeyValue];
+            (relationalEntity.relations[relationName] as BelongsTo).set(relatedEntity);
+          }
+        }
+      } else if (relation is HasMany) {
+        final foreignKeyName = relation.foreignKey;
+        final localKeyValues = entities.map((e) => e.id).toSet().toList();
+
+        if (localKeyValues.isNotEmpty) {
+          final relatedEntities = await relatedManager.query(
+            DatumQuery(filters: [Filter(foreignKeyName, FilterOperator.isIn, localKeyValues)]),
+            source: source,
+            userId: userId,
+          );
+
+          final relatedEntitiesByParentId = <String, List<DatumEntityBase>>{};
+          for (final relatedEntity in relatedEntities) {
+            final parentId = (relatedEntity as RelationalDatumEntity).toDatumMap()[foreignKeyName];
+            (relatedEntitiesByParentId[parentId] ??= []).add(relatedEntity);
+          }
+
+          for (final entity in entities) {
+            final related = relatedEntitiesByParentId[entity.id] ?? [];
+            ((entity as RelationalDatumEntity).relations[relationName] as HasMany).set(related.cast());
+          }
+        }
+      }
+    }
   }
 
   /// Deletes an entity by its ID from all local and remote adapters.
@@ -729,6 +795,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     return (wasDeleted, syncResult);
   }
 
+  /// DEPRECATED: This method will be removed in a future version. Use the `withRelated` parameter in the `query` method for eager loading, or the `fetch()` method on the relation object for lazy loading.
   /// Fetches related entities for a given parent entity.
   ///
   /// - [parent]: The entity instance for which to fetch related data. This
@@ -778,6 +845,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     }
   }
 
+  /// DEPRECATED: This method will be removed in a future version. Use the `withRelated` parameter in the `query` method for eager loading, or the `fetch()` method on the relation object for lazy loading.
   /// Reactively watches related entities for a given parent entity.
   ///
   /// This method provides a stream of related entities that automatically

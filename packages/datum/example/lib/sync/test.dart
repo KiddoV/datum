@@ -127,5 +127,5 @@ class TestEntity extends RelationalDatumEntity {
 
   // Add a sample relation for testing relational methods.
   @override
-  Map<String, Relation> get relations => {'posts': const HasMany('userId')};
+  Map<String, Relation> get relations => {'posts': HasMany(this, 'userId')};
 }

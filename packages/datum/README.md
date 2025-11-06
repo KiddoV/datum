@@ -68,7 +68,7 @@ Future<void> main() async {
     initialUserId: Supabase.instance.client.auth.currentUser?.id,
   );
 
-  final datum = await Datum.initialize(
+  final datumEither = await Datum.initialize(
     config: config,
     connectivityChecker: CustomConnectivityChecker(), // Your implementation
     registrations: [
@@ -81,6 +81,13 @@ Future<void> main() async {
       ),
     ],
   );
+
+  if (datumEither.isFailure) {
+    // Handle initialization failure
+    throw datumEither.failure!;
+  }
+
+  final datum = datumEither.success!;
   runApp(MyApp(datum: datum));
 }
 ```
@@ -954,59 +961,74 @@ To make the most out of Datum and ensure your application is robust and scalable
 
 ## 📝 CRUD and Queries
 
-Once Datum is initialized, you can use the `DatumManager` to perform CRUD operations and queries.
+Once Datum is initialized, you can use the `Datum.instance` singleton to perform CRUD operations and queries directly.
 
 ```dart
-// Get the manager for the Task entity
-final taskManager = Datum.manager<Task>();
+const userId = 'user123'; // In a real app, get this from auth
 
 // Create a new task
-final newTask = Task.create(title: 'My new task');
-await taskManager.create(newTask);
+final newTask = Task(
+  id: 'task-1',
+  userId: userId,
+  title: 'My new task',
+  createdAt: DateTime.now(),
+  modifiedAt: DateTime.now(),
+);
+await Datum.instance.create(newTask);
 
 // Read a task
-final task = await taskManager.read(newTask.id);
+final task = await Datum.instance.read<Task>('task-1', userId: userId);
 
 // Read all tasks for the current user
-final tasks = await taskManager.readAll();
+final tasks = await Datum.instance.readAll<Task>(userId: userId);
 
 // Update a task
 final updatedTask = task!.copyWith(isCompleted: true);
-await taskManager.update(updatedTask);
+await Datum.instance.update(updatedTask);
 
 // Delete a task
-await taskManager.delete(task.id);
+await Datum.instance.delete<Task>(id: 'task-1', userId: userId);
 
 // Watch for changes to a single task
-taskManager.watchById(task.id).listen((task) {
+Datum.instance.watchById<Task>('task-1', userId).listen((task) {
   print('Task updated: ${task?.title}');
 });
 
 // Watch for changes to all tasks
-taskManager.watchAll().listen((tasks) {
+Datum.instance.watchAll<Task>(userId: userId).listen((tasks) {
   print('Tasks updated: ${tasks.length}');
 });
 ```
+
+> **Note:** You can also access managers directly using `Datum.manager<Task>()` if you need more advanced functionality or prefer the manager-based approach.
 
 ### Query Builder
 
 Datum provides a fluent query builder to create more specific queries.
 
 ```dart
-final taskManager = Datum.manager<Task>();
+const userId = 'user123'; // In a real app, get this from auth
 
 // Find all completed tasks with high priority
-final highPriorityTasks = await taskManager.query()
+final query = DatumQueryBuilder<Task>()
   .where('isCompleted', isEqualTo: true)
   .where('priority', isGreaterThan: 2)
   .orderBy('createdAt', descending: true)
   .limit(10)
-  .find();
+  .build();
+
+final highPriorityTasks = await Datum.instance.query<Task>(
+  query,
+  source: DataSource.local,
+  userId: userId,
+);
 
 // Watch for changes to a query
-taskManager.query()
+final incompleteQuery = DatumQueryBuilder<Task>()
   .where('isCompleted', isEqualTo: false)
-  .watch()
+  .build();
+
+Datum.instance.watchQuery<Task>(incompleteQuery, userId: userId)
   .listen((tasks) {
     print('Incomplete tasks updated: ${tasks.length}');
   });
@@ -1037,12 +1059,22 @@ class Post extends RelationalDatumEntity {
 
 ### Fetching Related Data
 
-Use `fetchRelated` on a `DatumManager` to get related entities.
-For this example, let's assume a `Post` has a `belongsTo` relationship with a `Task` (e.g., a post is about a specific task).
+Use queries with `withRelated` to eagerly load related entities, or use the deprecated `fetchRelated` method for lazy loading.
 
 ```dart
-// Fetch the task associated with a post
-final relatedTask = await Datum.manager<Post>().fetchRelated<Task>(post, 'task');
+const userId = 'user123'; // In a real app, get this from auth
+
+// Eager loading with queries (recommended)
+final postsWithAuthors = await Datum.instance.query<Post>(
+  DatumQueryBuilder<Post>()
+    .withRelated(['author'])
+    .build(),
+  source: DataSource.local,
+  userId: userId,
+);
+
+// Lazy loading (deprecated, will be removed in future version)
+final relatedTask = await Datum.instance.fetchRelated<Post, Task>(post, 'task');
 ```
 
 ---

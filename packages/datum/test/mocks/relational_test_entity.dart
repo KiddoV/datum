@@ -1,7 +1,6 @@
 import 'package:datum/datum.dart';
-import 'package:equatable/equatable.dart';
 
-class RelationalTestEntity with EquatableMixin, DatumEntityMixin, RelationalDatumEntityMixin {
+class RelationalTestEntity extends RelationalDatumEntity {
   @override
   final String id;
   @override
@@ -17,7 +16,7 @@ class RelationalTestEntity with EquatableMixin, DatumEntityMixin, RelationalDatu
 
   final String name;
 
-  RelationalTestEntity({
+  const RelationalTestEntity({
     required this.id,
     required this.userId,
     required this.createdAt,
@@ -74,7 +73,8 @@ class RelationalTestEntity with EquatableMixin, DatumEntityMixin, RelationalDatu
   }
 
   @override
-  Map<String, dynamic>? diff(RelationalTestEntity oldVersion) {
+  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion) {
+    if (oldVersion is! RelationalTestEntity) return toDatumMap();
     final changes = <String, dynamic>{};
     if (name != oldVersion.name) changes['name'] = name;
     return changes.isEmpty ? null : changes;
@@ -85,6 +85,6 @@ class RelationalTestEntity with EquatableMixin, DatumEntityMixin, RelationalDatu
 
   @override
   Map<String, Relation> get relations => {
-        'relatedEntities': const HasMany('relationalTestEntityId'),
+        'relatedEntities': HasMany(this, 'relationalTestEntityId'),
       };
 }

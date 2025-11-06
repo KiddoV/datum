@@ -19,6 +19,9 @@ class DatumQuery {
   /// The logical operator to combine filters (AND/OR).
   final LogicalOperator logicalOperator;
 
+  /// A list of relationship names to eager-load.
+  final List<String> withRelated;
+
   /// Creates a query with a list of filters and sorting criteria.
   const DatumQuery({
     this.filters = const [],
@@ -26,6 +29,7 @@ class DatumQuery {
     this.limit,
     this.offset,
     this.logicalOperator = LogicalOperator.and,
+    this.withRelated = const [],
   });
 
   /// Creates a copy of this query with updated fields.
@@ -35,6 +39,7 @@ class DatumQuery {
     int? limit,
     int? offset,
     LogicalOperator? logicalOperator,
+    List<String>? withRelated,
   }) {
     return DatumQuery(
       filters: filters ?? this.filters,
@@ -42,6 +47,7 @@ class DatumQuery {
       limit: limit ?? this.limit,
       offset: offset ?? this.offset,
       logicalOperator: logicalOperator ?? this.logicalOperator,
+      withRelated: withRelated ?? this.withRelated,
     );
   }
 
@@ -53,6 +59,7 @@ class DatumQuery {
       if (limit != null) 'limit: $limit',
       if (offset != null) 'offset: $offset',
       'operator: ${logicalOperator.name}',
+      if (withRelated.isNotEmpty) 'withRelated: $withRelated',
     ];
     return 'DatumQuery(${parts.join(', ')})';
   }

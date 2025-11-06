@@ -1,12 +1,7 @@
 import 'package:datum/source/core/models/datum_entity.dart';
-import 'package:equatable/equatable.dart';
 import 'package:test/test.dart';
 
-abstract class EquatableBase extends Equatable {
-  const EquatableBase();
-}
-
-class TestEntity extends EquatableBase with DatumEntityMixin {
+class TestEntity extends DatumEntity {
   @override
   final String id;
   @override
@@ -20,7 +15,7 @@ class TestEntity extends EquatableBase with DatumEntityMixin {
   @override
   final bool isDeleted;
 
-  TestEntity({
+  const TestEntity({
     required this.id,
     required this.userId,
     required this.modifiedAt,
@@ -35,7 +30,7 @@ class TestEntity extends EquatableBase with DatumEntityMixin {
   }
 
   @override
-  TestEntity copyWith({
+  DatumEntityBase copyWith({
     DateTime? modifiedAt,
     int? version,
     bool? isDeleted,
@@ -57,6 +52,12 @@ class TestEntity extends EquatableBase with DatumEntityMixin {
   Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
     throw UnimplementedError();
   }
+
+  @override
+  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted];
+
+  @override
+  bool get isRelational => false;
 
   @override
   bool? get stringify => true;

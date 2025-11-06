@@ -29,7 +29,7 @@ class User extends RelationalDatumEntity {
   }) : userId = id;
 
   @override
-  Map<String, Relation> get relations => {'posts': const HasMany('userId')};
+  Map<String, Relation> get relations => {'posts': HasMany(this, 'userId')};
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {};

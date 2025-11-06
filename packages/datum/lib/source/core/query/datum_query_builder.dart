@@ -6,9 +6,15 @@ class DatumQueryBuilder<T> {
   final List<SortDescriptor> _sorting = [];
   int? _limit;
   int? _offset;
+  final List<String> _withRelated = [];
 
   /// The logical operator for combining filters at the root level.
   LogicalOperator logicalOperator = LogicalOperator.and;
+
+  DatumQueryBuilder<T> withRelated(List<String> relations) {
+    _withRelated.addAll(relations);
+    return this;
+  }
 
   /// Adds a filter condition to the query.
   ///
@@ -217,6 +223,7 @@ class DatumQueryBuilder<T> {
       limit: _limit,
       offset: _offset,
       logicalOperator: logicalOperator,
+      withRelated: List.unmodifiable(_withRelated),
     );
   }
 }
