@@ -31,15 +31,26 @@ You should consider Datum if you are building an application that:
 - **Has a complex data model:** For apps with relational data that needs to be available on the device.
 - **You want to avoid backend lock-in:** Datum's adapter-based architecture gives you the freedom to choose—and change—your database and backend services without rewriting your app's business logic.
 
+## Getting Started
+
+New to Datum? Here's how to get started:
+
+1. **[Define your entities](guides/entity_define.md)**: Learn about `DatumEntity` and `RelationalDatumEntity`
+2. **[Set up initialization](guides/initialization.md)**: Configure and initialize the Datum system
+3. **[Work with relationships](guides/relationships.md)**: Define and use entity relationships
+4. **[Query your data](guides/querying.md)**: Filter, sort, and paginate data
+5. **[Implement adapters](guides/local_adapter_implement.md)**: Create local and remote adapters
+
 ## Core Concepts
 
 Datum is built around a few key ideas:
 
 - **`DatumEntity`**: The base class for your data models. It requires a unique `id`, `userId`, and other metadata for synchronization.
+- **`RelationalDatumEntity`**: Extends `DatumEntity` with relationship support for connecting entities.
 - **`Adapter`**: The bridge between Datum and your data sources.
     - **`LocalAdapter`**: Manages data persistence on the device (e.g., Hive, Isar, SQLite).
     - **`RemoteAdapter`**: Communicates with your backend (e.g., a REST API, Supabase, Firestore).
-- **`Datum`**: The main entry point for interacting with your data. It provides a unified API for CRUD operations, queries, and synchronization with finding Managers.
+- **`Datum`**: The main entry point for interacting with your data. It provides a unified API for CRUD operations, queries, and synchronization.
 - **Offline-First:** All data operations are performed on the local database first, ensuring a snappy UI. Datum then automatically syncs changes to the remote backend when a connection is available.
 
 ---

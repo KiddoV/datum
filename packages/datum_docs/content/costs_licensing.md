@@ -25,13 +25,135 @@ These fields are essential for tracking changes, resolving conflicts, and ensuri
 
 ### 2. Metadata Storage
 
-Datum also requires a separate table or collection in your database (both local and remote) to store synchronization metadata, as represented by the `DatumSyncMetadata` class. This table stores information like:
+Datum also requires a separate table or collection in your database (both local and remote) to store synchronization metadata, as represented by the `DatumSyncMetadata` class. This table stores comprehensive sync state information.
 
--   `lastSyncTime`: To know which changes to fetch from the server.
--   `dataHash`: For quick data integrity checks.
--   `entityCounts`: To track the number of records for each entity type.
+#### Backend Setup for DatumSyncMetadata
 
-This metadata is vital for the sync engine to operate efficiently and reliably.
+For your remote backend to work correctly with Datum, you need to create a `sync_metadata` table with the following structure:
+
+**SQL (PostgreSQL/Supabase):**
+```sql
+CREATE TABLE sync_metadata (
+  user_id TEXT PRIMARY KEY,
+  last_sync_time TIMESTAMPTZ,
+  last_successful_sync_time TIMESTAMPTZ,
+  data_hash TEXT,
+  device_id TEXT,
+  devices JSONB DEFAULT '{}',
+  custom_metadata JSONB,
+  entity_counts JSONB DEFAULT '{}',
+  sync_status TEXT NOT NULL DEFAULT 'neverSynced',
+  sync_version INTEGER NOT NULL DEFAULT 1,
+  server_timestamp TIMESTAMPTZ,
+  conflict_count INTEGER NOT NULL DEFAULT 0,
+  error_message TEXT,
+  retry_count INTEGER NOT NULL DEFAULT 0,
+  sync_duration INTEGER
+);
+
+-- Enable RLS (Row Level Security) if using Supabase
+ALTER TABLE sync_metadata ENABLE ROW LEVEL SECURITY;
+
+-- Create policy to allow users to only access their own metadata
+CREATE POLICY "Users can only access their own sync metadata"
+ON sync_metadata FOR ALL USING (auth.uid()::text = user_id);
+```
+
+**Firestore (Firebase):**
+```javascript
+// Collection: sync_metadata
+// Document ID: {userId}
+// Fields:
+{
+  userId: "string", // (document ID)
+  lastSyncTime: "Timestamp",
+  lastSuccessfulSyncTime: "Timestamp",
+  dataHash: "string",
+  deviceId: "string",
+  devices: { "deviceId": "Timestamp" },
+  customMetadata: { "key": "any" },
+  entityCounts: {
+    "entityType": {
+      count: 0,
+      hash: "string",
+      lastModified: "Timestamp",
+      pendingChanges: 0
+    }
+  },
+  syncStatus: "string", // 'neverSynced', 'syncing', 'synced', 'failed', 'pending', 'conflict'
+  syncVersion: 1,
+  serverTimestamp: "Timestamp",
+  conflictCount: 0,
+  errorMessage: "string",
+  retryCount: 0,
+  syncDuration: 0
+}
+```
+
+```javascript
+// Security Rules
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /sync_metadata/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+  }
+}
+```
+
+**MongoDB:**
+```javascript
+// Collection: sync_metadata
+{
+  _id: ObjectId(),
+  userId: "String", // indexed, unique
+  lastSyncTime: new Date(),
+  lastSuccessfulSyncTime: new Date(),
+  dataHash: "String",
+  deviceId: "String",
+  devices: {}, // { deviceId: Date }
+  customMetadata: {},
+  entityCounts: {}, // { entityType: { count, hash, lastModified, pendingChanges } }
+  syncStatus: "String", // 'neverSynced', 'syncing', 'synced', 'failed', 'pending', 'conflict'
+  syncVersion: 1,
+  serverTimestamp: new Date(),
+  conflictCount: 0,
+  errorMessage: "String",
+  retryCount: 0,
+  syncDuration: 0
+}
+```
+
+```javascript
+// Create index
+db.sync_metadata.createIndex({ userId: 1 }, { unique: true });
+```
+
+**MySQL:**
+```sql
+CREATE TABLE sync_metadata (
+  user_id VARCHAR(255) PRIMARY KEY,
+  last_sync_time DATETIME NULL,
+  last_successful_sync_time DATETIME NULL,
+  data_hash TEXT NULL,
+  device_id VARCHAR(255) NULL,
+  devices JSON DEFAULT ('{}'),
+  custom_metadata JSON NULL,
+  entity_counts JSON DEFAULT ('{}'),
+  sync_status VARCHAR(20) NOT NULL DEFAULT 'neverSynced',
+  sync_version INT NOT NULL DEFAULT 1,
+  server_timestamp DATETIME NULL,
+  conflict_count INT NOT NULL DEFAULT 0,
+  error_message TEXT NULL,
+  retry_count INT NOT NULL DEFAULT 0,
+  sync_duration INT NULL,
+
+  INDEX idx_user_id (user_id)
+);
+```
+
+The metadata table must be accessible by your `RemoteAdapter` implementation, and the `user_id` field should match the user ID used throughout your Datum entities. This metadata is vital for the sync engine to operate efficiently and reliably.
 
 ### 3. Development and Maintenance Overhead
 

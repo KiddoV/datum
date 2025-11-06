@@ -9,7 +9,6 @@ import 'package:datum_docs/components/custom_image.dart';
 import 'package:jaspr/server.dart';
 
 import 'package:jaspr_content/components/callout.dart';
-import 'package:jaspr_content/components/code_block.dart';
 import 'package:jaspr_content/components/github_button.dart';
 import 'package:jaspr_content/components/sidebar.dart';
 import 'package:jaspr_content/components/theme_toggle.dart';
@@ -18,6 +17,8 @@ import 'package:jaspr_content/theme.dart';
 
 // This file is generated automatically by Jaspr, do not remove or edit.
 import 'jaspr_options.dart';
+
+import 'components/code_block.dart';
 
 void main() {
   // Initializes the server environment with the generated default options.
@@ -49,7 +50,10 @@ void main() {
         // The <Info> block and other callouts.
         Callout(),
         // Adds syntax highlighting to code blocks.
-        CodeBlock(),
+        CodeBlock(
+          defaultLanguage: 'dart',
+          grammars: {},
+        ),
         // Adds a custom Jaspr component to be used as <Clicker/> in markdown.
         // CustomComponent(
         //   pattern: 'Clicker',
@@ -114,14 +118,24 @@ void main() {
                 ],
               ),
               SidebarGroup(
-                title: 'Initialization Guides',
+                title: 'Guides',
                 links: [
                   SidebarLink(text: "Define Your Entity", href: '/guides/entity_define'),
+                  SidebarLink(text: "Initialization & Global API", href: '/guides/initialization'),
+                  SidebarLink(text: "Working with Relationships", href: '/guides/relationships'),
+                  SidebarLink(text: "Querying Data", href: '/guides/querying'),
                   SidebarLink(text: "Define Your Local Adapter", href: '/guides/local_adapter_implement'),
                   SidebarLink(text: "Define Your Remote Adapter", href: '/guides/remote_adapter_implement'),
-                  // SidebarLink(text: "Adapter", href: '/modules/adapter'),
-                  // SidebarLink(text: "Configuration", href: '/modules/config'),
-                  // SidebarLink(text: "Utils", href: '/modules/utils'),
+                ],
+              ),
+              SidebarGroup(
+                title: 'Custom Adapters',
+                links: [
+                  SidebarLink(text: "Hive Local Adapter", href: '/guides/custom_adapters/hive_adapter'),
+                  SidebarLink(text: "Isar Local Adapter", href: '/guides/custom_adapters/isar_adapter'),
+                  SidebarLink(text: "REST API Remote Adapter", href: '/guides/custom_adapters/rest_api_adapter'),
+                  SidebarLink(text: "Firebase Remote Adapter", href: '/guides/custom_adapters/firebase_adapter'),
+                  SidebarLink(text: "Supabase Remote Adapter", href: '/guides/custom_adapters/supabase_adapter'),
                 ],
               ),
 
@@ -129,6 +143,10 @@ void main() {
                 title: 'Modules',
                 links: [
                   SidebarLink(text: "Core", href: '/modules/core'),
+                  SidebarLink(text: "Query", href: '/modules/query'),
+                  SidebarLink(text: "Migration", href: '/modules/migration'),
+                  SidebarLink(text: "Health", href: '/modules/health'),
+                  SidebarLink(text: "Observers & Middleware", href: '/modules/observers'),
                   SidebarLink(text: "Adapter", href: '/modules/adapter'),
                   SidebarLink(text: "Configuration", href: '/modules/config'),
                   SidebarLink(text: "Utils", href: '/modules/utils'),

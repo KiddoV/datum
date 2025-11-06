@@ -190,11 +190,18 @@ Base class for all entities managed by Datum.
 
 #### RelationalDatumEntity
 
-Extends `DatumEntityBase` with relationship support.
+Extends `DatumEntityBase` with relationship support for connecting entities.
 
 **Additional Features:**
-- `relations`: Map of entity relationships (BelongsTo, HasMany)
+- `relations`: Map of entity relationships (BelongsTo, HasMany, HasOne, ManyToMany)
 - Support for eager and lazy loading of related data
+- Automatic relationship resolution during queries
+
+**Relationship Types:**
+- `BelongsTo<T>`: Current entity holds foreign key pointing to related entity
+- `HasMany<T>`: Other entities hold foreign key pointing to this entity (one-to-many)
+- `HasOne<T>`: Other entity holds foreign key pointing to this entity (one-to-one)
+- `ManyToMany<T>`: Many-to-many relationship using a pivot/junction table
 
 #### DatumSyncOperation<T>
 

@@ -5,13 +5,13 @@
 // Generated with jaspr_builder
 
 import 'package:jaspr/jaspr.dart';
-import 'package:datum_docs/components/custom_image.dart' as prefix0;
+import 'package:datum_docs/components/code_block.dart' as prefix0;
+import 'package:datum_docs/components/custom_image.dart' as prefix1;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
-    as prefix1;
-import 'package:jaspr_content/components/_internal/zoomable_image.dart'
     as prefix2;
-import 'package:jaspr_content/components/callout.dart' as prefix3;
-import 'package:jaspr_content/components/code_block.dart' as prefix4;
+import 'package:jaspr_content/components/_internal/zoomable_image.dart'
+    as prefix3;
+import 'package:jaspr_content/components/callout.dart' as prefix4;
 import 'package:jaspr_content/components/github_button.dart' as prefix5;
 import 'package:jaspr_content/components/sidebar_toggle_button.dart' as prefix6;
 import 'package:jaspr_content/components/theme_toggle.dart' as prefix7;
@@ -34,13 +34,13 @@ import 'package:jaspr_content/components/theme_toggle.dart' as prefix7;
 /// ```
 JasprOptions get defaultJasprOptions => JasprOptions(
   clients: {
-    prefix1.CodeBlockCopyButton: ClientTarget<prefix1.CodeBlockCopyButton>(
+    prefix2.CodeBlockCopyButton: ClientTarget<prefix2.CodeBlockCopyButton>(
       'jaspr_content:components/_internal/code_block_copy_button',
     ),
 
-    prefix2.ZoomableImage: ClientTarget<prefix2.ZoomableImage>(
+    prefix3.ZoomableImage: ClientTarget<prefix3.ZoomableImage>(
       'jaspr_content:components/_internal/zoomable_image',
-      params: _prefix2ZoomableImage,
+      params: _prefix3ZoomableImage,
     ),
 
     prefix5.GitHubButton: ClientTarget<prefix5.GitHubButton>(
@@ -57,11 +57,11 @@ JasprOptions get defaultJasprOptions => JasprOptions(
     ),
   },
   styles: () => [
-    ...prefix0.CustomImage.styles,
+    ...prefix0.CodeBlock.styles,
+    ...prefix1.CustomImage.styles,
 
-    ...prefix2.ZoomableImage.styles,
-    ...prefix3.Callout.styles,
-    ...prefix4.CodeBlock.styles,
+    ...prefix3.ZoomableImage.styles,
+    ...prefix4.Callout.styles,
 
     ...prefix5.GitHubButton.styles,
 
@@ -69,7 +69,7 @@ JasprOptions get defaultJasprOptions => JasprOptions(
   ],
 );
 
-Map<String, dynamic> _prefix2ZoomableImage(prefix2.ZoomableImage c) => {
+Map<String, dynamic> _prefix3ZoomableImage(prefix3.ZoomableImage c) => {
   'src': c.src,
   'alt': c.alt,
   'caption': c.caption,
