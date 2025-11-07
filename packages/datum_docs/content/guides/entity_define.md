@@ -13,6 +13,339 @@ Use `DatumEntity` for entities that don't need relationships with other entities
 
 Use `RelationalDatumEntity` for entities that have relationships with other entities. This extends `DatumEntity` and adds support for defining and managing relationships.
 
+## Entity Definition Approaches
+
+Datum provides multiple ways to define your entities. Choose the approach that best fits your needs:
+
+<Tabs defaultValue="inheritance">
+  <TabItem label="Inheritance (Classes)" value="inheritance">
+    <b>Use when:</b> You want full Datum integration with built-in relationship support.
+
+  ### DatumEntity (Non-Relational)
+
+  Use `DatumEntity` for entities that don't need relationships:
+
+ ```dart
+    class Task extends DatumEntity {
+      @override
+      final String id;
+      @override
+      final String userId;
+      final String title;
+      final String? description;
+      final bool isCompleted;
+
+      const Task({
+        required this.id,
+        required this.userId,
+        required this.title,
+        this.description,
+        this.isCompleted = false,
+        required super.createdAt,
+        required super.modifiedAt,
+        super.isDeleted = false,
+        super.version = 1,
+      });
+
+      // Implement required methods...
+    }
+  ```
+
+  ### RelationalDatumEntity (Relational)
+
+  Use `RelationalDatumEntity` for entities with relationships:
+
+  ```dart
+    class User extends RelationalDatumEntity {
+      @override
+      Map<String, Relation> get relations => {
+        'posts': HasMany<Post>(this, 'userId'),
+        'profile': HasOne<Profile>(this, 'userId'),
+      };
+
+      // Implementation...
+    }
+  ```
+
+  **Benefits:**
+    - Full Datum integration
+    - Built-in relationship support
+    - Type safety
+    - Automatic serialization
+
+  **Complexity:** Medium-High
+  </TabItem>
+
+  <TabItem label="Mixins (Composition)" value="mixins">
+  <b>Use when:</b> You need to add Datum functionality to existing classes or prefer composition over inheritance.
+
+  ### DatumEntityMixin
+
+  Basic mixin with change tracking and serialization:
+
+  ```dart
+    class Task with DatumEntityMixin {
+      String title;
+      String description;
+      bool isCompleted;
+      DateTime? dueDate;
+
+      Task({
+        String? id,
+        required this.title,
+        this.description = '',
+        this.isCompleted = false,
+        this.dueDate,
+      }) {
+        // Initialize with mixin
+        this.id = id ?? generateId();
+        this.createdAt = DateTime.now();
+        this.modifiedAt = DateTime.now();
+      }
+
+      @override
+      Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
+        return {
+          'id': id,
+          'title': title,
+          'description': description,
+          'isCompleted': isCompleted,
+          'dueDate': dueDate?.toIso8601String(),
+          'createdAt': createdAt.toIso8601String(),
+          'modifiedAt': modifiedAt.toIso8601String(),
+        };
+      }
+
+      factory Task.fromMap(Map<String, dynamic> map) {
+        return Task(
+          id: map['id'],
+          title: map['title'],
+          description: map['description'],
+          isCompleted: map['isCompleted'],
+          dueDate: map['dueDate'] != null ? DateTime.parse(map['dueDate']) : null,
+        )..createdAt = DateTime.parse(map['createdAt'])
+          ..modifiedAt = DateTime.parse(map['modifiedAt']);
+      }
+    }
+  ```
+
+  ### RelationDatumEntityMixin
+
+  Mixin with relationship management:
+
+  ```dart
+    class Project with RelationDatumEntityMixin {
+      String name;
+      String description;
+      List<String> taskIds;
+
+      Project({
+        String? id,
+        required this.name,
+        this.description = '',
+        List<String>? taskIds,
+      }) : taskIds = taskIds ?? [] {
+        this.id = id ?? generateId();
+        this.createdAt = DateTime.now();
+        this.modifiedAt = DateTime.now();
+      }
+
+      // Relationship management methods...
+      Future<void> addTask(String taskId) async {
+        if (!taskIds.contains(taskId)) {
+          taskIds.add(taskId);
+          await updateRelationship('tasks', taskId, RelationshipAction.add);
+        }
+      }
+    }
+
+  ```
+
+  **Benefits:**
+  - Flexible composition
+  - Add Datum features to existing classes
+  - Less coupling than inheritance
+  - Manual relationship control
+
+  **Complexity:** Low-Medium
+</TabItem>
+</Tabs>
+
+## Detailed Comparison & Best Practices
+
+
+|Feature | DatumEntity | RelationalDatumEntity | DatumEntityMixin | RelationDatumEntityMixin |
+|---------|-------------|----------------------|------------------|--------------------------|
+| **Use Case** | Simple entities | Complex relationships | Simple with utilities | Utilities + relationships |
+| **Complexity** | 🟢 Low | 🔴 High | 🟢 Low | 🟡 Medium |
+| **Relationships** | ❌ None | ✅ Built-in | ❌ None | 🔧 Manual |
+| **Inheritance** | ✅ Required | ✅ Required | ❌ Not required | ❌ Not required |
+| **Flexibility** | ⚪ Low | 🟡 Medium | 🟢 High | 🟢 High |
+| **Performance** | 🟢 Good | 🟢 Good | 🟢 Good | 🟢 Good |
+| **Setup Time** | 🟢 Fast | 🟡 Medium | 🟢 Fast | 🟡 Medium |
+
+
+
+### 🏗️ Inheritance Approaches
+
+**Best For:**
+- New projects from scratch
+- Full Datum ecosystem integration
+- Built-in relationship management
+- Type-safe entity hierarchies
+
+**When to Choose:**
+- You want comprehensive Datum features
+- Relationships are central to your domain
+- You prefer declarative relationship definitions
+
+### 🔧 Mixin Approaches
+
+**Best For:**
+- Adding Datum to existing classes
+- Composition over inheritance preference
+- Library/framework development
+- Gradual migration scenarios
+
+**When to Choose:**
+- You have existing class hierarchies
+- You need more control over relationships
+- You're building reusable components
+
+### 🔄 Migration Between Approaches
+
+**From Mixin to Inheritance:**
+```dart
+// Before (Mixin)
+class Task with DatumEntityMixin {
+  // Implementation
+}
+
+// After (Inheritance)
+class Task extends DatumEntity {
+  // Copy properties and methods from mixin version
+  // Add required super constructor calls
+  Task({
+    required super.id,
+    required super.userId,
+    required super.createdAt,
+    required super.modifiedAt,
+    // ... other params
+  });
+}
+```
+
+**From Inheritance to Mixin:**
+```dart
+// Before (Inheritance)
+class Task extends DatumEntity {
+  // Implementation
+}
+
+// After (Mixin)
+class Task with DatumEntityMixin {
+  // Remove extends clause
+  // Initialize mixin properties in constructor
+  Task() {
+    this.id = generateId();
+    this.createdAt = DateTime.now();
+    this.modifiedAt = DateTime.now();
+  }
+}
+```
+
+> **💡 Pro Tip:** Start with inheritance approaches for new projects, and use mixins when you need to integrate Datum into existing codebases or prefer more flexible composition patterns.
+
+## Implementation Best Practices
+
+### Core Requirements
+
+1. **Always implement `toDatumMap()` and `fromMap()`**
+   ```dart
+   @override
+   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
+     // Required for serialization
+   }
+
+   factory EntityName.fromMap(Map<String, dynamic> map) {
+     // Required for deserialization
+   }
+   ```
+
+2. **Use meaningful relationship names**
+   ```dart
+   // Good
+   'author': BelongsTo<User>(this, 'userId'),
+   'comments': HasMany<Comment>(this, 'postId'),
+
+   // Avoid
+   'rel1': BelongsTo<User>(this, 'userId'),
+   'rel2': HasMany<Comment>(this, 'postId'),
+   ```
+
+### Advanced Patterns
+
+3. **Validate relationships before saving**
+   ```dart
+   Future<void> saveEntity(MyEntity entity) async {
+     await entity.validateRelationships();
+     await manager.save(entity, userId: userId);
+   }
+   ```
+
+4. **Handle cascading deletes carefully**
+   ```dart
+   @override
+   Future<void> beforeDelete() async {
+     // Clean up related entities
+     for (final relatedId in relatedIds) {
+       await deleteRelatedEntity<RelatedEntity>(relatedId);
+     }
+   }
+   ```
+
+5. **Use lazy loading for performance**
+   ```dart
+   // Load relationships on demand
+   Future<List<Comment>> getComments() async {
+     return await getRelatedEntities<Comment>('comments');
+   }
+   ```
+
+### Performance Considerations
+
+- **Inheritance approaches** have slightly better performance due to direct method calls
+- **Mixin approaches** have minimal performance overhead but offer more flexibility
+- **Relationship-heavy entities** benefit from built-in relationship management
+- **Large datasets** should use lazy loading to avoid memory issues
+
+### Testing Recommendations
+
+```dart
+void main() {
+  group('Entity Tests', () {
+    test('should serialize correctly', () {
+      final entity = Task(title: 'Test Task');
+      final map = entity.toDatumMap();
+      expect(map['title'], equals('Test Task'));
+    });
+
+    test('should deserialize correctly', () {
+      final map = {'id': '1', 'title': 'Test', 'userId': 'user1'};
+      final entity = Task.fromMap(map);
+      expect(entity.title, equals('Test'));
+    });
+
+    test('should handle relationships', () async {
+      final project = Project(name: 'Test Project');
+      await project.addTask('task1');
+      expect(project.taskIds, contains('task1'));
+    });
+  });
+}
+```
+
+
 ## Next Steps
 
 Now that you've defined your entities, you can:
@@ -743,4 +1076,3 @@ class Profile extends RelationalDatumEntity {
   }
 }
 ```
-

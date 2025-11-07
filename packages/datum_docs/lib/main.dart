@@ -9,8 +9,8 @@ import 'package:datum_docs/components/custom_header.dart';
 import 'package:datum_docs/components/custom_image.dart';
 import 'package:datum_docs/components/enhanced_theme_toggle.dart';
 import 'package:jaspr/server.dart';
-import 'package:jaspr_content/components/callout.dart';
 import 'package:jaspr_content/components/sidebar.dart';
+import 'package:jaspr_content/components/tabs.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
@@ -22,6 +22,7 @@ import 'components/steps.dart';
 import 'components/card.dart';
 import 'components/badge.dart';
 import 'components/tip.dart';
+import 'components/comparison_table.dart';
 
 void main() {
   // Initializes the server environment with the generated default options.
@@ -63,6 +64,8 @@ void main() {
         Badge(),
         // Custom tip component for helpful information
         Tip(),
+        // Comparison table component for feature comparisons
+       //// ComparisonTable(),
         // Adds a custom Jaspr component to be used as <Clicker/> in markdown.
         // CustomComponent(
         //   pattern: 'Clicker',
@@ -70,6 +73,7 @@ void main() {
         // ),
         // Adds zooming and caption support to images.
         CustomImage(zoom: false),
+        Tabs(),
       ],
 
       layouts: [

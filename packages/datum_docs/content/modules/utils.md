@@ -99,4 +99,3 @@ await isolateHelper.initialize();
 
 // Encode large JSON payload without blocking UI
 final encodedSize = await isolateHelper.computeJsonEncode(largeMap);
-```
