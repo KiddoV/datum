@@ -2,6 +2,7 @@ import 'package:datum/datum.dart';
 import 'package:example/data/task/entity/task.dart';
 import 'package:example/features/simple_datum/controller/simple_datum_provider.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:rxdart/rxdart.dart';
 
 final nextSyncTimeProvider = StreamProvider.autoDispose<DateTime?>(
   (ref) {
@@ -10,6 +11,28 @@ final nextSyncTimeProvider = StreamProvider.autoDispose<DateTime?>(
     return taskManager.onNextSyncTimeChanged;
   },
   name: 'nextSyncTimeProvider',
+);
+
+final countdownProvider = StreamProvider.autoDispose<Duration?>(
+  (ref) {
+    final nextSyncTimeAsync = ref.watch(nextSyncTimeProvider);
+
+    return nextSyncTimeAsync.when(
+      data: (nextSyncTime) {
+        print(nextSyncTime);
+        if (nextSyncTime == null) return Stream.value(null);
+
+        return Stream.periodic(const Duration(seconds: 1), (_) {
+          final now = DateTime.now();
+          final remaining = nextSyncTime.difference(now);
+          return remaining.isNegative ? Duration.zero : remaining;
+        }).startWith(nextSyncTime.difference(DateTime.now()));
+      },
+      loading: () => Stream.value(null),
+      error: (_, __) => Stream.value(null),
+    );
+  },
+  name: 'countdownProvider',
 );
 
 final storageSizeProvider = StreamProvider.autoDispose.family<int, String>(

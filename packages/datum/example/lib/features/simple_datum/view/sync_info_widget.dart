@@ -1,6 +1,7 @@
 import 'package:example/data/task/entity/task.dart';
 import 'package:example/features/simple_datum/controller/last_sync_result_notifier.dart';
 import 'package:example/features/simple_datum/controller/metrics_provider.dart';
+import 'package:example/features/simple_datum/view/animated_countdown_widget.dart';
 import 'package:example/features/simple_datum/view/health_status_widget.dart';
 
 import 'package:example/shared/riverpod_ext/asynvalue_easy_when.dart';
@@ -19,7 +20,7 @@ class SyncInfoWidget extends ConsumerWidget {
 
     final healthAsync = ref.watch(allHealths);
     final pendingOpsAsync = ref.watch(pendingOperationsProvider(userId));
-    final nextSyncTimeAsync = ref.watch(nextSyncTimeProvider);
+    final countdownAsync = ref.watch(countdownProvider);
     final storageSizeStream = ref.watch(storageSizeProvider(userId));
     final lastSyncResult = ref.watch(lastSyncResultProvider);
 
@@ -78,10 +79,8 @@ class SyncInfoWidget extends ConsumerWidget {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text('Next Auto-Sync'),
-                nextSyncTimeAsync.easyWhen(
-                  data: (time) => Text(time != null
-                      ? '${time.hour}:${time.minute.toString().padLeft(2, '0')}'
-                      : 'Not scheduled'),
+                countdownAsync.easyWhen(
+                  data: (duration) => AnimatedCountdownWidget(duration: duration),
                   loadingWidget: () => const Text('...'),
                 ),
               ],

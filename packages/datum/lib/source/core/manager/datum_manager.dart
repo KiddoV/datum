@@ -1129,8 +1129,16 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
       unawaited(() async {
         try {
           await synchronize(userId);
+          // Update the next sync time after successful sync
+          if (!_nextSyncTimeSubject.isClosed) {
+            _nextSyncTimeSubject.add(DateTime.now().add(syncInterval));
+          }
         } catch (e, stack) {
           _logger.error('Auto-sync for user $userId failed: $e', stack);
+          // Still update the next sync time even on failure to keep the countdown going
+          if (!_nextSyncTimeSubject.isClosed) {
+            _nextSyncTimeSubject.add(DateTime.now().add(syncInterval));
+          }
         }
       }());
     });

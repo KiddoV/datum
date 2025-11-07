@@ -12,6 +12,7 @@ import 'package:example/shared/helper/global_helper.dart';
 import 'package:example/shared/riverpod_ext/asynvalue_easy_when.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:auto_route/auto_route.dart';
+import 'package:example/core/router/router.gr.dart';
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart' hide User;
@@ -324,6 +325,10 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
 
         if (authState.event == AuthChangeEvent.signedOut) {
           Datum.instance.pauseSync();
+          // Automatically navigate to login screen when user logs out
+          if (mounted) {
+            context.router.replaceAll([const LoginRoute()]);
+          }
         } else if (authState.event == AuthChangeEvent.tokenRefreshed) {
           Datum.instance.resumeSync();
         }

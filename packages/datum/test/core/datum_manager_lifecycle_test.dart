@@ -309,6 +309,47 @@ void main() {
       });
     });
 
+    test('nextSyncTime is updated after each sync completion', () {
+      fakeAsync((async) async {
+        // Arrange
+        await manager.initialize();
+        final syncTimes = <DateTime?>[];
+        manager.onNextSyncTimeChanged.listen(syncTimes.add);
+
+        // Act 1: Start auto-sync
+        manager.startAutoSync('user-A');
+        async.flushMicrotasks();
+
+        // Assert 1: Initial sync time should be set
+        expect(syncTimes.length, 1);
+        expect(syncTimes.last, isNotNull);
+        expect(syncTimes.last!.isAfter(DateTime.now()), isTrue);
+
+        // Act 2: Elapse time to trigger first sync
+        async.elapse(const Duration(seconds: 31));
+
+        // Assert 2: After sync completes, next sync time should be updated
+        expect(syncTimes.length, 2); // Should have received a new sync time
+        expect(syncTimes.last, isNotNull);
+        expect(syncTimes.last!.isAfter(DateTime.now()), isTrue);
+
+        // The new sync time should be approximately 30 seconds from now
+        final timeDiff = syncTimes.last!.difference(DateTime.now());
+        expect(timeDiff.inSeconds, closeTo(30, 2)); // Allow 2 second tolerance
+
+        // Act 3: Elapse time again to trigger second sync
+        async.elapse(const Duration(seconds: 31));
+
+        // Assert 3: After second sync, next sync time should be updated again
+        expect(syncTimes.length, 3); // Should have received another new sync time
+        expect(syncTimes.last, isNotNull);
+        expect(syncTimes.last!.isAfter(DateTime.now()), isTrue);
+
+        final secondTimeDiff = syncTimes.last!.difference(DateTime.now());
+        expect(secondTimeDiff.inSeconds, closeTo(30, 2)); // Allow 2 second tolerance
+      });
+    });
+
     test('calling dispose() disposes sync request strategy', () async {
       // Arrange
       final mockStrategy = MockedSyncRequestStrategy();

@@ -729,7 +729,7 @@ userAdapter.authStateStream.listen((isAuthenticated) {
 
 1. **Initialization**: `initialize()` starts authentication monitoring
 2. **Login Detection**: When user logs in, sync channels are automatically subscribed
-3. **Logout Detection**: When user logs out, all sync channels are unsubscribed
+3. **Logout Detection**: When user logs out, all sync channels are unsubscribed and UI automatically navigates to login screen
 4. **Error Recovery**: If RLS errors occur, the adapter marks the user as unauthenticated
 5. **Cleanup**: Authentication monitoring is properly disposed when the adapter is destroyed
 
