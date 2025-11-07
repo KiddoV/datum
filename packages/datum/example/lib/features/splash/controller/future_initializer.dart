@@ -92,6 +92,31 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     ],
   );
 
+  // Ensure at least one remote data fetch on app start
+  final datumInstance = datum.fold(
+    (l, s) => throw l,
+    (r) => r,
+  );
+
+  // If there's a current user, perform an initial sync to fetch remote data
+  final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+  if (currentUserId != null) {
+    try {
+      talker.info('Performing initial remote data fetch on app start for user: $currentUserId');
+      await datumInstance.synchronize(
+        currentUserId,
+        options: const DatumSyncOptions(
+          direction: SyncDirection.pullThenPush,
+          forceFullSync: true,
+        ),
+      );
+      talker.info('Initial remote data fetch completed successfully');
+    } catch (e) {
+      talker.warning('Initial remote data fetch failed, but app will continue: $e');
+      // Don't throw here - we don't want to crash the app if initial sync fails
+    }
+  }
+
   return ProviderContainer(
     overrides: [
       appBoxProvider.overrideWithValue(appBox),

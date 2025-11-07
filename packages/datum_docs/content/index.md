@@ -40,6 +40,7 @@ New to Datum? Here's how to get started:
 3. **[Work with relationships](guides/relationships.md)**: Define and use entity relationships
 4. **[Query your data](guides/querying.md)**: Filter, sort, and paginate data
 5. **[Implement adapters](guides/local_adapter_implement.md)**: Create local and remote adapters
+6. **[Master sync patterns](guides/sync_patterns.md)**: Handle app startup, login, and data synchronization
 
 ## Core Concepts
 

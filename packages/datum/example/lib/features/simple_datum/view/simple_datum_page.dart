@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:datum/datum.dart';
 import 'package:example/bootstrap.dart';
 import 'package:example/data/task/entity/task.dart';
+import 'package:example/data/user/adapters/supabase_adapter.dart';
 import 'package:example/features/simple_datum/controller/last_sync_result_notifier.dart';
 import 'package:example/features/simple_datum/controller/simple_datum_provider.dart';
 import 'package:example/features/simple_datum/view/task.dart';
@@ -60,8 +61,7 @@ class SimpleDatumController extends AutoDisposeNotifier<void> {
   SimpleDatumController();
 
   void _notifySyncResult(DatumSyncResult<DatumEntityInterface> result) {
-    ref.read(syncResultEventProvider.notifier).state =
-        result;
+    ref.read(syncResultEventProvider.notifier).state = result;
   }
 
   Future<void> createTask({
@@ -287,13 +287,16 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
     with GlobalHelper {
   late final AppLifecycleListener _appLifecycleListener;
   late ProviderSubscription _syncResultSubscription;
+  late ProviderSubscription _syncStatusSubscription;
   late StreamSubscription<AuthState> _authSubscription;
+  bool _waitingForInitialSync = false;
 
   @override
   void initState() {
     super.initState();
     _initializeLifecycleListener();
     _initializeSyncResultListener();
+    _initializeSyncStatusListener();
     _initializeAuthListener();
   }
 
@@ -319,9 +322,37 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
     );
   }
 
+  void _initializeSyncStatusListener() {
+    // We'll set up the listener when we have a user
+    _syncStatusSubscription = ref.listenManual(
+      syncStatusProvider(''), // Placeholder, will be updated when user logs in
+      (previous, next) {},
+    );
+  }
+
+  void _updateSyncStatusListener(String userId) {
+    _syncStatusSubscription.close();
+    _syncStatusSubscription = ref.listenManual(
+      syncStatusProvider(userId),
+      (previous, next) {
+        if (_waitingForInitialSync &&
+            next != null &&
+            next.hasValue &&
+            next.value != null &&
+            (next.value!.status == DatumSyncStatus.completed ||
+                next.value!.status == DatumSyncStatus.idle ||
+                next.value!.status == DatumSyncStatus.failed)) {
+          setState(() {
+            _waitingForInitialSync = false;
+          });
+        }
+      },
+    );
+  }
+
   void _initializeAuthListener() {
     _authSubscription = Supabase.instance.client.auth.onAuthStateChange.listen(
-      (authState) {
+      (authState) async {
         if (!Datum.isInitialized) return;
 
         if (authState.event == AuthChangeEvent.signedOut) {
@@ -330,8 +361,33 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
           if (mounted) {
             context.router.replaceAll([const LoginRoute()]);
           }
-        } else if (authState.event == AuthChangeEvent.tokenRefreshed) {
-          Datum.instance.resumeSync();
+        } else if (authState.event == AuthChangeEvent.signedIn) {
+          final userId = authState.session?.user.id;
+          if (userId != null) {
+            // User logged in (including relogin after logout), wait for initial sync to complete
+            setState(() {
+              _waitingForInitialSync = true;
+            });
+            _updateSyncStatusListener(userId);
+
+            // Resume sync first (in case it was paused during logout)
+            Datum.instance.resumeSync();
+
+            // Clear sync metadata to force fresh data from server
+            final remoteAdapter = Datum.manager<Task>().remoteAdapter;
+            if (remoteAdapter is SupabaseRemoteAdapter<Task>) {
+              await remoteAdapter.clearSyncMetadata(userId);
+            }
+
+            // Use eager syncing: pull latest data first, then allow changes
+            Datum.instance.synchronize(
+              userId,
+              options: const DatumSyncOptions(
+                direction: SyncDirection.pullThenPush,
+                forceFullSync: true, // Ensure we get all remote data
+              ),
+            );
+          }
         }
       },
     );
@@ -340,6 +396,7 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
   @override
   void dispose() {
     _syncResultSubscription.close();
+    _syncStatusSubscription.close();
     _authSubscription.cancel();
     _appLifecycleListener.dispose();
     super.dispose();
@@ -514,6 +571,19 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
   }
 
   Widget _buildAuthenticatedBody(String userId) {
+    if (_waitingForInitialSync) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            CircularProgressIndicator(),
+            SizedBox(height: 16),
+            Text('Syncing latest data...'),
+          ],
+        ),
+      );
+    }
+
     final tasksAsync = ref.watch(tasksStreamProvider(userId));
 
     return Column(
