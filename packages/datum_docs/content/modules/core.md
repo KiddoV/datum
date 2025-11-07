@@ -171,7 +171,7 @@ Executes migrations in order, handling errors and rollbacks.
 
 The Models sub-module defines the data structures and entities used throughout Datum.
 
-#### DatumEntityBase
+#### DatumEntityInterface
 
 Base class for all entities managed by Datum.
 
@@ -185,12 +185,12 @@ Base class for all entities managed by Datum.
 
 **Key Methods:**
 - `toDatumMap({MapTarget target})`: Serializes entity
-- `diff(DatumEntityBase oldVersion)`: Computes changes
+- `diff(DatumEntityInterface oldVersion)`: Computes changes
 - `copyWith({...})`: Creates modified copy
 
 #### RelationalDatumEntity
 
-Extends `DatumEntityBase` with relationship support for connecting entities.
+Extends `DatumEntityInterface` with relationship support for connecting entities.
 
 **Additional Features:**
 - `relations`: Map of entity relationships (BelongsTo, HasMany, HasOne, ManyToMany)

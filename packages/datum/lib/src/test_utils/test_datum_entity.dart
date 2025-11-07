@@ -76,7 +76,7 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
   }
 
   @override
-  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
     if (oldVersion is! TestDatumEntity) return null;
     final changes = <String, dynamic>{};
     if (value != oldVersion.value) {

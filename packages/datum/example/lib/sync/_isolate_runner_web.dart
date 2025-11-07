@@ -32,7 +32,7 @@ class _ComputePayload {
 }
 
 /// Runs the sync process using `compute`, which is web-compatible.
-Future<void> spawnIsolate<T extends DatumEntityBase>(
+Future<void> spawnIsolate<T extends DatumEntityInterface>(
   List<DatumSyncOperation<T>> operations,
   Future<void> Function(DatumSyncOperation<T> operation) processOperation,
   bool Function() isCancelled,

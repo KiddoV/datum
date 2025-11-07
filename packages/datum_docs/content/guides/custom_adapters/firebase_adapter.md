@@ -23,7 +23,7 @@ dependencies:
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:datum/datum.dart';
 
-class FirebaseRemoteAdapter<T extends DatumEntityBase> extends RemoteAdapter<T> {
+class FirebaseRemoteAdapter<T extends DatumEntityInterface> extends RemoteAdapter<T> {
   final String collectionName;
   final T Function(Map<String, dynamic>) fromMap;
   final FirebaseFirestore? firestore;

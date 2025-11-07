@@ -22,7 +22,7 @@ enum DatumResolutionStrategy {
 }
 
 /// Result of a conflict resolution attempt.
-class DatumConflictResolution<T extends DatumEntityBase> extends Equatable {
+class DatumConflictResolution<T extends DatumEntityInterface> extends Equatable {
   /// The strategy used to resolve the conflict.
   final DatumResolutionStrategy strategy;
 
@@ -73,7 +73,7 @@ class DatumConflictResolution<T extends DatumEntityBase> extends Equatable {
 
   /// Creates a copy of the resolution with a different generic type.
   /// This is useful for upcasting to `DatumConflictResolution<DatumEntity>`.
-  DatumConflictResolution<E> copyWithNewType<E extends DatumEntityBase>() {
+  DatumConflictResolution<E> copyWithNewType<E extends DatumEntityInterface>() {
     // This is safe because T extends DatumEntity, and E also extends DatumEntity.
     // The resolvedData is being upcast.
     return DatumConflictResolution<E>._(
@@ -112,7 +112,7 @@ class DatumConflictResolution<T extends DatumEntityBase> extends Equatable {
 }
 
 /// Base interface for components that resolve synchronization conflicts.
-abstract class DatumConflictResolver<T extends DatumEntityBase> {
+abstract class DatumConflictResolver<T extends DatumEntityInterface> {
   /// A descriptive name for the resolver strategy (e.g., "LastWriteWins").
   String get name;
 

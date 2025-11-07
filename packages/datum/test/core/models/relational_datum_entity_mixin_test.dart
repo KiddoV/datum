@@ -39,7 +39,7 @@ class TestRelationalEntity extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     return null; // Simplified implementation for testing
   }
 
@@ -106,7 +106,7 @@ class SimpleRelationalEntity with RelationalDatumEntityMixin {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     return null;
   }
 
@@ -546,7 +546,7 @@ void main() {
       });
 
       test('RelationalDatumEntity has correct inheritance hierarchy', () {
-        expect(entity, isA<DatumEntityBase>());
+        expect(entity, isA<DatumEntityInterface>());
         expect(entity, isA<RelationalDatumEntity>());
       });
 
@@ -808,7 +808,7 @@ class _TestEntityWithNullKey extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     return null;
   }
 
@@ -874,7 +874,7 @@ class _ComplexTestEntity extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     return null;
   }
 

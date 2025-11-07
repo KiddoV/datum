@@ -124,7 +124,7 @@ class Task extends DatumEntity {
     );
   }
 
-  DatumEntityBase copyWith({
+  DatumEntityInterface copyWith({
     DateTime? modifiedAt,
     int? version,
     bool? isDeleted,
@@ -140,7 +140,7 @@ class Task extends DatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
     return null;
   }
 }

@@ -2,7 +2,7 @@ import 'package:datum/datum.dart';
 import 'package:equatable/equatable.dart';
 
 // A sealed class representing the different types of relationships between entities.
-sealed class Relation<T extends DatumEntityBase> {
+sealed class Relation<T extends DatumEntityInterface> {
   final RelationalDatumEntity _parent;
   const Relation(this._parent);
 
@@ -11,7 +11,7 @@ sealed class Relation<T extends DatumEntityBase> {
   DatumManager<T> getRelatedManager();
 }
 
-class BelongsTo<T extends DatumEntityBase> extends Relation<T> {
+class BelongsTo<T extends DatumEntityInterface> extends Relation<T> {
   final String foreignKey;
   final String localKey;
   T? _value;
@@ -52,7 +52,7 @@ class BelongsTo<T extends DatumEntityBase> extends Relation<T> {
   }
 }
 
-class HasMany<T extends DatumEntityBase> extends Relation<T> {
+class HasMany<T extends DatumEntityInterface> extends Relation<T> {
   final String foreignKey;
   final String localKey;
   List<T>? _value;
@@ -97,7 +97,7 @@ class HasMany<T extends DatumEntityBase> extends Relation<T> {
   }
 }
 
-class HasOne<T extends DatumEntityBase> extends Relation<T> {
+class HasOne<T extends DatumEntityInterface> extends Relation<T> {
   final String foreignKey;
   final String localKey;
   T? _value;
@@ -138,8 +138,8 @@ class HasOne<T extends DatumEntityBase> extends Relation<T> {
   }
 }
 
-class ManyToMany<T extends DatumEntityBase> extends Relation<T> {
-  final DatumEntityBase pivotEntity;
+class ManyToMany<T extends DatumEntityInterface> extends Relation<T> {
+  final DatumEntityInterface pivotEntity;
 
   final String thisForeignKey;
 
@@ -323,7 +323,7 @@ abstract class RelationalDatumEntity extends DatumEntity with RelationalDatumEnt
   /// changed, with their new values.
   /// Returns `null` if the entities are identical (no changes detected).
   @override
-  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion);
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
 }
 
 /// A mixin that provides relational functionality for Datum entities.
@@ -364,12 +364,12 @@ abstract class RelationalDatumEntity extends DatumEntity with RelationalDatumEnt
 ///   }
 ///
 ///   @override
-///   DatumEntityBase copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) {
+///   DatumEntityInterface copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) {
 ///     // Implementation...
 ///   }
 ///
 ///   @override
-///   Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion) {
+///   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
 ///     // Implementation...
 ///   }
 /// }
@@ -399,7 +399,7 @@ mixin RelationalDatumEntityMixin implements Equatable {
 
   /// Computes the **difference** between the current entity state and an
   /// [oldVersion] of the entity.
-  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion);
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
 
   /// Indicates whether this entity supports relationships. Always `true` for this mixin.
   bool get isRelational => true;

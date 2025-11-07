@@ -7,7 +7,7 @@ import '../mocks/mock_connectivity_checker.dart';
 
 import 'non_relational_test_entity.dart';
 
-class MockDatumManager<T extends DatumEntityBase> extends Mock implements DatumManager<T> {}
+class MockDatumManager<T extends DatumEntityInterface> extends Mock implements DatumManager<T> {}
 
 /// A simple User entity for testing relationships.
 class User extends RelationalDatumEntity {
@@ -76,7 +76,7 @@ class User extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) => null;
 }
 
 /// A Post entity that "belongs to" a User.
@@ -158,7 +158,7 @@ class Post extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Post) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -252,7 +252,7 @@ class Profile extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Profile) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -345,7 +345,7 @@ class PostTag extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) => null;
 }
 
 /// A Tag entity for ManyToMany relationships.
@@ -416,13 +416,13 @@ class Tag extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) => null;
 }
 
 /// A local adapter that intentionally does not implement fetchRelated.
-class _UnimplementedLocalAdapter<T extends DatumEntityBase> extends LocalAdapter<T> {
+class _UnimplementedLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
   @override
-  Future<List<R>> fetchRelated<R extends DatumEntityBase>(
+  Future<List<R>> fetchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     LocalAdapter<R> relatedAdapter,
@@ -433,7 +433,7 @@ class _UnimplementedLocalAdapter<T extends DatumEntityBase> extends LocalAdapter
   }
 
   @override
-  Stream<List<R>>? watchRelated<R extends DatumEntityBase>(
+  Stream<List<R>>? watchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     LocalAdapter<R> relatedAdapter,

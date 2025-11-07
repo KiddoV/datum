@@ -6,7 +6,7 @@ import 'package:example/bootstrap.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:recase/recase.dart';
 
-class SupabaseRemoteAdapter<T extends DatumEntityBase>
+class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     extends RemoteAdapter<T> {
   final String tableName;
   final T Function(Map<String, dynamic>) fromMap;
@@ -28,7 +28,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   // Authentication state monitoring
   StreamSubscription<AuthState>? _authSubscription;
   bool _isAuthenticated = false;
-  final StreamController<bool> _authStateController = StreamController<bool>.broadcast();
+  final StreamController<bool> _authStateController =
+      StreamController<bool>.broadcast();
 
   SupabaseClient get _client => _clientOverride ?? Supabase.instance.client;
   String get _metadataTableName => 'sync_metadata';
@@ -278,7 +279,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   void startAuthMonitoring() {
     if (_authSubscription != null) return; // Already monitoring
 
-    talker.info("Starting authentication state monitoring for $tableName adapter");
+    talker.info(
+        "Starting authentication state monitoring for $tableName adapter");
     _authSubscription = _client.auth.onAuthStateChange.listen(
       (AuthState authState) {
         final isAuthenticated = authState.session != null;
@@ -310,7 +312,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
     if (_authSubscription != null) {
       await _authSubscription!.cancel();
       _authSubscription = null;
-      talker.info("Stopped authentication state monitoring for $tableName adapter");
+      talker.info(
+          "Stopped authentication state monitoring for $tableName adapter");
     }
   }
 
@@ -318,7 +321,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
     if (_isAuthenticated != isAuthenticated) {
       _isAuthenticated = isAuthenticated;
       _authStateController.add(isAuthenticated);
-      talker.debug("Authentication state changed: $isAuthenticated for $tableName adapter");
+      talker.debug(
+          "Authentication state changed: $isAuthenticated for $tableName adapter");
     }
   }
 
@@ -411,7 +415,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   }
 
   @override
-  Future<List<R>> fetchRelated<R extends DatumEntityBase>(
+  Future<List<R>> fetchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     RemoteAdapter<R> relatedAdapter,
@@ -497,7 +501,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
         .toList();
   }
 
-  Stream<List<R>> watchRelated<R extends DatumEntityBase>(
+  Stream<List<R>> watchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     RemoteAdapter<R> relatedAdapter,

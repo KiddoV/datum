@@ -21,7 +21,7 @@ import 'package:datum/datum.dart';
 import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 
-class HiveLocalAdapter<T extends DatumEntityBase> extends LocalAdapter<T> {
+class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
   /// The name of the Hive box where entities of type `T` will be stored.
   final String entityBoxName;
 
@@ -385,7 +385,7 @@ import 'package:hive_ce_flutter/hive_flutter.dart';
 ///
 /// To use it, provide the `entityBoxName`, a `fromMap` factory, and a
 /// `sampleInstance` of your entity.
-class IsolatedHiveLocalAdapter<T extends DatumEntityBase>
+class IsolatedHiveLocalAdapter<T extends DatumEntityInterface>
     extends LocalAdapter<T> {
   /// The name of the Hive box where entities of type `T` will be stored.
   final String entityBoxName;

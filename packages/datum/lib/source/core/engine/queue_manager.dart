@@ -9,7 +9,7 @@ import 'package:datum/source/utils/datum_logger.dart';
 /// queueing mechanism. It provides a simple API to enqueue, dequeue, update,
 /// and retrieve pending operations that are waiting to be synchronized with
 /// a remote data source.
-class QueueManager<T extends DatumEntityBase> {
+class QueueManager<T extends DatumEntityInterface> {
   final LocalAdapter<T> localAdapter;
   final DatumLogger logger;
 

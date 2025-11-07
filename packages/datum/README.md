@@ -577,7 +577,7 @@ import 'package:datum/datum.dart';
 import 'package:recase/recase.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SupabaseRemoteAdapter<T extends DatumEntityBase> extends RemoteAdapter<T> {
+class SupabaseRemoteAdapter<T extends DatumEntityInterface> extends RemoteAdapter<T> {
   final String tableName;
   final T Function(Map<String, dynamic>) fromMap;
   final SupabaseClient? _clientOverride;
@@ -1112,7 +1112,7 @@ await Datum.initialize(
 You can create your own conflict resolution strategy by implementing `DatumConflictResolver`.
 
 ```dart
-class TakeTheirsResolver<T extends DatumEntityBase> extends DatumConflictResolver<T> {
+class TakeTheirsResolver<T extends DatumEntityInterface> extends DatumConflictResolver<T> {
   @override
   Future<ConflictResolution<T>> resolve(ConflictContext<T> context) {
     // Always prefer the remote version
@@ -1286,7 +1286,7 @@ Datum is designed to be backend-agnostic. To use a different backend (e.g., Fire
 For example, a `RemoteAdapter` for a REST API might look like this:
 
 ```dart
-class MyRestApiAdapter<T extends DatumEntityBase> extends RemoteAdapter<T> {
+class MyRestApiAdapter<T extends DatumEntityInterface> extends RemoteAdapter<T> {
   final String endpoint;
   final T Function(Map<String, dynamic>) fromJson;
   final http.Client client;

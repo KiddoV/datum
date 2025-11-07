@@ -116,11 +116,11 @@ class UnregisteredEntity extends DatumEntity {
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {};
 }
 
-class MockedLocalAdapter<T extends DatumEntityBase> extends Mock implements LocalAdapter<T> {}
+class MockedLocalAdapter<T extends DatumEntityInterface> extends Mock implements LocalAdapter<T> {}
 
 class MockedSyncRequestStrategy extends Mock implements DatumSyncRequestStrategy {}
 
-class MockedRemoteAdapter<T extends DatumEntityBase> extends Mock implements RemoteAdapter<T> {}
+class MockedRemoteAdapter<T extends DatumEntityInterface> extends Mock implements RemoteAdapter<T> {}
 
 void main() {
   group('Datum Facade Integration Tests', () {
@@ -189,7 +189,7 @@ void main() {
     });
 
     // New, more modular stubbing helpers
-    void stubLifecycle<T extends DatumEntityBase>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
+    void stubLifecycle<T extends DatumEntityInterface>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
       when(() => local.initialize()).thenAnswer((_) async {});
       when(() => remote.initialize()).thenAnswer((_) async {});
       when(() => local.dispose()).thenAnswer((_) async {});
@@ -199,14 +199,14 @@ void main() {
       when(() => remote.changeStream).thenAnswer((_) => Stream<DatumChangeDetail<T>>.empty());
     }
 
-    void stubReads<T extends DatumEntityBase>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
+    void stubReads<T extends DatumEntityInterface>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
       when(() => local.read(any(), userId: any(named: 'userId'))).thenAnswer((_) async => null);
       when(() => local.readByIds(any(), userId: any(named: 'userId'))).thenAnswer((_) async => {});
       when(() => local.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
       when(() => remote.readAll(userId: any(named: 'userId'), scope: any(named: 'scope'))).thenAnswer((_) async => []);
     }
 
-    void stubWrites<T extends DatumEntityBase>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
+    void stubWrites<T extends DatumEntityInterface>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
       when(() => local.create(any())).thenAnswer((_) async {});
       when(() => local.update(any())).thenAnswer((_) async {});
       when(() => local.delete(any(), userId: any(named: 'userId'))).thenAnswer((_) async => true);
@@ -214,7 +214,7 @@ void main() {
       when(() => remote.delete(any(that: isA<String>()), userId: any(named: 'userId', that: isA<String>()))).thenAnswer((_) async {});
     }
 
-    void stubSyncing<T extends DatumEntityBase>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
+    void stubSyncing<T extends DatumEntityInterface>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
       when(() => local.getPendingOperations(any())).thenAnswer((_) async => []);
       when(() => local.addPendingOperation(any(), any())).thenAnswer((_) async {});
       when(() => local.removePendingOperation(any())).thenAnswer((_) async {});
@@ -228,7 +228,7 @@ void main() {
 
     // The old function can now be a composition of the new, smaller helpers.
     // Or, you can call the smaller helpers directly in your `setUp`.
-    void stubAllBehaviors<T extends DatumEntityBase>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
+    void stubAllBehaviors<T extends DatumEntityInterface>(MockedLocalAdapter<T> local, MockedRemoteAdapter<T> remote) {
       stubLifecycle(local, remote);
       stubReads(local, remote);
       stubWrites(local, remote);

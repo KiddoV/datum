@@ -26,7 +26,7 @@ class IsolateStrategy implements DatumSyncExecutionStrategy {
   final bool forceIsolateInTest;
 
   @override
-  Future<void> execute<T extends DatumEntityBase>(
+  Future<void> execute<T extends DatumEntityInterface>(
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,

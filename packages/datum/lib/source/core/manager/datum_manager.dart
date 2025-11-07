@@ -6,7 +6,7 @@ import 'package:datum/datum.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 
-class DatumManager<T extends DatumEntityBase> with Disposable {
+class DatumManager<T extends DatumEntityInterface> with Disposable {
   final LocalAdapter<T> localAdapter;
   final RemoteAdapter<T> remoteAdapter;
 
@@ -695,7 +695,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
             userId: userId,
           );
 
-          final relatedEntitiesByParentId = <String, List<DatumEntityBase>>{};
+          final relatedEntitiesByParentId = <String, List<DatumEntityInterface>>{};
           for (final relatedEntity in relatedEntities) {
             final parentId = (relatedEntity as RelationalDatumEntity).toDatumMap()[foreignKeyName];
             (relatedEntitiesByParentId[parentId] ??= []).add(relatedEntity);
@@ -811,7 +811,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   /// Returns a list of the related entities. Throws an [ArgumentError] if the
   /// parent is not a [RelationalDatumEntity], or an [Exception] if the
   /// relation name is not defined on the parent.
-  Future<List<R>> fetchRelated<R extends DatumEntityBase>(
+  Future<List<R>> fetchRelated<R extends DatumEntityInterface>(
     T parent,
     String relationName, {
     DataSource source = DataSource.local,
@@ -861,7 +861,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   /// Returns a `Stream<List<R>>` of the related entities, or `null` if the
   /// adapter does not support reactive queries. Throws an error if the
   /// relation is not defined.
-  Stream<List<R>>? watchRelated<R extends DatumEntityBase>(
+  Stream<List<R>>? watchRelated<R extends DatumEntityInterface>(
     T parent,
     String relationName,
   ) {
@@ -1360,7 +1360,7 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
   }
 }
 
-extension DatumManagerAutoSyncInfo<T extends DatumEntityBase> on DatumManager<T> {
+extension DatumManagerAutoSyncInfo<T extends DatumEntityInterface> on DatumManager<T> {
   /// Gets the [DateTime] of the next scheduled auto-sync as a `Future`.
   ///
   /// Returns `null` if no auto-sync is currently scheduled.

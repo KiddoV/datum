@@ -31,7 +31,7 @@ enum SyncDirection {
 }
 
 /// Configuration for the Datum engine and its managers.
-class DatumConfig<T extends DatumEntityBase> extends Equatable {
+class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// The interval for any automatic background synchronization.
   final Duration autoSyncInterval;
 
@@ -123,7 +123,7 @@ class DatumConfig<T extends DatumEntityBase> extends Equatable {
   // In a full implementation, a `copyWith` method would be included here
   // to allow for easy modification of the configuration.
 
-  DatumConfig<E> copyWith<E extends DatumEntityBase>({
+  DatumConfig<E> copyWith<E extends DatumEntityInterface>({
     Duration? autoSyncInterval,
     bool? autoStartSync,
     Duration? syncTimeout,

@@ -6,7 +6,7 @@ import 'package:datum/datum.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Task extends RelationalDatumEntity {
+class Task with DatumEntityMixin {
   @override
   final String id;
 
@@ -30,6 +30,7 @@ class Task extends RelationalDatumEntity {
 
   @override
   final int version;
+
   const Task({
     required this.id,
     required this.userId,
@@ -42,7 +43,6 @@ class Task extends RelationalDatumEntity {
     this.version = 1,
   });
 
-  @override
   Task copyWith({
     String? id,
     String? userId,
@@ -80,21 +80,22 @@ class Task extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
     if (oldVersion is! Task) return toDatumMap();
 
+    final oldTask = oldVersion;
     final diff = <String, dynamic>{};
 
-    if (title != oldVersion.title) {
+    if (title != oldTask.title) {
       diff['title'] = title;
     }
-    if (description != oldVersion.description) {
+    if (description != oldTask.description) {
       diff['description'] = description;
     }
-    if (isCompleted != oldVersion.isCompleted) {
+    if (isCompleted != oldTask.isCompleted) {
       diff['isCompleted'] = isCompleted;
     }
-    if (isDeleted != oldVersion.isDeleted) {
+    if (isDeleted != oldTask.isDeleted) {
       diff['isDeleted'] = isDeleted;
     }
 
@@ -214,9 +215,4 @@ class Task extends RelationalDatumEntity {
 
   @override
   List<Object?> get props => [];
-
-  @override
-  Map<String, Relation> get relations => {
-        "plan": BelongsTo(this, "plan", localKey: "plan"),
-      };
 }

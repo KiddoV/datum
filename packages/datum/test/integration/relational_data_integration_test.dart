@@ -62,7 +62,7 @@ class User extends RelationalDatumEntity {
 
     @override
 
-    Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
 
       if (oldVersion is! User) return toDatumMap();
 
@@ -173,7 +173,7 @@ class NonRelationalTestEntity extends DatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) => null;
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) => null;
 
   @override
   bool operator ==(covariant NonRelationalTestEntity other) {
@@ -243,7 +243,7 @@ class Post extends RelationalDatumEntity {
         'isDeleted': isDeleted,
       };
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Post) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -341,7 +341,7 @@ class Tag extends RelationalDatumEntity {
       };
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Tag) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -442,7 +442,7 @@ class PostTag extends RelationalDatumEntity {
       };
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! PostTag) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -542,7 +542,7 @@ class Profile extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Profile) return toDatumMap();
 
     final diff = <String, dynamic>{};

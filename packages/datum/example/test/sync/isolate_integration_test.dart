@@ -18,10 +18,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
 
 // Use proper mocktail mocks for adapters
-class MockLocalAdapter<T extends DatumEntityBase> extends Mock
+class MockLocalAdapter<T extends DatumEntityInterface> extends Mock
     implements LocalAdapter<T> {}
 
-class MockRemoteAdapter<T extends DatumEntityBase> extends Mock
+class MockRemoteAdapter<T extends DatumEntityInterface> extends Mock
     implements RemoteAdapter<T> {}
 
 class MockConnectivityChecker extends Mock

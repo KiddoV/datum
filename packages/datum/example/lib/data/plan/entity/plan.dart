@@ -57,7 +57,7 @@ class Plan extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     return null;
   }
 

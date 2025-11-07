@@ -6,7 +6,7 @@ import 'package:datum/source/core/models/datum_sync_operation.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
 
 /// Spawns an isolate to run the sync process. This is for non-web platforms.
-Future<void> spawnIsolate<T extends DatumEntityBase>(
+Future<void> spawnIsolate<T extends DatumEntityInterface>(
   List<DatumSyncOperation<T>> operations,
   Future<void> Function(DatumSyncOperation<T> operation) processOperation,
   bool Function() isCancelled,
@@ -16,9 +16,9 @@ Future<void> spawnIsolate<T extends DatumEntityBase>(
   final completer = Completer<void>();
   final mainReceivePort = ReceivePort();
 
-  final isolateInitMessage = _IsolateInitMessage(
+  final isolateInitMessage = _IsolateInitMessage<T>(
     mainToIsolateSendPort: mainReceivePort.sendPort,
-    operations: operations.cast(),
+    operations: operations,
     wrappedStrategy: wrappedStrategy,
   );
 
@@ -70,7 +70,7 @@ Future<void> spawnIsolate<T extends DatumEntityBase>(
 
 // --- Isolate Communication Models ---
 
-class _IsolateInitMessage {
+class _IsolateInitMessage<T extends DatumEntityInterface> {
   _IsolateInitMessage({
     required this.mainToIsolateSendPort,
     required this.operations,
@@ -78,7 +78,7 @@ class _IsolateInitMessage {
   });
 
   final SendPort mainToIsolateSendPort;
-  final List<DatumSyncOperation> operations;
+  final List<DatumSyncOperation<T>> operations;
   final DatumSyncExecutionStrategy wrappedStrategy;
 }
 
@@ -109,11 +109,11 @@ class _SyncError {
 }
 
 /// The entry point for the background isolate.
-void _isolateEntryPoint(_IsolateInitMessage initMessage) {
+void _isolateEntryPoint<T extends DatumEntityInterface>(_IsolateInitMessage<T> initMessage) {
   final mainSendPort = initMessage.mainToIsolateSendPort;
   final operations = initMessage.operations;
 
-  Future<void> requestProcessing(DatumSyncOperation<dynamic> operation) async {
+  Future<void> requestProcessing(DatumSyncOperation<DatumEntityInterface> operation) async {
     final responsePort = ReceivePort();
     mainSendPort.send(
       _ProcessOperationRequest(operation.id, responsePort.sendPort),
@@ -133,8 +133,8 @@ void _isolateEntryPoint(_IsolateInitMessage initMessage) {
   bool isCancelled() => false;
 
   initMessage.wrappedStrategy
-      .execute<DatumEntityBase>(
-        operations,
+      .execute<DatumEntityInterface>(
+        operations.cast<DatumSyncOperation<DatumEntityInterface>>(),
         requestProcessing,
         isCancelled,
         reportProgress,

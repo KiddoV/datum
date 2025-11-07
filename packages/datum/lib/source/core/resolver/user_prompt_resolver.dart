@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:datum/datum.dart';
 
 /// A resolver that delegates the conflict decision to the user via a prompt.
-class UserPromptResolver<T extends DatumEntityBase> implements DatumConflictResolver<T> {
+class UserPromptResolver<T extends DatumEntityInterface> implements DatumConflictResolver<T> {
   /// Function that prompts the user to choose a resolution strategy.
   final Future<DatumResolutionStrategy> Function(
     DatumConflictContext context,

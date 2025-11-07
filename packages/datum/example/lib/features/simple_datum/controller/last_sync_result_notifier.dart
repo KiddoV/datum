@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LastSyncResultNotifier
-    extends Notifier<DatumSyncResult<DatumEntityBase>?> {
+    extends Notifier<DatumSyncResult<DatumEntityInterface>?> {
   @override
   DatumSyncResult<DatumEntity>? build() {
     // Load the initial value from storage.
@@ -20,14 +20,14 @@ class LastSyncResultNotifier
     state = await Datum.manager<Task>().getLastSyncResult(userId);
   }
 
-  void update(DatumSyncResult<DatumEntityBase> result) {
+  void update(DatumSyncResult<DatumEntityInterface> result) {
     state = result;
     // The manager now automatically saves the result, so we don't need to do it here.
   }
 }
 
-final lastSyncResultProvider =
-    NotifierProvider<LastSyncResultNotifier, DatumSyncResult<DatumEntityBase>?>(
+final lastSyncResultProvider = NotifierProvider<LastSyncResultNotifier,
+    DatumSyncResult<DatumEntityInterface>?>(
   LastSyncResultNotifier.new,
   name: 'lastSyncResultProvider',
 );

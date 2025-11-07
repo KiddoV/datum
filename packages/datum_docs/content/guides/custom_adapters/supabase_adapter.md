@@ -28,7 +28,7 @@ import 'package:example/bootstrap.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:recase/recase.dart';
 
-class SupabaseRemoteAdapter<T extends DatumEntityBase>
+class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     extends RemoteAdapter<T> {
   final String tableName;
   final T Function(Map<String, dynamic>) fromMap;
@@ -433,7 +433,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   }
 
   @override
-  Future<List<R>> fetchRelated<R extends DatumEntityBase>(
+  Future<List<R>> fetchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     RemoteAdapter<R> relatedAdapter,
@@ -519,7 +519,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
         .toList();
   }
 
-  Stream<List<R>> watchRelated<R extends DatumEntityBase>(
+  Stream<List<R>> watchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     RemoteAdapter<R> relatedAdapter,

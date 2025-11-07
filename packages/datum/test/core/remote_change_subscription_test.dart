@@ -5,9 +5,9 @@ import 'package:test/test.dart';
 import '../mocks/relational_test_entity.dart';
 import '../mocks/test_entity.dart';
 
-class MockLocalAdapter<T extends DatumEntityBase> extends Mock implements LocalAdapter<T> {}
+class MockLocalAdapter<T extends DatumEntityInterface> extends Mock implements LocalAdapter<T> {}
 
-class MockRemoteAdapter<T extends DatumEntityBase> extends Mock implements RemoteAdapter<T> {}
+class MockRemoteAdapter<T extends DatumEntityInterface> extends Mock implements RemoteAdapter<T> {}
 
 class MockConnectivityChecker extends Mock implements DatumConnectivityChecker {}
 

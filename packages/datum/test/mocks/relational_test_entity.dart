@@ -73,7 +73,7 @@ class RelationalTestEntity extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
     if (oldVersion is! RelationalTestEntity) return toDatumMap();
     final changes = <String, dynamic>{};
     if (name != oldVersion.name) changes['name'] = name;

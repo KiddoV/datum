@@ -6,7 +6,7 @@ import 'package:test/test.dart';
 
 import '../mocks/test_entity.dart';
 
-class MockDatumManager<T extends DatumEntityBase> extends Mock implements DatumManager<T> {}
+class MockDatumManager<T extends DatumEntityInterface> extends Mock implements DatumManager<T> {}
 
 /// A minimal entity for testing different types.
 class Post extends DatumEntity {
@@ -105,7 +105,7 @@ void main() {
 
       // Assert
       expect(retrieved, same(mockTestManager));
-      expect(retrieved, isA<DatumManager<DatumEntityBase>>());
+      expect(retrieved, isA<DatumManager<DatumEntityInterface>>());
     });
 
     test('getByType throws StateError for unregistered type', () {

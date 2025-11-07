@@ -28,7 +28,7 @@ final simpleDatumControllerProvider =
 );
 
 final syncResultEventProvider =
-    StateProvider<DatumSyncResult<DatumEntityBase>?>(
+    StateProvider<DatumSyncResult<DatumEntityInterface>?>(
   (ref) => null,
   name: "syncResultEventProvider",
 );
@@ -59,8 +59,9 @@ final syncStatusProvider =
 class SimpleDatumController extends AutoDisposeNotifier<void> {
   SimpleDatumController();
 
-  void _notifySyncResult(DatumSyncResult<DatumEntityBase> result) {
-    ref.read(syncResultEventProvider.notifier).state = result;
+  void _notifySyncResult(DatumSyncResult<DatumEntityInterface> result) {
+    ref.read(syncResultEventProvider.notifier).state =
+        result;
   }
 
   Future<void> createTask({
@@ -99,7 +100,7 @@ class SimpleDatumController extends AutoDisposeNotifier<void> {
 class SyncButton extends ConsumerWidget {
   final String userId;
   final VoidCallback onSyncStart;
-  final Function(DatumSyncResult<DatumEntityBase>) onSyncComplete;
+  final Function(DatumSyncResult<DatumEntityInterface>) onSyncComplete;
   final Function(dynamic) onSyncError;
 
   const SyncButton({
@@ -166,7 +167,7 @@ class SyncButton extends ConsumerWidget {
 class PullButton extends StatelessWidget {
   final String userId;
   final VoidCallback onPullStart;
-  final Function(DatumSyncResult<DatumEntityBase>) onPullComplete;
+  final Function(DatumSyncResult<DatumEntityInterface>) onPullComplete;
   final Function(dynamic) onPullError;
 
   const PullButton({
@@ -411,7 +412,7 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
   // ============================================================================
 
   void _handleSyncResult(
-    DatumSyncResult<DatumEntityBase> result, {
+    DatumSyncResult<DatumEntityInterface> result, {
     String operation = 'Sync',
   }) {
     ref.read(lastSyncResultProvider.notifier).update(result);
@@ -436,7 +437,7 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
   }
 
   String _buildSuccessMessage(
-    DatumSyncResult<DatumEntityBase> result,
+    DatumSyncResult<DatumEntityInterface> result,
     String operation,
   ) {
     final itemsSynced = result.syncedCount > 0

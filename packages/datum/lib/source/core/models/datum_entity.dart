@@ -14,13 +14,8 @@ enum MapTarget {
   remote,
 }
 
-/// The **base sealed class** for all entities managed by the Datum framework.
-///
-/// This class enforces the core sync and identification fields. It extends
-/// [Equatable] for easy value comparison.
-sealed class DatumEntityBase extends Equatable {
-  const DatumEntityBase();
-
+/// Interface for all Datum entities, allowing both inheritance and mixin approaches.
+abstract interface class DatumEntityInterface {
   /// A **unique identifier** for the entity.
   String get id;
 
@@ -43,14 +38,60 @@ sealed class DatumEntityBase extends Equatable {
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
 
+  /// Computes the **difference** between the current entity state and an
+  /// [oldVersion] of the entity.
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
+
+  /// Indicates whether this entity supports relationships.
+  bool get isRelational;
+}
+
+/// The **base sealed class** for all entities managed by the Datum framework.
+///
+/// This class enforces the core sync and identification fields. It extends
+/// [Equatable] for easy value comparison.
+sealed class DatumEntityBase extends Equatable implements DatumEntityInterface {
+  const DatumEntityBase();
+
+  /// A **unique identifier** for the entity.
+  @override
+  String get id;
+
+  /// The ID of the user who owns or created this entity.
+  @override
+  String get userId;
+
+  /// The **timestamp** of the last time this entity was modified.
+  @override
+  DateTime get modifiedAt;
+
+  /// The **timestamp** of when this entity was first created.
+  @override
+  DateTime get createdAt;
+
+  /// A **sequential integer** used for optimistic concurrency and tracking
+  /// changes.
+  @override
+  int get version;
+
+  /// A flag indicating if this entity has been locally marked for **deletion**.
+  @override
+  bool get isDeleted;
+
+  /// Converts the entity to a `Map<String, dynamic>` for persistence.
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
+
   /// Creates a **new instance** of the entity with updated values.
   // Note: copyWith is not included in the mixin to allow flexible return types
 
   /// Computes the **difference** between the current entity state and an
   /// [oldVersion] of the entity.
-  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion);
+  @override
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
 
   /// Indicates whether this entity supports relationships.
+  @override
   bool get isRelational => false;
 
   /// Provides the list of properties to be used by the [Equatable] mixin
@@ -111,27 +152,34 @@ abstract class DatumEntity extends DatumEntityBase with DatumEntityMixin {
 ///   }
 /// }
 /// ```
-mixin DatumEntityMixin implements Equatable {
+mixin DatumEntityMixin implements Equatable, DatumEntityInterface {
   /// A **unique identifier** for the entity.
+  @override
   String get id;
 
   /// The ID of the user who owns or created this entity.
+  @override
   String get userId;
 
   /// The **timestamp** of the last time this entity was modified.
+  @override
   DateTime get modifiedAt;
 
   /// The **timestamp** of when this entity was first created.
+  @override
   DateTime get createdAt;
 
   /// A **sequential integer** used for optimistic concurrency and tracking
   /// changes.
+  @override
   int get version;
 
   /// A flag indicating if this entity has been locally marked for **deletion**.
+  @override
   bool get isDeleted;
 
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
+  @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
 
   /// Creates a **new instance** of the entity with updated values.
@@ -139,9 +187,11 @@ mixin DatumEntityMixin implements Equatable {
 
   /// Computes the **difference** between the current entity state and an
   /// [oldVersion] of the entity.
-  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion);
+  @override
+  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
 
   /// Indicates whether this entity supports relationships. Always `false` for this mixin.
+  @override
   bool get isRelational => false;
 
   /// Provides the list of properties to be used by the [Equatable] mixin

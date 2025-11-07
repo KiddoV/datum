@@ -2,7 +2,7 @@ import 'package:datum/datum.dart';
 
 /// Event emitted when the engine detects a
 /// conflict between local and remote data.
-class ConflictDetectedEvent<T extends DatumEntityBase> extends DatumSyncEvent<T> {
+class ConflictDetectedEvent<T extends DatumEntityInterface> extends DatumSyncEvent<T> {
   /// Creates a conflict detected event.
   ConflictDetectedEvent({
     required super.userId,

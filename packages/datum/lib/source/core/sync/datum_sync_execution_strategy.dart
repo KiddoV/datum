@@ -33,7 +33,7 @@ abstract class DatumSyncExecutionStrategy {
   /// - [processOperation]: A function that processes a single operation.
   /// - [isCancelled]: A function to check if the sync has been cancelled.
   /// - [onProgress]: A callback to report progress.
-  Future<void> execute<T extends DatumEntityBase>(
+  Future<void> execute<T extends DatumEntityInterface>(
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,
@@ -48,7 +48,7 @@ class SequentialStrategy implements DatumSyncExecutionStrategy {
   const SequentialStrategy();
 
   @override
-  Future<void> execute<T extends DatumEntityBase>(
+  Future<void> execute<T extends DatumEntityInterface>(
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,
@@ -89,7 +89,7 @@ class ParallelStrategy implements DatumSyncExecutionStrategy {
   final bool failFast;
 
   @override
-  Future<void> execute<T extends DatumEntityBase>(
+  Future<void> execute<T extends DatumEntityInterface>(
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,

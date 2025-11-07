@@ -313,7 +313,7 @@ class User extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! User) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -437,7 +437,7 @@ class Post extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Post) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -562,7 +562,7 @@ class Comment extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Comment) return toDatumMap();
 
     final diff = <String, dynamic>{};
@@ -686,7 +686,7 @@ class Profile extends RelationalDatumEntity {
   }
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     if (oldVersion is! Profile) return toDatumMap();
 
     final diff = <String, dynamic>{};

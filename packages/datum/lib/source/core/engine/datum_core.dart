@@ -70,7 +70,7 @@ import 'package:rxdart/rxdart.dart';
 ///
 /// ## Defining Models
 ///
-/// All data models in Datum must be built upon [DatumEntityBase]. You have two main
+/// All data models in Datum must be built upon [DatumEntityInterface]. You have two main
 /// approaches: extending abstract classes or using mixins.
 ///
 /// ### 1. Extending Abstract Classes (Recommended)
@@ -147,12 +147,12 @@ class TypeSafeManagerRegistry {
   final Map<Type, Object> _managers = {};
 
   /// Registers a manager for a specific entity type.
-  void register<T extends DatumEntityBase>(DatumManager<T> manager) {
+  void register<T extends DatumEntityInterface>(DatumManager<T> manager) {
     _managers[T] = manager;
   }
 
   /// Retrieves a type-safe manager for the specified entity type.
-  DatumManager<T> get<T extends DatumEntityBase>() {
+  DatumManager<T> get<T extends DatumEntityInterface>() {
     final manager = _managers[T];
     if (manager == null) {
       throw StateError('Entity type $T is not registered.');
@@ -162,20 +162,20 @@ class TypeSafeManagerRegistry {
   }
 
   /// Retrieves a manager by Type, returning the base type.
-  DatumManager<DatumEntityBase> getByType(Type type) {
+  DatumManager<DatumEntityInterface> getByType(Type type) {
     final manager = _managers[type];
     if (manager == null) {
       throw StateError('Entity type $type is not registered.');
     }
-    // This cast is safe because all managers extend DatumEntityBase
-    return manager as DatumManager<DatumEntityBase>;
+    // This cast is safe because all managers extend DatumEntityInterface
+    return manager as DatumManager<DatumEntityInterface>;
   }
 
   /// Returns all registered manager types.
   Iterable<Type> get registeredTypes => _managers.keys;
 
   /// Returns all registered managers as base type.
-  Iterable<DatumManager<DatumEntityBase>> get allManagers => _managers.values.map((m) => m as DatumManager<DatumEntityBase>);
+  Iterable<DatumManager<DatumEntityInterface>> get allManagers => _managers.values.map((m) => m as DatumManager<DatumEntityInterface>);
 
   /// Checks if a type is registered.
   bool isRegistered(Type type) => _managers.containsKey(type);
@@ -214,10 +214,10 @@ class Datum {
   final DatumConnectivityChecker connectivityChecker;
   final List<GlobalDatumObserver> globalObservers = [];
   final DatumLogger logger;
-  final List<StreamSubscription<DatumSyncEvent<DatumEntityBase>>> _managerSubscriptions = [];
+  final List<StreamSubscription<DatumSyncEvent<DatumEntityInterface>>> _managerSubscriptions = [];
 
   // Stream controllers for events and status
-  final StreamController<DatumSyncEvent<DatumEntityBase>> _eventController = StreamController.broadcast();
+  final StreamController<DatumSyncEvent<DatumEntityInterface>> _eventController = StreamController.broadcast();
   Stream<DatumSyncEvent> get events => _eventController.stream;
 
   final BehaviorSubject<Map<String, DatumSyncStatusSnapshot>> _statusSubject = BehaviorSubject.seeded({});
@@ -285,7 +285,7 @@ class Datum {
       }
       for (final reg in registrations) {
         reg.capture(
-          <TT extends DatumEntityBase>() => datum._register<TT>(reg as DatumRegistration<TT>, logBuffer),
+          <TT extends DatumEntityInterface>() => datum._register<TT>(reg as DatumRegistration<TT>, logBuffer),
         );
       }
       await datum._initializeManagers(logBuffer);
@@ -315,13 +315,13 @@ class Datum {
     final datum = Datum._(
       config: config,
       connectivityChecker: connectivityChecker,
-      logger: null,
+      logger: logger,
     );
     datum.globalObservers.addAll(observers);
 
     for (final reg in registrations) {
       reg.capture(
-        <TT extends DatumEntityBase>() => datum._register<TT>(reg as DatumRegistration<TT>),
+        <TT extends DatumEntityInterface>() => datum._register<TT>(reg as DatumRegistration<TT>),
       );
     }
     await datum._initializeManagers(StringBuffer());
@@ -420,7 +420,7 @@ class Datum {
     if (_managers.isNotEmpty) {
       logBuffer.writeln('├─ ❤️  Initial Health Status');
       for (final managerEntry in _managers.entries) {
-        final health = (managerEntry.value as DatumManager<DatumEntityBase>).currentStatus.health;
+        final health = (managerEntry.value as DatumManager<DatumEntityInterface>).currentStatus.health;
         logBuffer.writeln('│  └─ ${_cyan(managerEntry.key)}: ${_green(health.status.name)}');
       }
     }
@@ -465,7 +465,7 @@ class Datum {
       var userHasContent = false;
       for (final managerEntry in _managers.entries) {
         final entityType = managerEntry.key;
-        final manager = managerEntry.value as DatumManager<DatumEntityBase>;
+        final manager = managerEntry.value as DatumManager<DatumEntityInterface>;
         final count = await manager.getPendingCount(userId);
         final itemCount = (await manager.localAdapter.readAll(userId: userId)).length;
         final storageSize = await manager.localAdapter.getStorageSize(userId: userId);
@@ -499,7 +499,7 @@ class Datum {
     globalObservers.add(observer);
   }
 
-  Future<void> register<T extends DatumEntityBase>({
+  Future<void> register<T extends DatumEntityInterface>({
     required DatumRegistration<T> registration,
   }) async {
     _register<T>(registration);
@@ -508,7 +508,7 @@ class Datum {
     logger.info(logBuffer.toString());
   }
 
-  void _register<T extends DatumEntityBase>(
+  void _register<T extends DatumEntityInterface>(
     DatumRegistration<T> registration, [
     StringBuffer? logBuffer,
   ]) {
@@ -633,7 +633,7 @@ class Datum {
   }
 
   /// Provides access to the specific manager for an entity type.
-  static DatumManager<T> manager<T extends DatumEntityBase>() {
+  static DatumManager<T> manager<T extends DatumEntityInterface>() {
     final manager = instance._managers[T];
     if (manager == null) {
       throw StateError('Entity type $T is not registered.');
@@ -642,16 +642,16 @@ class Datum {
   }
 
   /// Provides access to a manager for a given entity [Type].
-  static DatumManager<DatumEntityBase> managerByType(Type type) {
+  static DatumManager<DatumEntityInterface> managerByType(Type type) {
     final manager = instance._managers[type];
     if (manager != null) {
-      return manager as DatumManager<DatumEntityBase>;
+      return manager as DatumManager<DatumEntityInterface>;
     }
     throw StateError('Entity type $type is not registered or has a manager of the wrong type.');
   }
 
   /// A global sync that can coordinate across all managers.
-  Future<DatumSyncResult<DatumEntityBase>> synchronize(
+  Future<DatumSyncResult<DatumEntityInterface>> synchronize(
     String userId, {
     DatumSyncOptions? options,
   }) async {
@@ -670,12 +670,12 @@ class Datum {
     var totalSynced = 0;
     var totalFailed = 0;
     var totalConflicts = 0;
-    final allPending = <DatumSyncOperation<DatumEntityBase>>[];
+    final allPending = <DatumSyncOperation<DatumEntityInterface>>[];
 
     try {
       final direction = options?.direction ?? config.defaultSyncDirection;
-      final pushResults = <DatumSyncResult<DatumEntityBase>>[];
-      final pullResults = <DatumSyncResult<DatumEntityBase>>[];
+      final pushResults = <DatumSyncResult<DatumEntityInterface>>[];
+      final pullResults = <DatumSyncResult<DatumEntityInterface>>[];
 
       switch (direction) {
         case SyncDirection.pushThenPull:
@@ -722,7 +722,7 @@ class Datum {
           }
       }
 
-      final result = DatumSyncResult<DatumEntityBase>(
+      final result = DatumSyncResult<DatumEntityInterface>(
         userId: userId,
         duration: stopwatch.elapsed,
         syncedCount: totalSynced,
@@ -743,20 +743,20 @@ class Datum {
     }
   }
 
-  Future<List<DatumSyncResult<DatumEntityBase>>> _pushChanges(String userId, DatumSyncOptions? options) async {
+  Future<List<DatumSyncResult<DatumEntityInterface>>> _pushChanges(String userId, DatumSyncOptions? options) async {
     logger.info('Starting global push phase for user $userId...');
     final pushOnlyOptions = (options ?? const DatumSyncOptions()).copyWith(
       direction: SyncDirection.pushOnly,
     );
 
-    final results = <DatumSyncResult<DatumEntityBase>>[];
+    final results = <DatumSyncResult<DatumEntityInterface>>[];
     for (final manager in _managers.allManagers) {
       results.add(await manager.synchronize(userId, options: pushOnlyOptions));
     }
     return results;
   }
 
-  Future<List<DatumSyncResult<DatumEntityBase>>> _pullChanges(
+  Future<List<DatumSyncResult<DatumEntityInterface>>> _pullChanges(
     String userId,
     DatumSyncOptions? options,
   ) async {
@@ -765,7 +765,7 @@ class Datum {
       direction: SyncDirection.pullOnly,
     );
 
-    final results = <DatumSyncResult<DatumEntityBase>>[];
+    final results = <DatumSyncResult<DatumEntityInterface>>[];
     for (final manager in _managers.allManagers) {
       results.add(await manager.synchronize(userId, options: pullOnlyOptions));
     }
@@ -788,28 +788,28 @@ class Datum {
     }
   }
 
-  // CRUD operations remain the same but now use DatumEntityBase
+  // CRUD operations remain the same but now use DatumEntityInterface
 
   /// Creates a new entity and pushes it to the appropriate manager.
   ///
   /// This is a convenience method that is equivalent to calling `Datum.manager<T>().push(item: entity, userId: entity.userId)`.
-  Future<T> create<T extends DatumEntityBase>(T entity) {
+  Future<T> create<T extends DatumEntityInterface>(T entity) {
     return Datum.manager<T>().push(item: entity, userId: entity.userId);
   }
 
-  Future<T?> read<T extends DatumEntityBase>(String id, {String? userId}) {
+  Future<T?> read<T extends DatumEntityInterface>(String id, {String? userId}) {
     return Datum.manager<T>().read(id, userId: userId);
   }
 
-  Future<List<T>> readAll<T extends DatumEntityBase>({String? userId}) {
+  Future<List<T>> readAll<T extends DatumEntityInterface>({String? userId}) {
     return Datum.manager<T>().readAll(userId: userId);
   }
 
-  Future<T> update<T extends DatumEntityBase>(T entity) {
+  Future<T> update<T extends DatumEntityInterface>(T entity) {
     return Datum.manager<T>().push(item: entity, userId: entity.userId);
   }
 
-  Future<List<T>> createMany<T extends DatumEntityBase>({
+  Future<List<T>> createMany<T extends DatumEntityInterface>({
     required List<T> items,
     required String userId,
     bool andSync = false,
@@ -823,7 +823,7 @@ class Datum {
     );
   }
 
-  Future<List<T>> updateMany<T extends DatumEntityBase>({
+  Future<List<T>> updateMany<T extends DatumEntityInterface>({
     required List<T> items,
     required String userId,
     bool andSync = false,
@@ -837,14 +837,14 @@ class Datum {
     );
   }
 
-  Future<bool> delete<T extends DatumEntityBase>({
+  Future<bool> delete<T extends DatumEntityInterface>({
     required String id,
     required String userId,
   }) async {
     return Datum.manager<T>().delete(id: id, userId: userId);
   }
 
-  Future<(T, DatumSyncResult<T>)> pushAndSync<T extends DatumEntityBase>({
+  Future<(T, DatumSyncResult<T>)> pushAndSync<T extends DatumEntityInterface>({
     required T item,
     required String userId,
     DatumSyncOptions? syncOptions,
@@ -856,7 +856,7 @@ class Datum {
     );
   }
 
-  Future<(T, DatumSyncResult<T>)> updateAndSync<T extends DatumEntityBase>({
+  Future<(T, DatumSyncResult<T>)> updateAndSync<T extends DatumEntityInterface>({
     required T item,
     required String userId,
     DatumSyncOptions? syncOptions,
@@ -868,33 +868,33 @@ class Datum {
     );
   }
 
-  Future<(bool, DatumSyncResult<T>)> deleteAndSync<T extends DatumEntityBase>({
+  Future<(bool, DatumSyncResult<T>)> deleteAndSync<T extends DatumEntityInterface>({
     required String id,
     required String userId,
     DatumSyncOptions? syncOptions,
   }) =>
       Datum.manager<T>().deleteAndSync(id: id, userId: userId, syncOptions: syncOptions);
 
-  Stream<List<T>>? watchAll<T extends DatumEntityBase>({String? userId, bool includeInitialData = true}) {
+  Stream<List<T>>? watchAll<T extends DatumEntityInterface>({String? userId, bool includeInitialData = true}) {
     return Datum.manager<T>().watchAll(userId: userId, includeInitialData: includeInitialData);
   }
 
-  Stream<T?>? watchById<T extends DatumEntityBase>(String id, String? userId) {
+  Stream<T?>? watchById<T extends DatumEntityInterface>(String id, String? userId) {
     return Datum.manager<T>().watchById(id, userId);
   }
 
-  Stream<PaginatedResult<T>>? watchAllPaginated<T extends DatumEntityBase>(
+  Stream<PaginatedResult<T>>? watchAllPaginated<T extends DatumEntityInterface>(
     PaginationConfig config, {
     String? userId,
   }) {
     return Datum.manager<T>().watchAllPaginated(config, userId: userId);
   }
 
-  Stream<List<T>>? watchQuery<T extends DatumEntityBase>(DatumQuery query, {String? userId}) {
+  Stream<List<T>>? watchQuery<T extends DatumEntityInterface>(DatumQuery query, {String? userId}) {
     return Datum.manager<T>().watchQuery(query, userId: userId);
   }
 
-  Future<List<T>> query<T extends DatumEntityBase>(
+  Future<List<T>> query<T extends DatumEntityInterface>(
     DatumQuery query, {
     required DataSource source,
     String? userId,
@@ -903,7 +903,7 @@ class Datum {
   }
 
   /// Fetches related entities with proper type checking for [RelationalDatumEntity]
-  Future<List<R>> fetchRelated<P extends DatumEntityBase, R extends DatumEntityBase>(
+  Future<List<R>> fetchRelated<P extends DatumEntityInterface, R extends DatumEntityInterface>(
     P parent,
     String relationName, {
     DataSource source = DataSource.local,
@@ -922,7 +922,7 @@ class Datum {
   }
 
   /// Reactively watches related entities with proper type checking
-  Stream<List<R>>? watchRelated<P extends DatumEntityBase, R extends DatumEntityBase>(
+  Stream<List<R>>? watchRelated<P extends DatumEntityInterface, R extends DatumEntityInterface>(
     P parent,
     String relationName,
   ) {
@@ -938,27 +938,27 @@ class Datum {
     }
   }
 
-  Future<int> getPendingCount<T extends DatumEntityBase>(String userId) async {
+  Future<int> getPendingCount<T extends DatumEntityInterface>(String userId) async {
     return Datum.manager<T>().getPendingCount(userId);
   }
 
-  Future<List<DatumSyncOperation<T>>> getPendingOperations<T extends DatumEntityBase>(String userId) async {
+  Future<List<DatumSyncOperation<T>>> getPendingOperations<T extends DatumEntityInterface>(String userId) async {
     return Datum.manager<T>().getPendingOperations(userId);
   }
 
-  Future<int> getStorageSize<T extends DatumEntityBase>({String? userId}) {
+  Future<int> getStorageSize<T extends DatumEntityInterface>({String? userId}) {
     return Datum.manager<T>().getStorageSize(userId: userId);
   }
 
-  Stream<int> watchStorageSize<T extends DatumEntityBase>({String? userId}) {
+  Stream<int> watchStorageSize<T extends DatumEntityInterface>({String? userId}) {
     return Datum.manager<T>().watchStorageSize(userId: userId);
   }
 
-  Future<DatumSyncResult<T>?> getLastSyncResult<T extends DatumEntityBase>(String userId) async {
+  Future<DatumSyncResult<T>?> getLastSyncResult<T extends DatumEntityInterface>(String userId) async {
     return Datum.manager<T>().getLastSyncResult(userId);
   }
 
-  Future<DatumHealth> checkHealth<T extends DatumEntityBase>() async {
+  Future<DatumHealth> checkHealth<T extends DatumEntityInterface>() async {
     return Datum.manager<T>().checkHealth();
   }
 

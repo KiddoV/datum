@@ -8,7 +8,7 @@ import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:datum/source/core/resolver/conflict_resolution.dart';
 
 /// A helper class to encapsulate the registration details for a single entity type.
-class DatumRegistration<T extends DatumEntityBase> {
+class DatumRegistration<T extends DatumEntityInterface> {
   final LocalAdapter<T> localAdapter;
   final RemoteAdapter<T> remoteAdapter;
   final DatumConflictResolver<T>? conflictResolver;
@@ -30,7 +30,7 @@ class DatumRegistration<T extends DatumEntityBase> {
   /// A helper method to capture the generic type `T` at runtime.
   /// This is used to get a reliable `Type` object as a key for maps.
   // ignore: avoid_types_as_parameter_names
-  R capture<R>(R Function<T extends DatumEntityBase>() cb) {
+  R capture<R>(R Function<T extends DatumEntityInterface>() cb) {
     return cb<T>();
   }
 }

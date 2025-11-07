@@ -105,7 +105,7 @@ class TestEntity extends RelationalDatumEntity {
   List<Object?> get props => [...super.props, name, value, completed];
 
   @override
-  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     return switch (oldVersion) {
       TestEntity() => () {
           final diffMap = <String, dynamic>{};

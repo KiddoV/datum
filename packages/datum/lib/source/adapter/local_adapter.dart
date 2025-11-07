@@ -4,7 +4,7 @@ import 'package:datum/datum.dart';
 import 'package:meta/meta.dart';
 
 /// Local storage adapter abstraction that provides access to offline data.
-abstract class LocalAdapter<T extends DatumEntityBase> {
+abstract class LocalAdapter<T extends DatumEntityInterface> {
   /// A descriptive name for the adapter (e.g., "Hive", "SQLite").
   String get name => runtimeType.toString();
 
@@ -144,7 +144,7 @@ abstract class LocalAdapter<T extends DatumEntityBase> {
   /// This is an optional method that adapters can implement if their backend
   /// supports efficient relational queries (e.g., via joins in SQL).
   /// If not implemented, it will throw an [UnimplementedError].
-  Future<List<R>> fetchRelated<R extends DatumEntityBase>(
+  Future<List<R>> fetchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     LocalAdapter<R> relatedAdapter,
@@ -159,7 +159,7 @@ abstract class LocalAdapter<T extends DatumEntityBase> {
   /// This is an optional method that adapters can implement to provide
   /// reactive streams for relational data. If not implemented, it will
   /// throw an [UnimplementedError].
-  Stream<List<R>>? watchRelated<R extends DatumEntityBase>(
+  Stream<List<R>>? watchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     LocalAdapter<R> relatedAdapter,
@@ -192,7 +192,7 @@ abstract class LocalAdapter<T extends DatumEntityBase> {
   /// ```dart
   /// import 'package:synchronized/synchronized.dart';
   ///
-  /// class MyInMemoryAdapter<T extends DatumEntityBase> extends LocalAdapter<T> {
+  /// class MyInMemoryAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
   ///   final _transactionLock = Lock();
   ///   final Map<String, T> _storage = {};
   ///
@@ -236,7 +236,7 @@ abstract class LocalAdapter<T extends DatumEntityBase> {
   /// implementation if their storage engine supports it. The default implementation
   /// is also available as a static method for testing purposes.
   @visibleForTesting
-  static Stream<int> defaultWatchStorageSize<T extends DatumEntityBase>(LocalAdapter<T> adapter, {String? userId}) {
+  static Stream<int> defaultWatchStorageSize<T extends DatumEntityInterface>(LocalAdapter<T> adapter, {String? userId}) {
     final changes = adapter
         .changeStream()
         // Filter changes to only include the relevant user.

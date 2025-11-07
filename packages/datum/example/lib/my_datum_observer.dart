@@ -27,8 +27,8 @@ class MyDatumObserver extends GlobalDatumObserver {
 
   @override
   void onConflictDetected(
-    DatumEntityBase local,
-    DatumEntityBase remote,
+    DatumEntityInterface local,
+    DatumEntityInterface remote,
     DatumConflictContext context,
   ) {
     talker.warning(

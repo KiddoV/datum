@@ -117,7 +117,7 @@ class _TestLocalAdapter extends LocalAdapter<TestEntity> {
   Future<void> updateSyncMetadata(DatumSyncMetadata metadata, String userId) => throw UnimplementedError();
 
   @override
-  Future<List<R>> fetchRelated<R extends DatumEntityBase>(
+  Future<List<R>> fetchRelated<R extends DatumEntityInterface>(
     RelationalDatumEntity parent,
     String relationName,
     LocalAdapter<R> relatedAdapter,

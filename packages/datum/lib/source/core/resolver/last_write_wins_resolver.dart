@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:datum/datum.dart';
 
 /// A simple conflict resolver that chooses the entity with the later `modifiedAt` timestamp.
-class LastWriteWinsResolver<T extends DatumEntityBase> implements DatumConflictResolver<T> {
+class LastWriteWinsResolver<T extends DatumEntityInterface> implements DatumConflictResolver<T> {
   @override
   String get name => 'LastWriteWins';
 

@@ -14,7 +14,7 @@ import 'dart:convert';
 import 'package:datum/datum.dart';
 import 'package:http/http.dart' as http;
 
-class RestRemoteAdapter<T extends DatumEntityBase> extends RemoteAdapter<T> {
+class RestRemoteAdapter<T extends DatumEntityInterface> extends RemoteAdapter<T> {
   final String baseUrl;
   final String resourcePath;
   final T Function(Map<String, dynamic>) fromMap;

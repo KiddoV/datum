@@ -102,7 +102,7 @@ dart run build_runner build
 import 'package:datum/datum.dart';
 import 'package:isar/isar.dart';
 
-class IsarLocalAdapter<T extends DatumEntityBase> extends LocalAdapter<T> {
+class IsarLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
   final IsarCollection<T> collection;
   final T Function(Map<String, dynamic>) fromMap;
 

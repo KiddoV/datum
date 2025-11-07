@@ -4,7 +4,7 @@ import 'package:datum/datum.dart';
 
 /// Resolves conflicts by always preferring the local version of the entity.
 /// If the local version does not exist, it will use the remote version.
-class LocalPriorityResolver<T extends DatumEntityBase> implements DatumConflictResolver<T> {
+class LocalPriorityResolver<T extends DatumEntityInterface> implements DatumConflictResolver<T> {
   @override
   String get name => 'LocalPriority';
 

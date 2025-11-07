@@ -1,7 +1,7 @@
 import 'package:datum/source/core/models/datum_entity.dart';
 
 /// Configuration for database indexes on syncable entities.
-abstract class DatumIndexConfig<T extends DatumEntityBase> {
+abstract class DatumIndexConfig<T extends DatumEntityInterface> {
   /// List of fields that should be indexed.
   List<String> get indexedFields;
 

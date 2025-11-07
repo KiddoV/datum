@@ -14,10 +14,10 @@ import '../models/datum_entity.dart';
 
 // Helper to hold adapter pairs before managers are created.
 abstract class AdapterPair {
-  DatumManager<DatumEntityBase> createManager(Datum datum);
+  DatumManager<DatumEntityInterface> createManager(Datum datum);
 }
 
-class AdapterPairImpl<T extends DatumEntityBase> implements AdapterPair {
+class AdapterPairImpl<T extends DatumEntityInterface> implements AdapterPair {
   final LocalAdapter<T> local;
   final RemoteAdapter<T> remote;
   final DatumConflictResolver<T>? conflictResolver;
@@ -79,7 +79,7 @@ class AdapterPairImpl<T extends DatumEntityBase> implements AdapterPair {
 }
 
 /// A testing-only config to smuggle a mock manager into the creation process.
-class CustomManagerConfig<T extends DatumEntityBase> extends DatumConfig<T> {
+class CustomManagerConfig<T extends DatumEntityInterface> extends DatumConfig<T> {
   final DatumManager<T> mockManager;
 
   const CustomManagerConfig(this.mockManager);

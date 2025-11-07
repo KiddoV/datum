@@ -77,7 +77,7 @@ import 'package:datum/datum.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:recase/recase.dart';
 
-class SupabaseRemoteAdapter<T extends DatumEntityBase>
+class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     extends RemoteAdapter<T> {
   final String tableName;
   final T Function(Map<String, dynamic>) fromMap;

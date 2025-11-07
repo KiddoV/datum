@@ -6,11 +6,11 @@ import 'dart:async';
 import '../mocks/mock_connectivity_checker.dart';
 import '../mocks/test_entity.dart';
 
-class MockedRemoteAdapter<T extends DatumEntityBase> extends Mock implements RemoteAdapter<T> {}
+class MockedRemoteAdapter<T extends DatumEntityInterface> extends Mock implements RemoteAdapter<T> {}
 
-class MockedLocalAdapter<T extends DatumEntityBase> extends Mock implements LocalAdapter<T> {}
+class MockedLocalAdapter<T extends DatumEntityInterface> extends Mock implements LocalAdapter<T> {}
 
-class MockDatumObserver<T extends DatumEntityBase> extends Mock implements DatumObserver<T> {}
+class MockDatumObserver<T extends DatumEntityInterface> extends Mock implements DatumObserver<T> {}
 
 /// A custom logger for tests that omits stack traces for cleaner output.
 class TestLogger extends DatumLogger {

@@ -6,7 +6,7 @@ import 'package:datum/source/core/models/datum_operation.dart';
 import 'package:equatable/equatable.dart';
 
 /// Represents a single pending operation to be synchronized.
-class DatumSyncOperation<T extends DatumEntityBase> extends Equatable {
+class DatumSyncOperation<T extends DatumEntityInterface> extends Equatable {
   /// A unique identifier for this operation.
   final String id;
 
