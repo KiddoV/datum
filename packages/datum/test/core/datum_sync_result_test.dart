@@ -26,7 +26,6 @@ class TestEntity extends DatumEntity {
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {};
-  @override
   TestEntity copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) => this;
   @override
   Map<String, dynamic>? diff(DatumEntity oldVersion) => null;

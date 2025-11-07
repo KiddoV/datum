@@ -40,7 +40,6 @@ class NonRelationalTestEntity extends DatumEntity {
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {'id': id, 'name': name};
 
-  @override
   DatumEntity copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) => this;
 
   @override

@@ -152,7 +152,6 @@ class NonRelationalTestEntity extends DatumEntity {
         'isDeleted': isDeleted,
       };
 
-  @override
   NonRelationalTestEntity copyWith({
     String? id,
     String? userId,

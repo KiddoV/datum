@@ -142,6 +142,55 @@ import 'package:rxdart/rxdart.dart';
 /// classes, allowing for a clean and maintainable architecture.
 bool isSubtype<S, T>() => <T>[] is List<S>;
 
+/// A type-safe registry for storing and retrieving managers.
+class TypeSafeManagerRegistry {
+  final Map<Type, Object> _managers = {};
+
+  /// Registers a manager for a specific entity type.
+  void register<T extends DatumEntityBase>(DatumManager<T> manager) {
+    _managers[T] = manager;
+  }
+
+  /// Retrieves a type-safe manager for the specified entity type.
+  DatumManager<T> get<T extends DatumEntityBase>() {
+    final manager = _managers[T];
+    if (manager == null) {
+      throw StateError('Entity type $T is not registered.');
+    }
+    // This cast is safe because registration ensures type correctness
+    return manager as DatumManager<T>;
+  }
+
+  /// Retrieves a manager by Type, returning the base type.
+  DatumManager<DatumEntityBase> getByType(Type type) {
+    final manager = _managers[type];
+    if (manager == null) {
+      throw StateError('Entity type $type is not registered.');
+    }
+    // This cast is safe because all managers extend DatumEntityBase
+    return manager as DatumManager<DatumEntityBase>;
+  }
+
+  /// Returns all registered manager types.
+  Iterable<Type> get registeredTypes => _managers.keys;
+
+  /// Returns all registered managers as base type.
+  Iterable<DatumManager<DatumEntityBase>> get allManagers => _managers.values.map((m) => m as DatumManager<DatumEntityBase>);
+
+  /// Checks if a type is registered.
+  bool isRegistered(Type type) => _managers.containsKey(type);
+
+  // Map-like interface for backward compatibility
+  bool get isEmpty => _managers.isEmpty;
+  bool get isNotEmpty => _managers.isNotEmpty;
+  Iterable<Type> get keys => _managers.keys;
+  Iterable<Object> get values => _managers.values;
+  Iterable<MapEntry<Type, Object>> get entries => _managers.entries;
+  bool containsKey(Type key) => _managers.containsKey(key);
+  Object? operator [](Type key) => _managers[key];
+  void operator []=(Type key, Object value) => _managers[key] = value;
+}
+
 class Datum {
   /// The singleton instance of the Datum engine.
   static Datum? _instance;
@@ -159,8 +208,8 @@ class Datum {
 
   final DatumConfig config;
 
-  // Updated: Use DatumEntityBase instead of DatumEntity
-  final Map<Type, dynamic> _managers = {};
+  // Type-safe manager registry
+  final TypeSafeManagerRegistry _managers = TypeSafeManagerRegistry();
   final Map<Type, AdapterPair> _adapterPairs = {};
   final DatumConnectivityChecker connectivityChecker;
   final List<GlobalDatumObserver> globalObservers = [];
@@ -188,7 +237,7 @@ class Datum {
     if (_managers.isEmpty) {
       return Stream.value({});
     }
-    final healthStreams = _managers.values.map((m) => (m as DatumManager<DatumEntityBase>).health).toList();
+    final healthStreams = _managers.allManagers.map((m) => m.health).toList();
     final types = _managers.keys.toList();
 
     return CombineLatestStream.list(healthStreams).map((healthList) {
@@ -359,7 +408,7 @@ class Datum {
 
   Future<void> _logPendingOperationsSummary(StringBuffer logBuffer) async {
     final allUserIds = <String>{};
-    for (final manager in _managers.values) {
+    for (final manager in _managers.allManagers) {
       try {
         final userIds = await manager.localAdapter.getAllUserIds();
         allUserIds.addAll(userIds);
@@ -390,10 +439,10 @@ class Datum {
       logBuffer.writeln('│  ├─ 👤 User: ${_cyan(userId)}');
       DatumSyncMetadata? metadata;
       if (_managers.isNotEmpty) {
-        metadata = await (_managers.values.first as DatumManager<DatumEntityBase>).localAdapter.getSyncMetadata(userId);
+        metadata = await _managers.allManagers.first.localAdapter.getSyncMetadata(userId);
       }
 
-      final lastSyncResult = _managers.isNotEmpty ? await (_managers.values.first as DatumManager<DatumEntityBase>).getLastSyncResult(userId) : null;
+      final lastSyncResult = _managers.isNotEmpty ? await _managers.allManagers.first.getLastSyncResult(userId) : null;
 
       if (metadata?.lastSyncTime != null) {
         logBuffer.writeln('│  │  ├─ 🕒 Last Sync: ${_cyan(formatDuration(DateTime.now().difference(metadata!.lastSyncTime!)))} ago');
@@ -596,7 +645,7 @@ class Datum {
   static DatumManager<DatumEntityBase> managerByType(Type type) {
     final manager = instance._managers[type];
     if (manager != null) {
-      return manager;
+      return manager as DatumManager<DatumEntityBase>;
     }
     throw StateError('Entity type $type is not registered or has a manager of the wrong type.');
   }
@@ -701,7 +750,7 @@ class Datum {
     );
 
     final results = <DatumSyncResult<DatumEntityBase>>[];
-    for (final manager in _managers.values) {
+    for (final manager in _managers.allManagers) {
       results.add(await manager.synchronize(userId, options: pushOnlyOptions));
     }
     return results;
@@ -717,7 +766,7 @@ class Datum {
     );
 
     final results = <DatumSyncResult<DatumEntityBase>>[];
-    for (final manager in _managers.values) {
+    for (final manager in _managers.allManagers) {
       results.add(await manager.synchronize(userId, options: pullOnlyOptions));
     }
     return results;
@@ -917,7 +966,7 @@ class Datum {
     pauseSync();
 
     await Future.wait([
-      ..._managers.values.map((m) => m.dispose()),
+      ..._managers.allManagers.map((m) => m.dispose()),
       ..._managerSubscriptions.map((s) => s.cancel()),
     ]);
     await _eventController.close();
@@ -927,28 +976,46 @@ class Datum {
 
   void pauseSync() {
     logger.info('Pausing sync for all managers...');
-    for (final manager in _managers.values) {
+    for (final manager in _managers.allManagers) {
       manager.pauseSync();
     }
   }
 
   void resumeSync() {
     logger.info('Resuming sync for all managers...');
-    for (final manager in _managers.values) {
+    for (final manager in _managers.allManagers) {
       manager.resumeSync();
     }
   }
 
-  void pause() {
-    for (final manager in _managers.values) {
-      manager.pause();
-    }
+  /// Unsubscribes all managers from remote change events.
+  ///
+  /// This method calls [unsubscribeFromRemoteChanges] on all registered managers,
+  /// which can be useful for reducing network activity or preventing
+  /// unnecessary processing during certain application states.
+  ///
+  /// Call [resubscribeAllToRemoteChanges] to re-enable remote change listening.
+  ///
+  /// Note: This only affects remote change subscriptions and does not
+  /// impact local change processing or synchronization operations.
+  Future<void> unsubscribeAllFromRemoteChanges() async {
+    await Future.wait(
+      _managers.allManagers.map((manager) => manager.unsubscribeFromRemoteChanges()),
+    );
   }
 
-  void resume() {
-    for (final manager in _managers.values) {
-      manager.resume();
-    }
+  /// Re-subscribes all managers to remote change events.
+  ///
+  /// This method calls [resubscribeToRemoteChanges] on all registered managers,
+  /// restoring the normal flow of remote change events being processed and
+  /// applied locally.
+  ///
+  /// Note: This only affects remote change subscriptions and does not
+  /// impact local change processing or synchronization operations.
+  Future<void> resubscribeAllToRemoteChanges() async {
+    await Future.wait(
+      _managers.allManagers.map((manager) => manager.resubscribeToRemoteChanges()),
+    );
   }
 
   @visibleForTesting

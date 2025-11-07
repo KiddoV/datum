@@ -12,9 +12,13 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
 
   bool _initialized = false;
   bool _isSyncPaused = false;
+  bool _isSubscribedToRemoteChanges = true;
   DatumSyncStatus? _prePauseStatus;
   final Set<String> _pausedAutoSyncUserIds = {};
   bool get isInitialized => _initialized;
+
+  /// Whether the manager is currently subscribed to remote change events.
+  bool get isSubscribedToRemoteChanges => _isSubscribedToRemoteChanges;
 
   // Core dependencies
   final DatumConflictResolver<T> _conflictResolver;
@@ -1172,12 +1176,33 @@ class DatumManager<T extends DatumEntityBase> with Disposable {
     }
   }
 
-  void pause() {
-    remoteAdapter.unsubscribeFromChanges();
+  /// Unsubscribes from remote change events.
+  ///
+  /// This method stops the manager from listening to remote change notifications,
+  /// which can be useful for reducing network activity or preventing
+  /// unnecessary processing during certain application states (e.g., when the app
+  /// is in background or when you want to temporarily ignore remote updates).
+  ///
+  /// Call [resubscribeToRemoteChanges] to re-enable remote change listening.
+  ///
+  /// Note: This only affects remote change subscriptions and does not
+  /// impact local change processing or synchronization operations.
+  Future<void> unsubscribeFromRemoteChanges() async {
+    await remoteAdapter.unsubscribeFromChanges();
+    _isSubscribedToRemoteChanges = false;
   }
 
-  void resume() {
-    remoteAdapter.resubscribeToChanges();
+  /// Re-subscribes to remote change events.
+  ///
+  /// This method re-enables listening to remote change notifications
+  /// after a previous call to [unsubscribeFromRemoteChanges]. This restores
+  /// the normal flow of remote change events being processed and applied locally.
+  ///
+  /// Note: This only affects remote change subscriptions and does not
+  /// impact local change processing or synchronization operations.
+  Future<void> resubscribeToRemoteChanges() async {
+    await remoteAdapter.resubscribeToChanges();
+    _isSubscribedToRemoteChanges = true;
   }
 
   /// Releases all resources held by the manager and its adapters.

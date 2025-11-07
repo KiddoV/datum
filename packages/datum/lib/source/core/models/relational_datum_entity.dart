@@ -1,4 +1,5 @@
 import 'package:datum/datum.dart';
+import 'package:equatable/equatable.dart';
 
 // A sealed class representing the different types of relationships between entities.
 sealed class Relation<T extends DatumEntityBase> {
@@ -272,7 +273,7 @@ class ManyToMany<T extends DatumEntityBase> extends Relation<T> {
 ///
 /// Entities that have relationships with other syncable entities should extend this
 /// class instead of [DatumEntity] directly.
-abstract class RelationalDatumEntity extends DatumEntity {
+abstract class RelationalDatumEntity extends DatumEntity with RelationalDatumEntityMixin {
   /// Creates a `const` [RelationalDatumEntity].
   const RelationalDatumEntity();
 
@@ -292,6 +293,7 @@ abstract class RelationalDatumEntity extends DatumEntity {
   ///   'author': BelongsTo<User>(this, 'userId'),
   /// };
   /// ```
+  @override
   Map<String, Relation> get relations => {};
 
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
@@ -308,7 +310,6 @@ abstract class RelationalDatumEntity extends DatumEntity {
   ///
   /// **Subclasses must override** this method to include their own fields
   /// in the copy process.
-  @override
   RelationalDatumEntity copyWith({
     DateTime? modifiedAt,
     int? version,
@@ -323,4 +324,102 @@ abstract class RelationalDatumEntity extends DatumEntity {
   /// Returns `null` if the entities are identical (no changes detected).
   @override
   Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion);
+}
+
+/// A mixin that provides relational functionality for Datum entities.
+///
+/// Use this mixin when you want to compose Datum's relational capabilities
+/// into your own base classes, allowing for a clean and maintainable architecture
+/// without extending [RelationalDatumEntity].
+///
+/// **Important:** Use either [DatumEntityMixin] OR [RelationalDatumEntityMixin],
+/// not both. [RelationalDatumEntityMixin] provides all the functionality of
+/// [DatumEntityMixin] plus relational capabilities.
+///
+/// ```dart
+/// class MyEntity with RelationalDatumEntityMixin {
+///   @override
+///   final String id;
+///   @override
+///   final String userId;
+///   @override
+///   final DateTime modifiedAt;
+///   @override
+///   final DateTime createdAt;
+///   @override
+///   final int version;
+///   @override
+///   final bool isDeleted;
+///
+///   // Your custom fields...
+///
+///   @override
+///   Map<String, Relation> get relations => {
+///     'author': BelongsTo<User>(this, 'userId'),
+///   };
+///
+///   @override
+///   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
+///     // Implementation...
+///   }
+///
+///   @override
+///   DatumEntityBase copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) {
+///     // Implementation...
+///   }
+///
+///   @override
+///   Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion) {
+///     // Implementation...
+///   }
+/// }
+/// ```
+mixin RelationalDatumEntityMixin implements Equatable {
+  /// A **unique identifier** for the entity.
+  String get id;
+
+  /// The ID of the user who owns or created this entity.
+  String get userId;
+
+  /// The **timestamp** of the last time this entity was modified.
+  DateTime get modifiedAt;
+
+  /// The **timestamp** of when this entity was first created.
+  DateTime get createdAt;
+
+  /// A **sequential integer** used for optimistic concurrency and tracking
+  /// changes.
+  int get version;
+
+  /// A flag indicating if this entity has been locally marked for **deletion**.
+  bool get isDeleted;
+
+  /// Converts the entity to a `Map<String, dynamic>` for persistence.
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
+
+  /// Computes the **difference** between the current entity state and an
+  /// [oldVersion] of the entity.
+  Map<String, dynamic>? diff(covariant DatumEntityBase oldVersion);
+
+  /// Indicates whether this entity supports relationships. Always `true` for this mixin.
+  bool get isRelational => true;
+
+  /// A map defining all relationships for this entity.
+  ///
+  /// The key is a descriptive name for the relation, and the value is an
+  /// instance of a [Relation] subclass (`BelongsTo`, `HasMany`, `ManyToMany`).
+  ///
+  /// Example:
+  /// ```dart
+  /// @override
+  /// Map<String, Relation> get relations => {
+  ///   'author': BelongsTo<User>(this, 'userId'),
+  /// };
+  /// ```
+  Map<String, Relation> get relations => {};
+
+  /// Provides the list of properties to be used by the [Equatable] mixin
+  /// for value equality checks.
+  @override
+  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted];
 }

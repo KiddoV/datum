@@ -4,14 +4,13 @@
 // To run code on the client, use the @client annotation.
 
 // Server-specific jaspr import.
+import 'package:datum_docs/components/cached_github_button.dart';
 import 'package:datum_docs/components/custom_header.dart';
 import 'package:datum_docs/components/custom_image.dart';
+import 'package:datum_docs/components/enhanced_theme_toggle.dart';
 import 'package:jaspr/server.dart';
-
 import 'package:jaspr_content/components/callout.dart';
-import 'package:jaspr_content/components/github_button.dart';
 import 'package:jaspr_content/components/sidebar.dart';
-import 'package:jaspr_content/components/theme_toggle.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
@@ -79,7 +78,6 @@ void main() {
                   Styles(
                     display: Display.flex,
                     alignItems: AlignItems.center,
-                    flex: Flex(),
                   ),
                   Styles(
                     fontSize: 0.875.rem,
@@ -92,13 +90,15 @@ void main() {
                   ),
                 ]),
                 [
-                  text('Home'),
+                  HomeIcon(size: 16),
                 ],
               ),
               // Enables switching between light and dark mode.
-              ThemeToggle(),
+              EnhancedThemeToggle(),
               // Shows github stats.
-              GitHubButton(repo: 'shreemanarjun/datum'),
+              CachedGitHubButton(
+                repo: 'shreemanarjun/datum',
+              ),
             ],
           ),
           sidebar: Sidebar(
@@ -158,11 +158,13 @@ void main() {
             builder: (context) {
               return div(
                 styles: Styles(
-                  position: Position.fixed(bottom: 0.px, left: 0.px, right: 0.px),
-                  padding: Spacing.only(
-                    left: 24.px,
-                    bottom: 24.px,
-                  ),
+                  position: Position.fixed(bottom: 0.px, left: 24.px, right: 0.px),
+                  padding: Spacing.only(left: 8.px, bottom: 24.px),
+                  backgroundColor: Color('hsl(var(--background))'),
+                  raw: {
+                    'transition': 'all 0.3s ease-in-out',
+                    //'box-shadow': '0 -2px 10px rgba(0, 0, 0, 0.08)',
+                  },
                 ),
                 [
                   JasprBadge.lightTwoTone(),

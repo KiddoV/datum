@@ -55,7 +55,6 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
     );
   }
 
-  @override
   TestDatumEntity copyWith({
     String? id,
     String? userId,

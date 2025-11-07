@@ -4,9 +4,37 @@ import 'package:test/test.dart';
 
 import '../../mocks/mock_adapters.dart';
 import '../../mocks/mock_connectivity_checker.dart';
+import '../../mocks/relational_test_entity.dart';
 import '../../mocks/test_entity.dart';
 
 void main() {
+  setUpAll(() {
+    registerFallbackValue(DatumQueryBuilder<TestEntity>().build());
+    registerFallbackValue(DatumQueryBuilder<RelationalTestEntity>().build());
+    registerFallbackValue(DataSource.local);
+    registerFallbackValue(const PaginationConfig(pageSize: 10));
+    registerFallbackValue(
+      TestEntity(
+        id: 'fallback',
+        userId: 'fallback',
+        name: 'fallback',
+        value: 0,
+        modifiedAt: DateTime(0),
+        createdAt: DateTime(0),
+        version: 0,
+      ),
+    );
+    registerFallbackValue(
+      RelationalTestEntity(
+        id: 'fallback',
+        userId: 'fallback',
+        createdAt: DateTime(0),
+        modifiedAt: DateTime(0),
+        version: 0,
+        name: 'fallback',
+      ),
+    );
+  });
   late MockLocalAdapter<TestEntity> localAdapter;
   late MockRemoteAdapter<TestEntity> remoteAdapter;
   late MockConnectivityChecker connectivityChecker;
@@ -104,4 +132,6 @@ void main() {
       expect(pendingOps.isEmpty, isTrue);
     });
   });
+
+
 }

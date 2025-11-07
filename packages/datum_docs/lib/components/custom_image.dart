@@ -1,6 +1,7 @@
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/components/_internal/zoomable_image.dart';
 import 'package:jaspr_content/jaspr_content.dart';
+
 import 'package:jaspr_content/theme.dart';
 
 /// An image component with optional zooming and caption support.

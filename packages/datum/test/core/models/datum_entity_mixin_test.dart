@@ -1,7 +1,8 @@
 import 'package:datum/source/core/models/datum_entity.dart';
+import 'package:equatable/equatable.dart';
 import 'package:test/test.dart';
 
-class TestEntity extends DatumEntity {
+class TestEntity extends Equatable with DatumEntityMixin {
   @override
   final String id;
   @override
@@ -29,24 +30,7 @@ class TestEntity extends DatumEntity {
     throw UnimplementedError();
   }
 
-  @override
-  DatumEntityBase copyWith({
-    DateTime? modifiedAt,
-    int? version,
-    bool? isDeleted,
-    String? id,
-    String? userId,
-    DateTime? createdAt,
-  }) {
-    return TestEntity(
-      id: id ?? this.id,
-      userId: userId ?? this.userId,
-      modifiedAt: modifiedAt ?? this.modifiedAt,
-      createdAt: createdAt ?? this.createdAt,
-      version: version ?? this.version,
-      isDeleted: isDeleted ?? this.isDeleted,
-    );
-  }
+
 
   @override
   Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
@@ -54,18 +38,12 @@ class TestEntity extends DatumEntity {
   }
 
   @override
-  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted];
-
-  @override
-  bool get isRelational => false;
-
-  @override
   bool? get stringify => true;
 }
 
 void main() {
-  group('DatumEntityMixin Equality', () {
-    final now = DateTime.now();
+  group('DatumEntityMixin', () {
+    final now = DateTime(2023, 1, 1, 12, 0, 0);
     final entity1 = TestEntity(
       id: '1',
       userId: 'user1',
@@ -74,46 +52,371 @@ void main() {
       version: 1,
     );
 
-    test('entities with same props are equal', () {
-      final entity2 = TestEntity(
-        id: '1',
-        userId: 'user1',
-        modifiedAt: now,
-        createdAt: now,
-        version: 1,
-      );
-      expect(entity1, equals(entity2));
-      expect(entity1.hashCode, equals(entity2.hashCode));
+    group('Equality and Props', () {
+      test('props are correctly provided', () {
+        expect(entity1.props, [
+          '1',
+          'user1',
+          now,
+          now,
+          1,
+          false,
+        ]);
+      });
+
+      test('entities with same props have same props list', () {
+        final entity2 = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+        expect(entity1.props, equals(entity2.props));
+      });
+
+      test('entities with different id have different props', () {
+        final entity2 = TestEntity(
+          id: '2',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+        expect(entity1.props, isNot(equals(entity2.props)));
+      });
+
+      test('entities with different userId have different props', () {
+        final entity2 = TestEntity(
+          id: '1',
+          userId: 'user2',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+        expect(entity1.props, isNot(equals(entity2.props)));
+      });
+
+      test('entities with different modifiedAt have different props', () {
+        final entity2 = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now.add(const Duration(seconds: 1)),
+          createdAt: now,
+          version: 1,
+        );
+        expect(entity1.props, isNot(equals(entity2.props)));
+      });
+
+      test('entities with different createdAt have different props', () {
+        final entity2 = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now.add(const Duration(seconds: 1)),
+          version: 1,
+        );
+        expect(entity1.props, isNot(equals(entity2.props)));
+      });
+
+      test('entities with different version have different props', () {
+        final entity2 = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 2,
+        );
+        expect(entity1.props, isNot(equals(entity2.props)));
+      });
+
+      test('entities with different isDeleted have different props', () {
+        final entity2 = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+          isDeleted: true,
+        );
+        expect(entity1.props, isNot(equals(entity2.props)));
+      });
     });
 
-    test('entities with different id are not equal', () {
-      final entity2 = entity1.copyWith(id: '2');
-      expect(entity1, isNot(equals(entity2)));
+    group('Hash Code', () {
+      test('entities with same props have same hashCode', () {
+        final entityA = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+        final entityB = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+        expect(entityA.hashCode, equals(entityB.hashCode));
+      });
+
+      test('entities with different props have different hashCode', () {
+        final entityA = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+        final entityB = TestEntity(
+          id: '2',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+        expect(entityA.hashCode, isNot(equals(entityB.hashCode)));
+      });
+
+      test('hashCode is consistent across multiple calls', () {
+        final hash1 = entity1.hashCode;
+        final hash2 = entity1.hashCode;
+        expect(hash1, equals(hash2));
+      });
     });
 
-    test('entities with different userId are not equal', () {
-      final entity2 = entity1.copyWith(userId: 'user2');
-      expect(entity1, isNot(equals(entity2)));
+    group('String Representation', () {
+      test('toString returns instance description', () {
+        final stringRep = entity1.toString();
+        expect(stringRep, contains('TestEntity'));
+        expect(stringRep, isNotNull);
+      });
     });
 
-    test('entities with different modifiedAt are not equal', () {
-      final entity2 = entity1.copyWith(modifiedAt: now.add(const Duration(seconds: 1)));
-      expect(entity1, isNot(equals(entity2)));
+    group('isRelational', () {
+      test('returns false for non-relational entities', () {
+        expect(entity1.isRelational, isFalse);
+      });
     });
 
-    test('entities with different createdAt are not equal', () {
-      final entity2 = entity1.copyWith(createdAt: now.add(const Duration(seconds: 1)));
-      expect(entity1, isNot(equals(entity2)));
+    group('Edge Cases', () {
+      test('handles entities with extreme version numbers', () {
+        final entityWithMaxVersion = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 2147483647, // Max int32
+        );
+
+        final entityWithMinVersion = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 0,
+        );
+
+        expect(entityWithMaxVersion.props[4], equals(2147483647));
+        expect(entityWithMinVersion.props[4], equals(0));
+        expect(entityWithMaxVersion.hashCode, isNot(equals(entityWithMinVersion.hashCode)));
+      });
+
+      test('handles entities with future and past dates', () {
+        final pastDate = DateTime(2000, 1, 1);
+        final futureDate = DateTime(2050, 12, 31);
+
+        final entityPast = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: pastDate,
+          version: 1,
+        );
+
+        final entityFuture = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: futureDate,
+          version: 1,
+        );
+
+        expect(entityPast.props[3], equals(pastDate));
+        expect(entityFuture.props[3], equals(futureDate));
+        expect(entityPast.hashCode, isNot(equals(entityFuture.hashCode)));
+      });
+
+      test('handles entities with UTC and local timezones', () {
+        final utcTime = DateTime.utc(2023, 1, 1, 12, 0, 0);
+        final localTime = DateTime(2023, 1, 1, 12, 0, 0);
+
+        final entityUtc = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: utcTime,
+          createdAt: now,
+          version: 1,
+        );
+
+        final entityLocal = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: localTime,
+          createdAt: now,
+          version: 1,
+        );
+
+        // Different timezone representations should result in different props
+        expect(entityUtc.props[2], equals(utcTime));
+        expect(entityLocal.props[2], equals(localTime));
+        expect(entityUtc.hashCode, isNot(equals(entityLocal.hashCode)));
+      });
     });
 
-    test('entities with different version are not equal', () {
-      final entity2 = entity1.copyWith(version: 2);
-      expect(entity1, isNot(equals(entity2)));
+    group('Different Implementations', () {
+      test('mixin works with different entity implementations', () {
+        final simpleEntity = SimpleTestEntity(
+          id: 'simple1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        expect(simpleEntity.props, hasLength(6));
+        expect(simpleEntity.props[0], equals('simple1'));
+        expect(simpleEntity.isRelational, isFalse);
+      });
+
+      test('entities from different classes with same props are not equal', () {
+        final testEntity = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        final simpleEntity = SimpleTestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        // Even with same props, different runtime types should not be equal
+        expect(testEntity, isNot(equals(simpleEntity)));
+      });
     });
 
-    test('entities with different isDeleted are not equal', () {
-      final entity2 = entity1.copyWith(isDeleted: true);
-      expect(entity1, isNot(equals(entity2)));
+    group('Equatable Behavior', () {
+      test('== operator works correctly', () {
+        final entityA = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        final entityB = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        final entityC = TestEntity(
+          id: '2',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        expect(entityA == entityB, isTrue);
+        expect(entityA == entityC, isFalse);
+        expect(entityA == Object(), isFalse);
+      });
+
+      test('!= operator works correctly', () {
+        final entityA = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        final entityB = TestEntity(
+          id: '1',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        final entityC = TestEntity(
+          id: '2',
+          userId: 'user1',
+          modifiedAt: now,
+          createdAt: now,
+          version: 1,
+        );
+
+        expect(entityA != entityB, isFalse);
+        expect(entityA != entityC, isTrue);
+        expect(entityA != Object(), isTrue);
+      });
     });
   });
+}
+
+class SimpleTestEntity with DatumEntityMixin {
+  @override
+  final String id;
+  @override
+  final String userId;
+  @override
+  final DateTime modifiedAt;
+  @override
+  final DateTime createdAt;
+  @override
+  final int version;
+  @override
+  final bool isDeleted;
+
+  const SimpleTestEntity({
+    required this.id,
+    required this.userId,
+    required this.modifiedAt,
+    required this.createdAt,
+    required this.version,
+    this.isDeleted = false,
+  });
+
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
+    return {
+      'id': id,
+      'userId': userId,
+      'modifiedAt': modifiedAt.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
+      'version': version,
+      'isDeleted': isDeleted,
+    };
+  }
+
+  @override
+  Map<String, dynamic>? diff(DatumEntityBase oldVersion) {
+    return null; // Simplified implementation for testing
+  }
+
+  @override
+  bool? get stringify => true;
 }

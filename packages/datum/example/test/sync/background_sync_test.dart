@@ -124,7 +124,6 @@ class Task extends DatumEntity {
     );
   }
 
-  @override
   DatumEntityBase copyWith({
     DateTime? modifiedAt,
     int? version,
@@ -173,9 +172,9 @@ class DatumProviderWithLifecycleState extends State<DatumProviderWithLifecycle>
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
     if (state == AppLifecycleState.paused) {
-      Datum.instance.pause();
+      Datum.instance.unsubscribeAllFromRemoteChanges();
     } else if (state == AppLifecycleState.resumed) {
-      Datum.instance.resume();
+      Datum.instance.resubscribeAllToRemoteChanges();
     }
   }
 

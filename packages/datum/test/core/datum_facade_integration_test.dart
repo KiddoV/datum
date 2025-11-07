@@ -34,7 +34,6 @@ class TestEntity2 extends DatumEntity {
     this.isDeleted = false,
   });
 
-  @override
   TestEntity2 copyWith({
     String? id,
     String? userId,
@@ -108,7 +107,6 @@ class UnregisteredEntity extends DatumEntity {
     this.isDeleted = false,
   });
 
-  @override
   UnregisteredEntity copyWith({DateTime? modifiedAt, int? version, bool? isDeleted}) => this;
 
   @override

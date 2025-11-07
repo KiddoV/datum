@@ -30,8 +30,8 @@ class DatumProviderWithLifecycleState
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    Datum.instance.pause();
-    Datum.instance.resume();
+    Datum.instance.unsubscribeAllFromRemoteChanges();
+    Datum.instance.resubscribeAllToRemoteChanges();
     Datum.manager<Task>().remoteAdapter.readAll();
   }
 

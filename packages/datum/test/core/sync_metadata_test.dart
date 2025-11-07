@@ -178,6 +178,87 @@ void main() {
       expect(metadata.hashCode, same.hashCode);
       expect(metadata.hashCode, isNot(different.hashCode));
     });
+
+    test('fromMap supports both camelCase and snake_case keys', () {
+      // Test with snake_case keys (as returned by Supabase)
+      final snakeCaseMap = {
+        'user_id': 'user-123',
+        'last_sync_time': now.toUtc().toIso8601String(),
+        'data_hash': 'hash123',
+        'device_id': 'device-abc',
+        'entity_counts': {
+          'tasks': {'count': 10, 'hash': 'task_hash'},
+          'projects': {'count': 2, 'hash': 'project_hash'},
+        },
+        'custom_metadata': {'isPremium': true},
+        'sync_status': 'synced',
+        'sync_version': 2,
+        'conflict_count': 1,
+        'error_message': 'Test error',
+        'retry_count': 2,
+        'sync_duration': 5000,
+      };
+
+      // Act
+      final fromSnakeCase = DatumSyncMetadata.fromMap(snakeCaseMap);
+
+      // Assert
+      expect(fromSnakeCase.userId, 'user-123');
+      expect(fromSnakeCase.lastSyncTime?.toIso8601String(), now.toUtc().toIso8601String());
+      expect(fromSnakeCase.dataHash, 'hash123');
+      expect(fromSnakeCase.deviceId, 'device-abc');
+      expect(fromSnakeCase.entityCounts!['tasks']!.count, 10);
+      expect(fromSnakeCase.entityCounts!['tasks']!.hash, 'task_hash');
+      expect(fromSnakeCase.customMetadata, {'isPremium': true});
+      expect(fromSnakeCase.syncStatus, SyncStatus.synced);
+      expect(fromSnakeCase.syncVersion, 2);
+      expect(fromSnakeCase.conflictCount, 1);
+      expect(fromSnakeCase.errorMessage, 'Test error');
+      expect(fromSnakeCase.retryCount, 2);
+      expect(fromSnakeCase.syncDuration, 5000);
+
+      // Test with camelCase keys (as used internally)
+      final camelCaseMap = {
+        'userId': 'user-456',
+        'lastSyncTime': now.toUtc().toIso8601String(),
+        'dataHash': 'hash456',
+        'syncStatus': 'failed',
+      };
+
+      // Act
+      final fromCamelCase = DatumSyncMetadata.fromMap(camelCaseMap);
+
+      // Assert
+      expect(fromCamelCase.userId, 'user-456');
+      expect(fromCamelCase.dataHash, 'hash456');
+      expect(fromCamelCase.syncStatus, SyncStatus.failed);
+    });
+
+    test('helper methods work correctly for parsing mixed key formats', () {
+      final testMap = {
+        'userId': 'camelCaseValue',
+        'user_id': 'snakeCaseValue',
+        'dataHash': 'camelHash',
+        'missing_field': 'onlySnake',
+        'anotherCamel': 'camelOnly',
+      };
+
+      // Test getValueFromMap - should prefer camelCase
+      expect(DatumSyncMetadata.getValueFromMap<String>(testMap, 'userId', 'user_id'), 'camelCaseValue');
+      expect(DatumSyncMetadata.getValueFromMap<String>(testMap, 'missingField', 'missing_field'), 'onlySnake');
+      expect(DatumSyncMetadata.getValueFromMap<String>(testMap, 'anotherCamel', 'another_camel'), 'camelOnly');
+      expect(DatumSyncMetadata.getValueFromMap<String>(testMap, 'notExist', 'not_exist', defaultValue: 'default'), 'default');
+
+      // Test getRequiredValueFromMap
+      expect(DatumSyncMetadata.getRequiredValueFromMap<String>(testMap, 'userId', 'user_id'), 'camelCaseValue');
+      expect(DatumSyncMetadata.getRequiredValueFromMap<String>(testMap, 'missingField', 'missing_field'), 'onlySnake');
+
+      // Test getRequiredValueFromMap throws for missing required field
+      expect(
+        () => DatumSyncMetadata.getRequiredValueFromMap<String>(testMap, 'nonExistent', 'non_existent'),
+        throwsFormatException,
+      );
+    });
   });
 
   group('DatumSyncMetadata Getters and Methods', () {

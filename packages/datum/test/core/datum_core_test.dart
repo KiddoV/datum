@@ -38,7 +38,6 @@ class Post extends DatumEntity {
         'version': version,
         'isDeleted': isDeleted,
       };
-  @override
   DatumEntity copyWith({
     DateTime? modifiedAt,
     int? version,
@@ -463,6 +462,29 @@ void main() {
 
       // Assert
       expect(healths, isEmpty);
+    });
+
+    test('initialization with logging enabled completes successfully', () async {
+      // Arrange
+      final testLogger = DatumLogger(enabled: true);
+
+      // Act
+      final result = await Datum.initialize(
+        config: const DatumConfig(enableLogging: true),
+        connectivityChecker: mockConnectivity,
+        logger: testLogger,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+
+      // Assert
+      expect(result.isSuccess(), isTrue);
+      // The test exercises the _logInitializationHeader method indirectly
+      // by enabling logging during initialization
     });
   });
 }

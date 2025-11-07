@@ -32,7 +32,14 @@ class CustomHeader extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return fragment([
-      Document.head(children: [Style(styles: _styles)]),
+      Document.head(children: [
+        Style(styles: _styles),
+        Style(styles: [
+          css('body').styles(
+            padding: Padding.only(bottom: 80.px),
+          ),
+        ]),
+      ]),
       header(classes: 'header', [
         ...leading,
         a(classes: 'header-title', href: '/', [
@@ -72,6 +79,7 @@ class CustomHeader extends StatelessComponent {
           gap: Gap(column: .75.rem),
           flex: Flex(grow: 1),
           textDecoration: TextDecoration.none, // Remove underline from the link
+          raw: {'position': 'relative'},
         ),
         css('img').styles(
           width: Unit.auto,
@@ -93,8 +101,39 @@ class CustomHeader extends StatelessComponent {
       css('.header-items', [
         css('&').styles(
           display: Display.flex,
-          gap: Gap(column: 0.25.rem),
+          gap: Gap(column: 0.0625.rem),
         ),
+      ]),
+    ]),
+    // Responsive design for mobile
+    css.media(MediaQuery.all(maxWidth: 640.px), [
+      css('.header', [
+        css('&').styles(
+          height: 3.5.rem,
+          padding: Padding.symmetric(horizontal: 0.75.rem, vertical: 0.2.rem),
+          gap: Gap(column: 0.5.rem),
+        ),
+        css('.header-title', [
+          css('&').styles(
+            gap: Gap(column: 0.5.rem),
+          ),
+          css('img').styles(
+            height: 2.5.rem,
+          ),
+          css('.header-subtitle').styles(
+            raw: {'display': 'none !important'},
+          ),
+        ]),
+        css('.header-items', [
+          css('&').styles(
+            gap: Gap(column: 0.125.rem),
+          ),
+          // Home icon responsive sizing
+          css('a svg').styles(
+            width: 14.px,
+            height: 14.px,
+          ),
+        ]),
       ]),
     ]),
   ];

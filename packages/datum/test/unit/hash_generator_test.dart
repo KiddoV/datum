@@ -41,7 +41,6 @@ class TestHashEntity extends DatumEntity {
     };
   }
 
-  @override
   TestHashEntity copyWith({
     String? name,
     DateTime? modifiedAt,

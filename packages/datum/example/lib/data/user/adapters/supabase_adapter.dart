@@ -86,7 +86,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
     if (response == null) {
       return null;
     }
-    return DatumSyncMetadata.fromMap(_toCamelCase(response));
+    return DatumSyncMetadata.fromMap((response));
   }
 
   @override
@@ -138,9 +138,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
     final data = _toSnakeCase(metadata.toMap());
     data['user_id'] = userId;
 
-    await _client.from(_metadataTableName).upsert(
-          data,
-        );
+    await _client.from(_metadataTableName).upsert(data);
   }
 
   @override

@@ -76,7 +76,6 @@ class ExcludableEntity extends DatumEntity {
     return map;
   }
 
-  @override
   ExcludableEntity copyWith({
     DateTime? modifiedAt,
     int? version,

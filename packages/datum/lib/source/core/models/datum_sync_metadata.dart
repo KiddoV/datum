@@ -79,30 +79,59 @@ enum SyncStatus {
 
 /// Metadata describing the synchronization state for a specific user.
 ///
-/// Below is a schema example for a `sync_metadata` table, which you can use as a
-/// reference for your database.
+/// Below is the schema for the `sync_metadata` table in Supabase/PostgreSQL.
 ///
 /// ```sql
-/// CREATE TABLE sync_metadata (
-///     userId TEXT PRIMARY KEY,
-///     lastSyncTime TEXT,
-///     lastSuccessfulSyncTime TEXT,
-///     dataHash TEXT,
-///     deviceId TEXT,
-///     devices TEXT,
-///     customMetadata TEXT,
-///     entityCounts TEXT,
-///     syncStatus TEXT NOT NULL,
-///     syncVersion INTEGER NOT NULL,
-///     serverTimestamp TEXT,
-///     conflictCount INTEGER NOT NULL,
-///     errorMessage TEXT,
-///     retryCount INTEGER NOT NULL,
-///     syncDuration INTEGER
-/// );
+/// CREATE TABLE public.sync_metadata (
+///   user_id text NOT NULL,
+///   last_sync_time text NULL,
+///   last_successful_sync_time text NULL,
+///   data_hash text NULL,
+///   device_id text NULL,
+///   devices text NULL,
+///   custom_metadata jsonb NULL,
+///   entity_counts jsonb NULL,
+///   sync_status text NOT NULL DEFAULT 'pending'::text,
+///   sync_version integer NOT NULL DEFAULT 0,
+///   server_timestamp text NULL,
+///   conflict_count integer NOT NULL DEFAULT 0,
+///   error_message text NULL,
+///   retry_count integer NOT NULL DEFAULT 0,
+///   sync_duration integer NULL,
+///   created_at timestamp with time zone NOT NULL DEFAULT now(),
+///   updated_at timestamp with time zone NOT NULL DEFAULT now(),
+///   CONSTRAINT sync_metadata_pkey PRIMARY KEY (user_id)
+/// ) TABLESPACE pg_default;
 /// ```
+///
+/// Note: The `devices` and `entity_counts` fields are stored as JSON strings in the database
+/// but parsed into structured Dart objects (Map<String, DateTime> and Map<String, DatumEntitySyncDetails> respectively).
 @immutable
 class DatumSyncMetadata extends Equatable {
+  /// Helper method to get a value from a map that may contain either camelCase or snake_case keys.
+  /// Returns the value for the first matching key found, preferring camelCase over snake_case.
+  static T? getValueFromMap<T>(
+    Map<String, dynamic> map,
+    String camelCaseKey,
+    String snakeCaseKey, {
+    T? defaultValue,
+  }) {
+    return (map[camelCaseKey] ?? map[snakeCaseKey]) as T? ?? defaultValue;
+  }
+
+  /// Helper method to get a required value from a map that may contain either camelCase or snake_case keys.
+  /// Throws a [FormatException] if the key is not found.
+  static T getRequiredValueFromMap<T>(
+    Map<String, dynamic> map,
+    String camelCaseKey,
+    String snakeCaseKey,
+  ) {
+    final value = map[camelCaseKey] ?? map[snakeCaseKey];
+    if (value == null) {
+      throw FormatException('Required field "$camelCaseKey" is missing from map');
+    }
+    return value as T;
+  }
   /// Creates sync metadata.
   const DatumSyncMetadata({
     required this.userId,
@@ -123,40 +152,93 @@ class DatumSyncMetadata extends Equatable {
   });
 
   /// Creates SyncMetadata from JSON.
+  /// Supports both camelCase (Dart convention) and snake_case (database convention) keys.
   factory DatumSyncMetadata.fromMap(Map<String, dynamic> json) {
-    return DatumSyncMetadata(
-      userId: json['userId'] as String,
-      lastSyncTime: json['lastSyncTime'] != null ? DateTime.parse(json['lastSyncTime'] as String) : null,
-      lastSuccessfulSyncTime: json['lastSuccessfulSyncTime'] != null ? DateTime.parse(json['lastSuccessfulSyncTime'] as String) : null,
-      dataHash: json['dataHash'] as String?,
-      deviceId: json['deviceId'] as String?,
-      devices: json['devices'] != null
-          ? (json['devices'] as Map<String, dynamic>).map(
-              (key, value) => MapEntry(key, DateTime.parse(value as String)),
-            )
-          : null,
-      customMetadata: json['customMetadata'] as Map<String, dynamic>?,
-      entityCounts: json['entityCounts'] != null
-          ? (json['entityCounts'] as Map<String, dynamic>).map(
-              (key, value) => MapEntry(
-                key,
-                DatumEntitySyncDetails.fromJson(value as Map<String, dynamic>),
-              ),
-            )
-          : null,
-      syncStatus: json['syncStatus'] != null
-          ? SyncStatus.values.firstWhere(
-              (e) => e.toString() == 'SyncStatus.${json['syncStatus']}',
-              orElse: () => SyncStatus.neverSynced,
-            )
-          : SyncStatus.neverSynced,
-      syncVersion: json['syncVersion'] as int? ?? 1,
-      serverTimestamp: json['serverTimestamp'] != null ? DateTime.parse(json['serverTimestamp'] as String) : null,
-      conflictCount: json['conflictCount'] as int? ?? 0,
-      errorMessage: json['errorMessage'] as String?,
-      retryCount: json['retryCount'] as int? ?? 0,
-      syncDuration: json['syncDuration'] as int?,
-    );
+    try {
+      // Helper function to get value with fallback from camelCase to snake_case
+      dynamic getValue(String camelKey, String snakeKey, {bool required = false}) {
+        var value = json[camelKey] ?? json[snakeKey];
+        if (required && value == null) {
+          throw FormatException('Required field "$camelKey" is missing from sync metadata');
+        }
+        return value;
+      }
+
+      // Parse DateTime with error handling
+      DateTime? parseDateTime(dynamic value) {
+        if (value == null) return null;
+        if (value is String) {
+          try {
+            return DateTime.parse(value);
+          } catch (e) {
+            throw FormatException('Invalid date format for field: $value');
+          }
+        }
+        throw FormatException('Date field must be a string, got: ${value.runtimeType}');
+      }
+
+      // Parse devices map
+      Map<String, DateTime>? parseDevices(dynamic devicesValue) {
+        if (devicesValue == null) return null;
+        if (devicesValue is Map<String, dynamic>) {
+          return devicesValue.map((key, value) {
+            try {
+              return MapEntry(key, DateTime.parse(value as String));
+            } catch (e) {
+              throw FormatException('Invalid date format in devices map for key "$key": $value');
+            }
+          });
+        }
+        throw FormatException('Devices field must be a map, got: ${devicesValue.runtimeType}');
+      }
+
+      // Parse entity counts
+      Map<String, DatumEntitySyncDetails>? parseEntityCounts(dynamic entityCountsValue) {
+        if (entityCountsValue == null) return null;
+        if (entityCountsValue is Map<String, dynamic>) {
+          return entityCountsValue.map((key, value) {
+            try {
+              return MapEntry(key, DatumEntitySyncDetails.fromJson(value as Map<String, dynamic>));
+            } catch (e) {
+              throw FormatException('Invalid entity counts format for key "$key": $e');
+            }
+          });
+        }
+        throw FormatException('Entity counts field must be a map, got: ${entityCountsValue.runtimeType}');
+      }
+
+      // Parse sync status
+      SyncStatus parseSyncStatus(dynamic statusValue) {
+        if (statusValue == null) return SyncStatus.neverSynced;
+        if (statusValue is String) {
+          return SyncStatus.values.firstWhere(
+            (e) => e.toString() == 'SyncStatus.$statusValue',
+            orElse: () => SyncStatus.neverSynced,
+          );
+        }
+        throw FormatException('Sync status must be a string, got: ${statusValue.runtimeType}');
+      }
+
+      return DatumSyncMetadata(
+        userId: getValue('userId', 'user_id', required: true) as String,
+        lastSyncTime: parseDateTime(getValue('lastSyncTime', 'last_sync_time')),
+        lastSuccessfulSyncTime: parseDateTime(getValue('lastSuccessfulSyncTime', 'last_successful_sync_time')),
+        dataHash: getValue('dataHash', 'data_hash') as String?,
+        deviceId: getValue('deviceId', 'device_id') as String?,
+        devices: parseDevices(getValue('devices', 'devices')),
+        customMetadata: getValue('customMetadata', 'custom_metadata') as Map<String, dynamic>?,
+        entityCounts: parseEntityCounts(getValue('entityCounts', 'entity_counts')),
+        syncStatus: parseSyncStatus(getValue('syncStatus', 'sync_status')),
+        syncVersion: getValue('syncVersion', 'sync_version') as int? ?? 1,
+        serverTimestamp: parseDateTime(getValue('serverTimestamp', 'server_timestamp')),
+        conflictCount: getValue('conflictCount', 'conflict_count') as int? ?? 0,
+        errorMessage: getValue('errorMessage', 'error_message') as String?,
+        retryCount: getValue('retryCount', 'retry_count') as int? ?? 0,
+        syncDuration: getValue('syncDuration', 'sync_duration') as int?,
+      );
+    } catch (e) {
+      throw FormatException('Failed to parse DatumSyncMetadata: $e');
+    }
   }
 
   /// User ID for this metadata.

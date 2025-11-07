@@ -62,7 +62,6 @@ class UserEntity extends DatumEntity {
     };
   }
 
-  @override
   UserEntity copyWith({
     String? id,
     String? userId,
