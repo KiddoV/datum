@@ -116,7 +116,7 @@ class CodeBlock extends CustomComponent {
         width: 1.25.rem,
         height: 1.25.rem,
         opacity: 0,
-        color: Colors.white,
+        color: Color('hsl(var(--foreground))'),
       ),
       css('&:hover button').styles(opacity: 0.75),
     ]),

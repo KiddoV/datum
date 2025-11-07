@@ -5,16 +5,21 @@
 // Generated with jaspr_builder
 
 import 'package:jaspr/jaspr.dart';
-import 'package:datum_docs/components/cached_github_button.dart' as prefix0;
-import 'package:datum_docs/components/code_block.dart' as prefix1;
-import 'package:datum_docs/components/custom_image.dart' as prefix2;
-import 'package:datum_docs/components/enhanced_theme_toggle.dart' as prefix3;
+import 'package:datum_docs/components/badge.dart' as prefix0;
+import 'package:datum_docs/components/cached_github_button.dart' as prefix1;
+import 'package:datum_docs/components/card.dart' as prefix2;
+import 'package:datum_docs/components/code_block.dart' as prefix3;
+import 'package:datum_docs/components/custom_image.dart' as prefix4;
+import 'package:datum_docs/components/enhanced_theme_toggle.dart' as prefix5;
+import 'package:datum_docs/components/steps.dart' as prefix6;
+import 'package:datum_docs/components/tip.dart' as prefix7;
 import 'package:jaspr_content/components/_internal/code_block_copy_button.dart'
-    as prefix4;
+    as prefix8;
 import 'package:jaspr_content/components/_internal/zoomable_image.dart'
-    as prefix5;
-import 'package:jaspr_content/components/callout.dart' as prefix6;
-import 'package:jaspr_content/components/sidebar_toggle_button.dart' as prefix7;
+    as prefix9;
+import 'package:jaspr_content/components/callout.dart' as prefix10;
+import 'package:jaspr_content/components/sidebar_toggle_button.dart'
+    as prefix11;
 
 /// Default [JasprOptions] for use with your jaspr project.
 ///
@@ -34,43 +39,47 @@ import 'package:jaspr_content/components/sidebar_toggle_button.dart' as prefix7;
 /// ```
 JasprOptions get defaultJasprOptions => JasprOptions(
   clients: {
-    prefix0.CachedGitHubButton: ClientTarget<prefix0.CachedGitHubButton>(
+    prefix1.CachedGitHubButton: ClientTarget<prefix1.CachedGitHubButton>(
       'components/cached_github_button',
-      params: _prefix0CachedGitHubButton,
+      params: _prefix1CachedGitHubButton,
     ),
 
-    prefix3.EnhancedThemeToggle: ClientTarget<prefix3.EnhancedThemeToggle>(
+    prefix5.EnhancedThemeToggle: ClientTarget<prefix5.EnhancedThemeToggle>(
       'components/enhanced_theme_toggle',
     ),
 
-    prefix4.CodeBlockCopyButton: ClientTarget<prefix4.CodeBlockCopyButton>(
+    prefix8.CodeBlockCopyButton: ClientTarget<prefix8.CodeBlockCopyButton>(
       'jaspr_content:components/_internal/code_block_copy_button',
     ),
 
-    prefix5.ZoomableImage: ClientTarget<prefix5.ZoomableImage>(
+    prefix9.ZoomableImage: ClientTarget<prefix9.ZoomableImage>(
       'jaspr_content:components/_internal/zoomable_image',
-      params: _prefix5ZoomableImage,
+      params: _prefix9ZoomableImage,
     ),
 
-    prefix7.SidebarToggleButton: ClientTarget<prefix7.SidebarToggleButton>(
+    prefix11.SidebarToggleButton: ClientTarget<prefix11.SidebarToggleButton>(
       'jaspr_content:components/sidebar_toggle_button',
     ),
   },
   styles: () => [
-    ...prefix0.CachedGitHubButton.styles,
+    ...prefix0.Badge.styles,
+    ...prefix1.CachedGitHubButton.styles,
+    ...prefix2.Card.styles,
 
-    ...prefix1.CodeBlock.styles,
-    ...prefix2.CustomImage.styles,
-    ...prefix3.EnhancedThemeToggleState.styles,
+    ...prefix3.CodeBlock.styles,
+    ...prefix4.CustomImage.styles,
+    ...prefix5.EnhancedThemeToggleState.styles,
+    ...prefix6.Steps.styles,
+    ...prefix7.Tip.styles,
 
-    ...prefix5.ZoomableImage.styles,
-    ...prefix6.Callout.styles,
+    ...prefix9.ZoomableImage.styles,
+    ...prefix10.Callout.styles,
   ],
 );
 
-Map<String, dynamic> _prefix0CachedGitHubButton(prefix0.CachedGitHubButton c) =>
+Map<String, dynamic> _prefix1CachedGitHubButton(prefix1.CachedGitHubButton c) =>
     {'repo': c.repo, 'cacheDurationMinutes': c.cacheDurationMinutes};
-Map<String, dynamic> _prefix5ZoomableImage(prefix5.ZoomableImage c) => {
+Map<String, dynamic> _prefix9ZoomableImage(prefix9.ZoomableImage c) => {
   'src': c.src,
   'alt': c.alt,
   'caption': c.caption,

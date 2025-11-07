@@ -1,12 +1,14 @@
 ---
-title: About This Project
-description: Learn more about this project.
+title: About Datum
+description: Learn more about the Datum offline-first data synchronization framework.
 ---
 
-This documentation site is a fresh new project, lovingly crafted with the power of `jaspr_content`.
+<Image src="/images/logo.webp" alt="Datum Logo" width="200" height="200" />
 
-Here are our socials, dynamically generated from the `site.yaml` data:
+## Community & Support
+
+Connect with the Datum community:
 
 {{#site.social}}
-- [{{name}}]({{url}})
+- [**{{name}}**]({{url}})
 {{/site.social}}

@@ -41,6 +41,12 @@ New to Datum? Here's how to get started:
 4. **[Query your data](guides/querying.md)**: Filter, sort, and paginate data
 5. **[Implement adapters](guides/local_adapter_implement.md)**: Create local and remote adapters
 6. **[Master sync patterns](guides/sync_patterns.md)**: Handle app startup, login, and data synchronization
+7. **[Use the Singleton API](guides/singleton_api.md)**: Convenient access to all Datum operations
+8. **[Advanced sync patterns](guides/advanced_sync.md)**: Production-ready synchronization features
+
+## 🚀 What's Next
+
+- **[Coming Soon](coming_soon.md)**: Planned features and documentation improvements
 
 ## Core Concepts
 

@@ -18,6 +18,10 @@ import 'package:jaspr_content/theme.dart';
 import 'jaspr_options.dart';
 
 import 'components/code_block.dart';
+import 'components/steps.dart';
+import 'components/card.dart';
+import 'components/badge.dart';
+import 'components/tip.dart';
 
 void main() {
   // Initializes the server environment with the generated default options.
@@ -46,13 +50,19 @@ void main() {
         TableOfContentsExtension(),
       ],
       components: [
-        // The <Info> block and other callouts.
-        Callout(),
         // Adds syntax highlighting to code blocks.
         CodeBlock(
           defaultLanguage: 'dart',
           grammars: {},
         ),
+        // Step-by-step instructions component
+        Steps(),
+        // Card component for highlighting content
+        Card(),
+        // Badge component for status indicators
+        Badge(),
+        // Custom tip component for helpful information
+        Tip(),
         // Adds a custom Jaspr component to be used as <Clicker/> in markdown.
         // CustomComponent(
         //   pattern: 'Clicker',
@@ -115,6 +125,16 @@ void main() {
                   SidebarLink(text: "Quick Start / Installation", href: '/getting_started/quick_start'),
                   SidebarLink(text: "About", href: '/about'),
                   SidebarLink(text: "Costs and Licensing", href: '/costs_licensing'),
+                  SidebarLink(text: "🚀 Coming Soon", href: '/coming_soon'),
+                ],
+              ),
+              SidebarGroup(
+                title: 'Coming Soon',
+                links: [
+                  SidebarLink(text: "🔧 Troubleshooting Guide", href: '/troubleshooting'),
+                  SidebarLink(text: "⚡ Performance Issues", href: '/troubleshooting/performance'),
+                  SidebarLink(text: "🔄 Migration Problems", href: '/troubleshooting/migration'),
+                  SidebarLink(text: "🔌 Adapter Issues", href: '/troubleshooting/adapters'),
                 ],
               ),
               SidebarGroup(
@@ -126,6 +146,8 @@ void main() {
                   SidebarLink(text: "Querying Data", href: '/guides/querying'),
                   SidebarLink(text: "Define Your Local Adapter", href: '/guides/local_adapter_implement'),
                   SidebarLink(text: "Define Your Remote Adapter", href: '/guides/remote_adapter_implement'),
+                  SidebarLink(text: "Datum Singleton API", href: '/guides/singleton_api'),
+                  SidebarLink(text: "Advanced Sync Patterns", href: '/guides/advanced_sync'),
                 ],
               ),
               SidebarGroup(

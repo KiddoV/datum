@@ -4,6 +4,41 @@ The Core module is the heart of the Datum ecosystem, encompassing the fundamenta
 
 ## Sub-modules
 
+<Info>
+**Thread Safety**: Datum is designed to be thread-safe. All operations can be called from any isolate, and the framework handles synchronization internally.
+</Info>
+
+### Datum Singleton
+
+The `Datum` class provides a global singleton instance that offers convenient access to all Datum functionality. It serves as the central entry point for initialization, global operations, and convenience methods.
+
+**Key Features:**
+- Global access to all registered entity managers
+- Convenience methods for common operations
+- Global synchronization control
+- Health monitoring across all entities
+- Metrics collection and reporting
+
+**Initialization:**
+```dart
+// Initialize the singleton (required before use)
+final result = await Datum.initialize(
+  config: DatumConfig(),
+  connectivityChecker: MyConnectivityChecker(),
+  registrations: [/* entity registrations */],
+);
+
+if (result.isSuccess) {
+  // Datum is ready to use
+}
+```
+
+**Global Operations:**
+- `Datum.manager<T>()`: Get manager for entity type
+- `Datum.instance.synchronize(userId)`: Sync all entities
+- `Datum.instance.allHealths`: Monitor all entity health
+- `Datum.instance.metrics`: Global metrics stream
+
 ### Manager
 
 The Manager sub-module provides high-level interfaces for interacting with Datum's functionalities, primarily through the `DatumManager<T>` class.
