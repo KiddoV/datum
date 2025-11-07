@@ -374,34 +374,43 @@ abstract class RelationalDatumEntity extends DatumEntity with RelationalDatumEnt
 ///   }
 /// }
 /// ```
-mixin RelationalDatumEntityMixin implements Equatable {
+mixin RelationalDatumEntityMixin implements Equatable, DatumEntityInterface {
   /// A **unique identifier** for the entity.
+  @override
   String get id;
 
   /// The ID of the user who owns or created this entity.
+  @override
   String get userId;
 
   /// The **timestamp** of the last time this entity was modified.
+  @override
   DateTime get modifiedAt;
 
   /// The **timestamp** of when this entity was first created.
+  @override
   DateTime get createdAt;
 
   /// A **sequential integer** used for optimistic concurrency and tracking
   /// changes.
+  @override
   int get version;
 
   /// A flag indicating if this entity has been locally marked for **deletion**.
+  @override
   bool get isDeleted;
 
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
+  @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
 
   /// Computes the **difference** between the current entity state and an
   /// [oldVersion] of the entity.
+  @override
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
 
   /// Indicates whether this entity supports relationships. Always `true` for this mixin.
+  @override
   bool get isRelational => true;
 
   /// A map defining all relationships for this entity.

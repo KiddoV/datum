@@ -6,7 +6,7 @@ import 'package:datum/datum.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class Task with DatumEntityMixin {
+class Task extends DatumEntity {
   @override
   final String id;
 
@@ -81,9 +81,7 @@ class Task with DatumEntityMixin {
 
   @override
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
-    if (oldVersion is! Task) return toDatumMap();
-
-    final oldTask = oldVersion;
+    final oldTask = oldVersion as Task;
     final diff = <String, dynamic>{};
 
     if (title != oldTask.title) {
@@ -215,4 +213,7 @@ class Task with DatumEntityMixin {
 
   @override
   List<Object?> get props => [];
+
+  @override
+  bool get isRelational => true;
 }

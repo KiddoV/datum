@@ -4,6 +4,8 @@ import 'package:example/features/simple_datum/controller/simple_datum_provider.d
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
+final _logger = DatumLogger();
+
 final nextSyncTimeProvider = StreamProvider.autoDispose<DateTime?>(
   (ref) {
     // This provider does not depend on the user, so it can be a simple provider.
@@ -19,7 +21,7 @@ final countdownProvider = StreamProvider.autoDispose<Duration?>(
 
     return nextSyncTimeAsync.when(
       data: (nextSyncTime) {
-        print(nextSyncTime);
+        _logger.info('Next sync time: $nextSyncTime');
         if (nextSyncTime == null) return Stream.value(null);
 
         return Stream.periodic(const Duration(seconds: 1), (_) {
