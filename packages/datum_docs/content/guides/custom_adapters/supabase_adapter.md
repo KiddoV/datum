@@ -47,8 +47,15 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   // Store related entity channels for cleanup
   final Map<String, RealtimeChannel> _relatedChannels = {};
 
+  // Authentication state monitoring
+  StreamSubscription<AuthState>? _authSubscription;
+  bool _isAuthenticated = false;
+  final StreamController<bool> _authStateController = StreamController<bool>.broadcast();
+
   SupabaseClient get _client => _clientOverride ?? Supabase.instance.client;
   String get _metadataTableName => 'sync_metadata';
+
+  Stream<bool> get authStateStream => _authStateController.stream;
 
   @override
   Future<void> delete(String id, {String? userId}) async {
@@ -155,14 +162,32 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
   @override
   Future<void> updateSyncMetadata(
       DatumSyncMetadata metadata, String userId) async {
+    // Check if user is authenticated before attempting to update sync metadata
+    if (!_isAuthenticated) {
+      talker.warning(
+          "Skipping sync metadata update for user $userId: User is not authenticated");
+      return;
+    }
+
     talker
         .debug("Updating sync metadata for user: $userId with data: $metadata");
     final data = _toSnakeCase(metadata.toMap());
     data['user_id'] = userId;
 
-    await _client.from(_metadataTableName).upsert(
-          data,
-        );
+    try {
+      await _client.from(_metadataTableName).upsert(data);
+    } catch (e) {
+      // Handle RLS policy violations gracefully
+      if (e is PostgrestException && e.code == '42501') {
+        talker.warning(
+            "Failed to update sync metadata due to RLS policy violation. User may have logged out.");
+        // Mark as unauthenticated to prevent further attempts
+        _updateAuthenticationState(false);
+      } else {
+        // Re-throw other exceptions
+        rethrow;
+      }
+    }
   }
 
   @override
@@ -271,10 +296,60 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
     await _client.from(_metadataTableName).delete().eq('user_id', userId);
   }
 
+  // Authentication monitoring methods
+  void startAuthMonitoring() {
+    if (_authSubscription != null) return; // Already monitoring
+
+    talker.info("Starting authentication state monitoring for $tableName adapter");
+    _authSubscription = _client.auth.onAuthStateChange.listen(
+      (AuthState authState) {
+        final isAuthenticated = authState.session != null;
+        _updateAuthenticationState(isAuthenticated);
+
+        if (!isAuthenticated) {
+          talker.info("User logged out, stopping sync for $tableName adapter");
+          // Stop syncing when user logs out
+          unsubscribeFromChanges();
+        } else {
+          talker.info("User logged in, resuming sync for $tableName adapter");
+          // Resume syncing when user logs in
+          if (_channel == null) {
+            _subscribeToChanges();
+          }
+        }
+      },
+      onError: (error) {
+        talker.error("Auth state monitoring error: $error");
+      },
+    );
+
+    // Set initial state
+    final currentSession = _client.auth.currentSession;
+    _updateAuthenticationState(currentSession != null);
+  }
+
+  Future<void> _stopAuthMonitoring() async {
+    if (_authSubscription != null) {
+      await _authSubscription!.cancel();
+      _authSubscription = null;
+      talker.info("Stopped authentication state monitoring for $tableName adapter");
+    }
+  }
+
+  void _updateAuthenticationState(bool isAuthenticated) {
+    if (_isAuthenticated != isAuthenticated) {
+      _isAuthenticated = isAuthenticated;
+      _authStateController.add(isAuthenticated);
+      talker.debug("Authentication state changed: $isAuthenticated for $tableName adapter");
+    }
+  }
+
   @override
   Future<void> dispose() async {
     await unsubscribeFromChanges();
     await _streamController?.close();
+    await _stopAuthMonitoring();
+    await _authStateController.close();
     return super.dispose();
   }
 
@@ -284,6 +359,10 @@ class SupabaseRemoteAdapter<T extends DatumEntityBase>
       await unsubscribeFromChanges();
       _subscribeToChanges();
     }
+
+    // Start monitoring authentication state
+    startAuthMonitoring();
+
     // The Supabase client is initialized globally, so no specific
     // initialization is needed for this adapter instance.
     return Future.value();
@@ -622,15 +701,55 @@ CREATE POLICY "Users can manage their own sync metadata" ON sync_metadata
 
 Supabase automatically provides real-time capabilities. The adapter subscribes to PostgreSQL changes and converts them to Datum change events.
 
+## Authentication State Management
+
+The Supabase adapter includes built-in authentication state monitoring to prevent sync operations when users are not authenticated, avoiding Row Level Security (RLS) policy violations.
+
+### Key Features
+
+- **Automatic Sync Control**: Sync automatically stops when users log out and resumes when they log back in
+- **RLS Violation Prevention**: Sync metadata updates are skipped when users are not authenticated
+- **Graceful Error Handling**: RLS policy violations are caught and handled without crashing the app
+- **Authentication State Stream**: External components can listen to authentication state changes
+
+### How It Works
+
+```dart
+// Listen to authentication state changes
+userAdapter.authStateStream.listen((isAuthenticated) {
+  if (isAuthenticated) {
+    print("User is authenticated, sync is active");
+  } else {
+    print("User logged out, sync is paused");
+  }
+});
+```
+
+### Authentication Flow
+
+1. **Initialization**: `initialize()` starts authentication monitoring
+2. **Login Detection**: When user logs in, sync channels are automatically subscribed
+3. **Logout Detection**: When user logs out, all sync channels are unsubscribed
+4. **Error Recovery**: If RLS errors occur, the adapter marks the user as unauthenticated
+5. **Cleanup**: Authentication monitoring is properly disposed when the adapter is destroyed
+
+### Benefits
+
+- **No More RLS Errors**: Prevents the `42501` unauthorized errors when users log out
+- **Resource Efficiency**: Stops unnecessary sync operations when users are not authenticated
+- **Automatic Recovery**: Sync resumes automatically when users log back in
+- **Observable State**: UI components can react to authentication state changes
+
 ## Features
 
 - **Real-time Synchronization**: PostgreSQL change streams with automatic conversion
 - **Relationship Support**: Built-in support for BelongsTo, HasMany, HasOne, and ManyToMany relationships
 - **Row Level Security**: Automatic integration with Supabase RLS policies
+- **Authentication State Management**: Prevents sync operations when users are not authenticated
 - **Health Monitoring**: Authentication-based health checks
 - **Error Handling**: Comprehensive error handling with detailed messages
 - **Query Support**: Advanced filtering with PostgREST query builder
-- **Sync Metadata**: Full sync state management
+- **Sync Metadata**: Full sync state management with authentication checks
 
 ## Performance Considerations
 
