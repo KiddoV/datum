@@ -27,7 +27,7 @@
 **/build/
 **/coverage/
 packages/datum/example/pubspec.lock
-
+packages/datum_docs/build/*
 # Generated files
 *.g.dart
 *.freezed.dart
@@ -68,3 +68,4 @@ app.*.map.json
 .gemini/
 gha-creds-*.json
 .dart_tool/
+
