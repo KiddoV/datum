@@ -22,7 +22,6 @@ import 'components/steps.dart';
 import 'components/card.dart';
 import 'components/badge.dart';
 import 'components/tip.dart';
-import 'components/comparison_table.dart';
 
 void main() {
   // Initializes the server environment with the generated default options.
