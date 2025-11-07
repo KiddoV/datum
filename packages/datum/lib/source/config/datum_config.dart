@@ -8,6 +8,7 @@ import 'package:datum/source/core/models/user_switch_models.dart';
 import 'package:datum/source/core/resolver/conflict_resolution.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
 import 'package:datum/source/core/manager/datum_sync_request_strategy.dart';
+import 'package:datum/source/core/models/datum_sync_options.dart';
 
 import '../core/models/datum_entity.dart';
 
@@ -94,6 +95,10 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// but short enough not to consume excessive memory.
   final Duration changeCacheDuration;
 
+  /// Default sync options to use when none are provided to synchronize().
+  /// These options will be merged with any options passed to individual sync calls.
+  final DatumSyncOptions<T>? defaultSyncOptions;
+
   const DatumConfig({
     this.autoSyncInterval = const Duration(minutes: 15),
     this.autoStartSync = false,
@@ -115,6 +120,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     ),
     this.remoteEventDebounceTime = const Duration(milliseconds: 50),
     this.changeCacheDuration = const Duration(seconds: 5),
+    this.defaultSyncOptions,
   });
 
   /// A default configuration with sensible production values.
@@ -140,6 +146,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     DatumErrorRecoveryStrategy? errorRecoveryStrategy,
     Duration? remoteEventDebounceTime,
     Duration? changeCacheDuration,
+    DatumSyncOptions<E>? defaultSyncOptions,
   }) {
     return DatumConfig<E>(
       autoSyncInterval: autoSyncInterval ?? this.autoSyncInterval,
@@ -161,6 +168,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       errorRecoveryStrategy: errorRecoveryStrategy ?? this.errorRecoveryStrategy,
       remoteEventDebounceTime: remoteEventDebounceTime ?? this.remoteEventDebounceTime,
       changeCacheDuration: changeCacheDuration ?? this.changeCacheDuration,
+      defaultSyncOptions: defaultSyncOptions ?? (this.defaultSyncOptions is DatumSyncOptions<E> ? this.defaultSyncOptions as DatumSyncOptions<E> : null),
     );
   }
 
@@ -188,6 +196,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       errorRecoveryStrategy,
       remoteEventDebounceTime,
       changeCacheDuration,
+      defaultSyncOptions,
     ];
   }
 }

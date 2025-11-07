@@ -653,7 +653,7 @@ class Datum {
   /// A global sync that can coordinate across all managers.
   Future<DatumSyncResult<DatumEntityInterface>> synchronize(
     String userId, {
-    DatumSyncOptions? options,
+    DatumSyncOptions<DatumEntityInterface>? options,
   }) async {
     final snapshot = _getSnapshot(userId);
     if (snapshot.status == DatumSyncStatus.syncing) {
@@ -743,9 +743,9 @@ class Datum {
     }
   }
 
-  Future<List<DatumSyncResult<DatumEntityInterface>>> _pushChanges(String userId, DatumSyncOptions? options) async {
+  Future<List<DatumSyncResult<DatumEntityInterface>>> _pushChanges(String userId, DatumSyncOptions<DatumEntityInterface>? options) async {
     logger.info('Starting global push phase for user $userId...');
-    final pushOnlyOptions = (options ?? const DatumSyncOptions()).copyWith(
+    final pushOnlyOptions = (options ?? const DatumSyncOptions<DatumEntityInterface>()).copyWith(
       direction: SyncDirection.pushOnly,
     );
 
@@ -758,10 +758,10 @@ class Datum {
 
   Future<List<DatumSyncResult<DatumEntityInterface>>> _pullChanges(
     String userId,
-    DatumSyncOptions? options,
+    DatumSyncOptions<DatumEntityInterface>? options,
   ) async {
     logger.info('Starting global pull phase for user $userId...');
-    final pullOnlyOptions = (options ?? const DatumSyncOptions()).copyWith(
+    final pullOnlyOptions = (options ?? const DatumSyncOptions<DatumEntityInterface>()).copyWith(
       direction: SyncDirection.pullOnly,
     );
 
@@ -813,7 +813,7 @@ class Datum {
     required List<T> items,
     required String userId,
     bool andSync = false,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
   }) {
     return Datum.manager<T>().saveMany(
       items: items,
@@ -827,7 +827,7 @@ class Datum {
     required List<T> items,
     required String userId,
     bool andSync = false,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
   }) {
     return Datum.manager<T>().saveMany(
       items: items,
@@ -847,7 +847,7 @@ class Datum {
   Future<(T, DatumSyncResult<T>)> pushAndSync<T extends DatumEntityInterface>({
     required T item,
     required String userId,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
   }) {
     return Datum.manager<T>().pushAndSync(
       item: item,
@@ -859,7 +859,7 @@ class Datum {
   Future<(T, DatumSyncResult<T>)> updateAndSync<T extends DatumEntityInterface>({
     required T item,
     required String userId,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
   }) {
     return Datum.manager<T>().updateAndSync(
       item: item,
@@ -871,7 +871,7 @@ class Datum {
   Future<(bool, DatumSyncResult<T>)> deleteAndSync<T extends DatumEntityInterface>({
     required String id,
     required String userId,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
   }) =>
       Datum.manager<T>().deleteAndSync(id: id, userId: userId, syncOptions: syncOptions);
 
@@ -956,6 +956,15 @@ class Datum {
 
   Future<DatumSyncResult<T>?> getLastSyncResult<T extends DatumEntityInterface>(String userId) async {
     return Datum.manager<T>().getLastSyncResult(userId);
+  }
+
+  /// Fetches sync metadata from the remote server for the specified entity type.
+  ///
+  /// This is a convenience method that calls [getRemoteSyncMetadata] on the
+  /// appropriate manager. Returns null if no metadata exists or if the remote
+  /// adapter doesn't support this operation.
+  Future<DatumSyncMetadata?> getRemoteSyncMetadata<T extends DatumEntityInterface>(String userId) async {
+    return Datum.manager<T>().getRemoteSyncMetadata(userId);
   }
 
   Future<DatumHealth> checkHealth<T extends DatumEntityInterface>() async {

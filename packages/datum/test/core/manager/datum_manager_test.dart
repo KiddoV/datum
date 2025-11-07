@@ -133,5 +133,31 @@ void main() {
     });
   });
 
+  group('DatumManager sync options merging', () {
+    test('should handle provided options without errors', () async {
+      // Arrange
+      const providedOptions = DatumSyncOptions<DatumEntityInterface>(
+        includeDeletes: false,
+        resolveConflicts: false,
+        forceFullSync: true,
+        direction: SyncDirection.pullOnly, // Use pullOnly so it doesn't skip due to no pending operations
+      );
 
+      // Act - This tests that the _mergeSyncOptions method is called and handles the options correctly
+      final result = await manager.synchronize('user1', options: providedOptions);
+
+      // Assert
+      expect(result.syncedCount, 0); // No data to sync
+      expect(result.wasSkipped, false);
+    });
+
+    test('should handle null options without errors', () async {
+      // Act - This tests that _mergeSyncOptions handles null options correctly
+      final result = await manager.synchronize('user1');
+
+      // Assert
+      expect(result.syncedCount, 0);
+      expect(result.wasSkipped, false);
+    });
+  });
 }

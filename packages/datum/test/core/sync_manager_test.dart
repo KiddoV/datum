@@ -1556,6 +1556,53 @@ void main() async {
       });
     });
 
+    group('getRemoteSyncMetadata', () {
+      test('returns metadata from remote adapter when available', () async {
+        await manager.initialize();
+        // Arrange
+        final expectedMetadata = DatumSyncMetadata(
+          userId: userId,
+          lastSyncTime: DateTime.now(),
+          syncStatus: SyncStatus.synced,
+        );
+        when(
+          () => remoteAdapter.getSyncMetadata(userId),
+        ).thenAnswer((_) async => expectedMetadata);
+
+        // Act
+        final result = await manager.getRemoteSyncMetadata(userId);
+
+        // Assert
+        expect(result, expectedMetadata);
+        verify(() => remoteAdapter.getSyncMetadata(userId)).called(1);
+      });
+
+      test('returns null when remote adapter returns null', () async {
+        await manager.initialize();
+        // Arrange
+        when(
+          () => remoteAdapter.getSyncMetadata(userId),
+        ).thenAnswer((_) async => null);
+
+        // Act
+        final result = await manager.getRemoteSyncMetadata(userId);
+
+        // Assert
+        expect(result, isNull);
+        verify(() => remoteAdapter.getSyncMetadata(userId)).called(1);
+      });
+
+      test('throws StateError when manager is not initialized', () async {
+        // Arrange: Don't initialize the manager
+
+        // Act & Assert
+        expect(
+          () => manager.getRemoteSyncMetadata(userId),
+          throwsA(isA<StateError>()),
+        );
+      });
+    });
+
     group('Public Event Streams', () {
       test(
         'onSyncStarted, onSyncProgress, and onSyncCompleted emit correctly',

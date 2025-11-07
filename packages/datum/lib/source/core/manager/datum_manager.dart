@@ -522,7 +522,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     required String userId,
     DataSource source = DataSource.local,
     bool forceRemoteSync = false,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
     DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
@@ -543,7 +543,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     required String userId,
     DataSource source = DataSource.local,
     bool forceRemoteSync = false,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
     DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
@@ -559,7 +559,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     bool andSync = false,
     DataSource source = DataSource.local,
     bool forceRemoteSync = false,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
     DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
@@ -791,7 +791,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   Future<(bool, DatumSyncResult<T>)> deleteAndSync({
     required String id,
     required String userId,
-    DatumSyncOptions? syncOptions,
+    DatumSyncOptions<T>? syncOptions,
   }) async {
     _ensureInitialized();
     final wasDeleted = await delete(id: id, userId: userId);
@@ -898,7 +898,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
   Future<DatumSyncResult<T>> synchronize(
     String userId, {
-    DatumSyncOptions? options,
+    DatumSyncOptions<DatumEntityInterface>? options,
     DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
@@ -932,17 +932,20 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
         }
 
         try {
+          // Merge provided options with defaults from config
+          final mergedOptions = _mergeSyncOptions(options);
+
           // Convert options to the correct type if needed.
           // This handles cases where options might be passed with a different generic type from Datum.
-          final typedOptions = options != null
+          final typedOptions = mergedOptions != null
               ? DatumSyncOptions<T>(
-                  includeDeletes: options.includeDeletes,
-                  resolveConflicts: options.resolveConflicts,
-                  forceFullSync: options.forceFullSync,
-                  overrideBatchSize: options.overrideBatchSize,
-                  timeout: options.timeout,
-                  direction: options.direction,
-                  conflictResolver: options.conflictResolver is DatumConflictResolver<T> ? options.conflictResolver as DatumConflictResolver<T> : null,
+                  includeDeletes: mergedOptions.includeDeletes,
+                  resolveConflicts: mergedOptions.resolveConflicts,
+                  forceFullSync: mergedOptions.forceFullSync,
+                  overrideBatchSize: mergedOptions.overrideBatchSize,
+                  timeout: mergedOptions.timeout,
+                  direction: mergedOptions.direction,
+                  conflictResolver: mergedOptions.conflictResolver is DatumConflictResolver<T> ? mergedOptions.conflictResolver as DatumConflictResolver<T> : null,
                 )
               : null;
 
@@ -1314,6 +1317,34 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   Future<DatumSyncResult<T>?> getLastSyncResult(String userId) async {
     _ensureInitialized();
     return localAdapter.getLastSyncResult(userId);
+  }
+
+  /// Merges provided sync options with defaults from config.
+  /// Provided options take precedence over defaults.
+  DatumSyncOptions<DatumEntityInterface>? _mergeSyncOptions(DatumSyncOptions<DatumEntityInterface>? provided) {
+    final defaults = config.defaultSyncOptions;
+    if (defaults == null) return provided;
+    if (provided == null) return defaults;
+
+    // Merge provided options with defaults, preferring provided values
+    return DatumSyncOptions<DatumEntityInterface>(
+      includeDeletes: provided.includeDeletes,
+      resolveConflicts: provided.resolveConflicts,
+      forceFullSync: provided.forceFullSync,
+      overrideBatchSize: provided.overrideBatchSize ?? defaults.overrideBatchSize,
+      timeout: provided.timeout ?? defaults.timeout,
+      direction: provided.direction ?? defaults.direction,
+      conflictResolver: provided.conflictResolver ?? defaults.conflictResolver,
+    );
+  }
+
+  /// Fetches sync metadata from the remote server for this entity type.
+  ///
+  /// This is a convenience method that calls [remoteAdapter.getSyncMetadata].
+  /// Returns null if no metadata exists or if the remote adapter doesn't support this operation.
+  Future<DatumSyncMetadata?> getRemoteSyncMetadata(String userId) async {
+    _ensureInitialized();
+    return remoteAdapter.getSyncMetadata(userId);
   }
 
   /// Performs a health check on the local and remote adapters and updates the

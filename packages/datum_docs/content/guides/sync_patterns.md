@@ -232,6 +232,18 @@ if (localMetadata?.lastSuccessfulSyncTime != null &&
 }
 ```
 
+### Convenience APIs
+
+For easier access, you can also use these convenience methods:
+
+```dart
+// On DatumManager (recommended for single entity)
+final metadata = await Datum.manager<Task>().getRemoteSyncMetadata(userId);
+
+// On Datum (for any entity type)
+final metadata = await Datum.getRemoteSyncMetadata<Task>(userId);
+```
+
 ## Force Fresh Data
 
 Sometimes you need to completely ignore cached sync state and force fresh data from the server.

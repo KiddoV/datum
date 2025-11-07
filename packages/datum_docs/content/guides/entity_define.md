@@ -17,10 +17,10 @@ Use `RelationalDatumEntity` for entities that have relationships with other enti
 
 Now that you've defined your entities, you can:
 
-1. **[Set up adapters](adapter_implement.md)**: Implement local and remote adapters for your entities
-2. **[Initialize Datum](initialization.md)**: Configure and initialize the Datum system
-3. **[Work with relationships](relationships.md)**: Learn about defining and using entity relationships (if using `RelationalDatumEntity`)
-4. **[Query data](querying.md)**: Learn how to query and filter your data
+1. **[Set up adapters](guides/local_adapter_implement)**: Implement local and remote adapters for your entities
+2. **[Initialize Datum](guides/initialization)**: Configure and initialize the Datum system
+3. **[Work with relationships](guides/relationships)**: Learn about defining and using entity relationships (if using `RelationalDatumEntity`)
+4. **[Query data](guides/querying)**: Learn how to query and filter your data
 
 ## Example: Non-Relational Entity
 
@@ -743,4 +743,4 @@ class Profile extends RelationalDatumEntity {
   }
 }
 ```
-```
+
