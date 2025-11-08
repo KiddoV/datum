@@ -2,6 +2,7 @@
 import 'package:datum/source/core/errors/datum_exception.dart';
 import 'package:equatable/equatable.dart';
 import 'package:datum/source/core/migration/migration.dart';
+import 'package:datum/source/utils/datum_logger.dart';
 
 import 'package:datum/source/core/models/error_strategy.dart';
 import 'package:datum/source/core/models/user_switch_models.dart';
@@ -99,6 +100,38 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// These options will be merged with any options passed to individual sync calls.
   final DatumSyncOptions<T>? defaultSyncOptions;
 
+  /// The maximum number of entries to keep in the change cache.
+  /// When exceeded, older entries are removed to prevent unbounded memory growth.
+  final int maxChangeCacheSize;
+
+  /// The interval for periodic cleanup of the change cache.
+  /// This is in addition to the immediate cleanup based on changeCacheDuration.
+  final Duration changeCacheCleanupInterval;
+
+  /// The batch size for processing remote changes during sync operations.
+  /// Larger batches reduce memory overhead but may increase latency.
+  final int remoteSyncBatchSize;
+
+  /// The batch size for streaming remote items from adapters.
+  /// Smaller batches reduce memory usage but may increase processing overhead.
+  final int remoteStreamBatchSize;
+
+  /// The frequency of progress event emissions during sync operations.
+  /// Progress events are emitted every N items processed.
+  final int progressEventFrequency;
+
+  /// The minimum log level for logging output.
+  final LogLevel logLevel;
+
+  /// Whether to enable performance logging for operations exceeding thresholds.
+  final bool enablePerformanceLogging;
+
+  /// The duration threshold for performance logging.
+  final Duration performanceLogThreshold;
+
+  /// Sampling strategies for high-frequency log operations.
+  final Map<String, LogSampler> logSamplers;
+
   const DatumConfig({
     this.autoSyncInterval = const Duration(minutes: 15),
     this.autoStartSync = false,
@@ -121,6 +154,15 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     this.remoteEventDebounceTime = const Duration(milliseconds: 50),
     this.changeCacheDuration = const Duration(seconds: 5),
     this.defaultSyncOptions,
+    this.maxChangeCacheSize = 1000,
+    this.changeCacheCleanupInterval = const Duration(seconds: 30),
+    this.remoteSyncBatchSize = 100,
+    this.remoteStreamBatchSize = 50,
+    this.progressEventFrequency = 50,
+    this.logLevel = LogLevel.info,
+    this.enablePerformanceLogging = false,
+    this.performanceLogThreshold = const Duration(milliseconds: 100),
+    this.logSamplers = const {},
   });
 
   /// A default configuration with sensible production values.
@@ -147,6 +189,15 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     Duration? remoteEventDebounceTime,
     Duration? changeCacheDuration,
     DatumSyncOptions<E>? defaultSyncOptions,
+    int? maxChangeCacheSize,
+    Duration? changeCacheCleanupInterval,
+    int? remoteSyncBatchSize,
+    int? remoteStreamBatchSize,
+    int? progressEventFrequency,
+    LogLevel? logLevel,
+    bool? enablePerformanceLogging,
+    Duration? performanceLogThreshold,
+    Map<String, LogSampler>? logSamplers,
   }) {
     return DatumConfig<E>(
       autoSyncInterval: autoSyncInterval ?? this.autoSyncInterval,
@@ -169,6 +220,15 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       remoteEventDebounceTime: remoteEventDebounceTime ?? this.remoteEventDebounceTime,
       changeCacheDuration: changeCacheDuration ?? this.changeCacheDuration,
       defaultSyncOptions: defaultSyncOptions ?? (this.defaultSyncOptions is DatumSyncOptions<E> ? this.defaultSyncOptions as DatumSyncOptions<E> : null),
+      maxChangeCacheSize: maxChangeCacheSize ?? this.maxChangeCacheSize,
+      changeCacheCleanupInterval: changeCacheCleanupInterval ?? this.changeCacheCleanupInterval,
+      remoteSyncBatchSize: remoteSyncBatchSize ?? this.remoteSyncBatchSize,
+      remoteStreamBatchSize: remoteStreamBatchSize ?? this.remoteStreamBatchSize,
+      progressEventFrequency: progressEventFrequency ?? this.progressEventFrequency,
+      logLevel: logLevel ?? this.logLevel,
+      enablePerformanceLogging: enablePerformanceLogging ?? this.enablePerformanceLogging,
+      performanceLogThreshold: performanceLogThreshold ?? this.performanceLogThreshold,
+      logSamplers: logSamplers ?? this.logSamplers,
     );
   }
 
@@ -197,6 +257,15 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       remoteEventDebounceTime,
       changeCacheDuration,
       defaultSyncOptions,
+      maxChangeCacheSize,
+      changeCacheCleanupInterval,
+      remoteSyncBatchSize,
+      remoteStreamBatchSize,
+      progressEventFrequency,
+      logLevel,
+      enablePerformanceLogging,
+      performanceLogThreshold,
+      logSamplers,
     ];
   }
 }

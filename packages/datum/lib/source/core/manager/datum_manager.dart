@@ -6,6 +6,8 @@ import 'package:datum/datum.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 
+import '../engine/error_boundary.dart';
+
 // Weak reference wrapper for observers to prevent memory leaks
 class _WeakObserver<U extends Object> {
   final WeakReference<U> _ref;
@@ -49,6 +51,9 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// and de-duplicate events. The key is the entity ID.
   final Map<String, DateTime> _recentChangeCache = {};
 
+  /// Last cache cleanup time
+  DateTime _lastCacheCleanup = DateTime.now();
+
   late final QueueManager<T> _queueManager;
   late final IsolateHelper _isolateHelper;
   late final DatumConflictDetector<T> _conflictDetector;
@@ -75,6 +80,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     );
     return _syncEngine!;
   }
+
   late final StreamController<DatumSyncEvent<T>> _eventController;
   late final BehaviorSubject<DatumSyncStatusSnapshot> _statusSubject;
   late final BehaviorSubject<DatumSyncMetadata> _metadataSubject;
@@ -138,7 +144,19 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   })  : config = datumConfig ?? const DatumConfig(),
         _connectivity = connectivity,
         // The logger's enabled status should always respect the config.
-        _logger = (logger ?? DatumLogger()).copyWith(enabled: datumConfig?.enableLogging ?? true),
+        _logger = (logger ?? DatumLogger(
+          enabled: datumConfig?.enableLogging ?? true,
+          minimumLevel: datumConfig?.logLevel ?? LogLevel.info,
+          enablePerformanceLogging: datumConfig?.enablePerformanceLogging ?? false,
+          performanceThreshold: datumConfig?.performanceLogThreshold ?? const Duration(milliseconds: 100),
+          samplers: datumConfig?.logSamplers ?? const {},
+        )).copyWith(
+          enabled: datumConfig?.enableLogging ?? true,
+          minimumLevel: datumConfig?.logLevel ?? LogLevel.info,
+          enablePerformanceLogging: datumConfig?.enablePerformanceLogging ?? false,
+          performanceThreshold: datumConfig?.performanceLogThreshold ?? const Duration(milliseconds: 100),
+          samplers: datumConfig?.logSamplers ?? const {},
+        ),
         _conflictResolver = conflictResolver ?? datumConfig?.defaultConflictResolver ?? LastWriteWinsResolver<T>(),
         _syncRequestStrategy = syncRequestStrategy ?? datumConfig?.syncRequestStrategy ?? const SequentialRequestStrategy() {
     _localObservers.addAll((localObservers ?? []).map(_WeakObserver.new));
@@ -403,10 +421,29 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   }
 
   void _cleanupChangeCache() {
-    final cacheExpiry = DateTime.now().subtract(config.changeCacheDuration);
+    final now = DateTime.now();
+
+    // Always check for expired entries based on config duration
+    final cacheExpiry = now.subtract(config.changeCacheDuration);
     _recentChangeCache.removeWhere((key, timestamp) {
       return timestamp.isBefore(cacheExpiry);
     });
+
+    // Periodic full cleanup and size management
+    if (now.difference(_lastCacheCleanup) > config.changeCacheCleanupInterval) {
+      // Size-based cleanup to prevent unbounded growth
+      if (_recentChangeCache.length > config.maxChangeCacheSize) {
+        // Remove oldest entries (keep only the most recent half)
+        final entries = _recentChangeCache.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value)); // Sort by timestamp descending
+
+        final keepCount = config.maxChangeCacheSize ~/ 2;
+        final entriesToKeep = entries.take(keepCount);
+        _recentChangeCache.clear();
+        _recentChangeCache.addEntries(entriesToKeep);
+      }
+      _lastCacheCleanup = now;
+    }
   }
 
   Future<T> push({
@@ -442,13 +479,19 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   Future<T> _performCreate(T transformed, DataSource source, bool forceRemoteSync) async {
     final userId = transformed.userId;
 
+    // Isolate observer notifications with error boundaries
+    final observerBoundary = ErrorBoundaries.observerIsolation(logger: _logger);
+
     _logger.debug('Notifying observers of onCreateStart for ${transformed.id}');
-    for (final weakObserver in _localObservers) {
-      weakObserver.target?.onCreateStart(transformed);
-    }
-    for (final weakObserver in _globalObservers) {
-      weakObserver.target?.onCreateStart(transformed);
-    }
+    unawaited(observerBoundary.executeVoid(() async {
+      for (final weakObserver in _localObservers) {
+        weakObserver.target?.onCreateStart(transformed);
+      }
+      for (final weakObserver in _globalObservers) {
+        weakObserver.target?.onCreateStart(transformed);
+      }
+    }));
+
     await localAdapter.create(transformed);
 
     if (source == DataSource.local || forceRemoteSync) {
@@ -476,12 +519,14 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     );
 
     _logger.debug('Notifying observers of onCreateEnd for ${transformed.id}');
-    for (final weakObserver in _localObservers) {
-      weakObserver.target?.onCreateEnd(transformed);
-    }
-    for (final weakObserver in _globalObservers) {
-      weakObserver.target?.onCreateEnd(transformed);
-    }
+    unawaited(observerBoundary.executeVoid(() async {
+      for (final weakObserver in _localObservers) {
+        weakObserver.target?.onCreateEnd(transformed);
+      }
+      for (final weakObserver in _globalObservers) {
+        weakObserver.target?.onCreateEnd(transformed);
+      }
+    }));
 
     return transformed;
   }
@@ -983,37 +1028,14 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
             await localAdapter.saveLastSyncResult(userId, result);
           }
           return result;
-        } on Object catch (e, stack) {
-          // This block handles a special case where the sync engine fails but
-          // needs to communicate events (like DatumSyncErrorEvent) back to the
-          // manager before the top-level Future completes with an error.
-
-          // If the error is already our special type, it came from the main
-          // isolate. If not, it likely came from a worker isolate and lost its
-          // type, so we need to re-wrap it.
-          final SyncExceptionWithEvents<T> wrappedException = e is SyncExceptionWithEvents<T> ? e : SyncExceptionWithEvents(e, stack, []);
-
-          _processSyncEvents(wrappedException.events);
-
-          // CRITICAL: Re-throw the original error asynchronously.
-          // Using `return Future.error` instead of a synchronous `throw` is
-          // essential to prevent a race condition in tests. It ensures that the
-          // event stream has a chance to deliver the `DatumSyncErrorEvent`
-          // (processed in the line above) to its listeners *before* the Future
-          // returned by `synchronize()` completes with an error. Without this,
-          // a test awaiting both the event and the thrown exception might see
-          // the exception first and terminate before the event is received,
-          // leading to a timeout.
-          return Future.error(
-            wrappedException.originalError is DatumException
-                ? wrappedException.originalError
-                : DatumException.fromError(
-                    wrappedException.originalError,
-                    code: DatumExceptionCode.unknown,
-                    stackTrace: wrappedException.originalStackTrace,
-                  ),
-            wrappedException.originalStackTrace,
-          );
+        } on Object catch (e, _) {
+          // If it's a SyncExceptionWithEvents, process events and throw the original error
+          if (e is SyncExceptionWithEvents<T>) {
+            _processSyncEvents(e.events);
+            throw e.originalError;
+          }
+          // Otherwise, re-throw the original error
+          rethrow;
         }
       },
       isSyncInProgress: () => _syncEngineInstance.isSyncing,

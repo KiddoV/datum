@@ -1,7 +1,9 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/metrics/performance_monitor.dart';
 import 'package:datum/source/core/models/datum_either.dart';
+import 'package:datum/source/core/models/performance_metrics.dart';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -214,6 +216,7 @@ class Datum {
   final DatumConnectivityChecker connectivityChecker;
   final List<GlobalDatumObserver> globalObservers = [];
   final DatumLogger logger;
+  final PerformanceMonitor performanceMonitor;
   final List<StreamSubscription<DatumSyncEvent<DatumEntityInterface>>> _managerSubscriptions = [];
 
   // Stream controllers for events and status
@@ -249,7 +252,15 @@ class Datum {
     required this.config,
     required this.connectivityChecker,
     DatumLogger? logger,
-  }) : logger = logger ?? DatumLogger(enabled: config.enableLogging);
+  }) : logger = logger ?? DatumLogger(enabled: config.enableLogging),
+       performanceMonitor = PerformanceMonitor(
+         const PerformanceConfig.monitorAll(
+           enabled: true,
+           trackMemory: true,
+           trackOperationTimings: true,
+           detectRegressions: true,
+         ),
+       );
 
   /// Initializes the central Datum engine as a singleton.
   static Future<DatumEither<Object, Datum>> initialize({
@@ -661,6 +672,52 @@ class Datum {
       }
       _metricsSubject.add(next);
     });
+
+    // Listen to performance monitor events
+    performanceMonitor.events.listen((event) {
+      switch (event) {
+        case PerformanceRegressionEvent():
+          final current = _metricsSubject.value;
+          _metricsSubject.add(
+            current.copyWith(
+              performanceRegressionsDetected: current.performanceRegressionsDetected + 1,
+            ),
+          );
+        case _:
+          // Other performance events don't update metrics directly
+          break;
+      }
+    });
+  }
+
+  void _updatePerformanceMetrics() {
+    final current = _metricsSubject.value;
+    final baselines = performanceMonitor.getAllBaselines();
+    final currentMemory = MemoryUsage.current();
+
+    // Calculate average sync duration from recent timings
+    final syncTimings = performanceMonitor.getRecentTimings('global_sync', limit: 10);
+    final avgSyncDuration = syncTimings.isNotEmpty
+        ? syncTimings.map((t) => t.duration).reduce((a, b) => a + b) ~/ syncTimings.length
+        : null;
+
+    // Find peak memory usage from recent timings
+    MemoryUsage? peakMemory;
+    for (final timing in performanceMonitor.getRecentTimings('', limit: 50)) {
+      final memory = timing.memoryDelta;
+      if (memory != null && (peakMemory == null || memory.heapUsage > peakMemory.heapUsage)) {
+        peakMemory = memory;
+      }
+    }
+
+    _metricsSubject.add(
+      current.copyWith(
+        performanceBaselines: baselines,
+        currentMemoryUsage: currentMemory,
+        averageSyncDuration: avgSyncDuration,
+        peakMemoryUsage: peakMemory,
+      ),
+    );
   }
 
   /// Provides access to the specific manager for an entity type.
@@ -686,92 +743,98 @@ class Datum {
     String userId, {
     DatumSyncOptions<DatumEntityInterface>? options,
   }) async {
-    final snapshot = _getSnapshot(userId);
-    if (snapshot.status == DatumSyncStatus.syncing) {
-      logger.info('[Global] Sync for user $userId skipped: another global sync is already in progress.');
-      return DatumSyncResult.skipped(userId, snapshot.pendingOperations);
-    }
-
-    final stopwatch = Stopwatch()..start();
-    _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.syncing));
-    for (final observer in globalObservers) {
-      observer.onSyncStart();
-    }
-
-    var totalSynced = 0;
-    var totalFailed = 0;
-    var totalConflicts = 0;
-    final allPending = <DatumSyncOperation<DatumEntityInterface>>[];
-
-    try {
-      final direction = options?.direction ?? config.defaultSyncDirection;
-      final pushResults = <DatumSyncResult<DatumEntityInterface>>[];
-      final pullResults = <DatumSyncResult<DatumEntityInterface>>[];
-
-      switch (direction) {
-        case SyncDirection.pushThenPull:
-          pushResults.addAll(await _pushChanges(userId, options));
-          pullResults.addAll(await _pullChanges(userId, options));
-          for (final res in pushResults) {
-            totalSynced += res.syncedCount;
-            totalFailed += res.failedCount;
-            allPending.addAll(res.pendingOperations);
-          }
-          for (final res in pullResults) {
-            totalSynced += res.syncedCount;
-            totalConflicts += res.conflictsResolved;
-            allPending.addAll(res.pendingOperations);
-          }
-        case SyncDirection.pullThenPush:
-          pullResults.addAll(await _pullChanges(userId, options));
-          for (final res in pullResults) {
-            totalSynced += res.syncedCount;
-            totalFailed += res.failedCount;
-            totalConflicts += res.conflictsResolved;
-            allPending.addAll(res.pendingOperations);
-          }
-          pushResults.addAll(await _pushChanges(userId, options));
-          for (final res in pushResults) {
-            totalSynced += res.syncedCount;
-            totalFailed += res.failedCount;
-            allPending.addAll(res.pendingOperations);
-          }
-        case SyncDirection.pushOnly:
-          pushResults.addAll(await _pushChanges(userId, options));
-          for (final res in pushResults) {
-            totalSynced += res.syncedCount;
-            totalFailed += res.failedCount;
-            allPending.addAll(res.pendingOperations);
-          }
-        case SyncDirection.pullOnly:
-          pullResults.addAll(await _pullChanges(userId, options));
-          for (final res in pullResults) {
-            totalSynced += res.syncedCount;
-            totalFailed += res.failedCount;
-            totalConflicts += res.conflictsResolved;
-            allPending.addAll(res.pendingOperations);
-          }
+    return performanceMonitor.timeAsync('global_sync_$userId', () async {
+      final snapshot = _getSnapshot(userId);
+      if (snapshot.status == DatumSyncStatus.syncing) {
+        logger.info('[Global] Sync for user $userId skipped: another global sync is already in progress.');
+        return DatumSyncResult.skipped(userId, snapshot.pendingOperations);
       }
 
-      final result = DatumSyncResult<DatumEntityInterface>(
-        userId: userId,
-        duration: stopwatch.elapsed,
-        syncedCount: totalSynced,
-        failedCount: totalFailed,
-        conflictsResolved: totalConflicts,
-        pendingOperations: allPending,
-      );
-
-      _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.completed));
+      final stopwatch = Stopwatch()..start();
+      _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.syncing));
       for (final observer in globalObservers) {
-        observer.onSyncEnd(result);
+        observer.onSyncStart();
       }
-      return result;
-    } catch (e, stack) {
-      logger.error('Synchronization failed for user $userId', stack);
-      _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.failed, errors: [e]));
-      return Future.error(e, stack);
-    }
+
+      var totalSynced = 0;
+      var totalFailed = 0;
+      var totalConflicts = 0;
+      final allPending = <DatumSyncOperation<DatumEntityInterface>>[];
+
+      try {
+        final direction = options?.direction ?? config.defaultSyncDirection;
+        final pushResults = <DatumSyncResult<DatumEntityInterface>>[];
+        final pullResults = <DatumSyncResult<DatumEntityInterface>>[];
+
+        switch (direction) {
+          case SyncDirection.pushThenPull:
+            pushResults.addAll(await performanceMonitor.timeAsync('push_changes_$userId', () => _pushChanges(userId, options)));
+            pullResults.addAll(await performanceMonitor.timeAsync('pull_changes_$userId', () => _pullChanges(userId, options)));
+            for (final res in pushResults) {
+              totalSynced += res.syncedCount;
+              totalFailed += res.failedCount;
+              allPending.addAll(res.pendingOperations);
+            }
+            for (final res in pullResults) {
+              totalSynced += res.syncedCount;
+              totalConflicts += res.conflictsResolved;
+              allPending.addAll(res.pendingOperations);
+            }
+          case SyncDirection.pullThenPush:
+            pullResults.addAll(await performanceMonitor.timeAsync('pull_changes_$userId', () => _pullChanges(userId, options)));
+            for (final res in pullResults) {
+              totalSynced += res.syncedCount;
+              totalFailed += res.failedCount;
+              totalConflicts += res.conflictsResolved;
+              allPending.addAll(res.pendingOperations);
+            }
+            pushResults.addAll(await performanceMonitor.timeAsync('push_changes_$userId', () => _pushChanges(userId, options)));
+            for (final res in pushResults) {
+              totalSynced += res.syncedCount;
+              totalFailed += res.failedCount;
+              allPending.addAll(res.pendingOperations);
+            }
+          case SyncDirection.pushOnly:
+            pushResults.addAll(await performanceMonitor.timeAsync('push_changes_$userId', () => _pushChanges(userId, options)));
+            for (final res in pushResults) {
+              totalSynced += res.syncedCount;
+              totalFailed += res.failedCount;
+              allPending.addAll(res.pendingOperations);
+            }
+          case SyncDirection.pullOnly:
+            pullResults.addAll(await performanceMonitor.timeAsync('pull_changes_$userId', () => _pullChanges(userId, options)));
+            for (final res in pullResults) {
+              totalSynced += res.syncedCount;
+              totalFailed += res.failedCount;
+              totalConflicts += res.conflictsResolved;
+              allPending.addAll(res.pendingOperations);
+            }
+        }
+
+        final result = DatumSyncResult<DatumEntityInterface>(
+          userId: userId,
+          duration: stopwatch.elapsed,
+          syncedCount: totalSynced,
+          failedCount: totalFailed,
+          conflictsResolved: totalConflicts,
+          pendingOperations: allPending,
+        );
+
+        _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.completed));
+        for (final observer in globalObservers) {
+          observer.onSyncEnd(result);
+        }
+
+        // Update performance metrics in DatumMetrics
+        _updatePerformanceMetrics();
+
+        return result;
+      } catch (e, stack) {
+        logger.error('Synchronization failed for user $userId', stack);
+        _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.failed, errors: [e]));
+        return Future.error(e, stack);
+      }
+    });
   }
 
   Future<List<DatumSyncResult<DatumEntityInterface>>> _pushChanges(String userId, DatumSyncOptions<DatumEntityInterface>? options) async {
@@ -1009,6 +1072,7 @@ class Datum {
       ..._managers.allManagers.map((m) => m.dispose()),
       ..._managerSubscriptions.map((s) => s.cancel()),
     ]);
+    performanceMonitor.dispose();
     await _eventController.close();
     await _metricsSubject.close();
     await _statusSubject.close();

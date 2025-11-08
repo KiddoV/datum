@@ -448,21 +448,93 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
 
     int cumulativeBytesPulled = 0;
     int bytesPulled = 0;
+    int processedCount = 0;
 
-    final remoteItems = await remoteAdapter.readAll(
-      userId: userId,
-      scope: scope,
-    );
+    // Use streaming approach for large datasets to reduce memory usage
+    final remoteItemsStream = _streamRemoteItems(userId, scope);
+    final remoteBatch = <T>[];
+
+    await for (final remoteItem in remoteItemsStream) {
+      remoteBatch.add(remoteItem);
+
+      // Process batch when it reaches the batch size
+      if (remoteBatch.length >= config.remoteSyncBatchSize) {
+        final batchBytes = await _processRemoteBatch(
+          remoteBatch,
+          userId,
+          options,
+          generatedEvents,
+          processedCount,
+          cumulativeBytesPulled,
+        );
+        bytesPulled += batchBytes;
+        cumulativeBytesPulled += batchBytes;
+        processedCount += remoteBatch.length;
+        remoteBatch.clear();
+
+        // Check if sync was cancelled
+        if (statusSubject.value.status != DatumSyncStatus.syncing) break;
+      }
+    }
+
+    // Process remaining items in the last batch
+    if (remoteBatch.isNotEmpty && statusSubject.value.status == DatumSyncStatus.syncing) {
+      final batchBytes = await _processRemoteBatch(
+        remoteBatch,
+        userId,
+        options,
+        generatedEvents,
+        processedCount,
+        cumulativeBytesPulled,
+      );
+      bytesPulled += batchBytes;
+      cumulativeBytesPulled += batchBytes;
+    }
+
+    await _updateMetadata(userId);
+    return bytesPulled;
+  }
+
+  // Stream remote items instead of loading all at once
+  Stream<T> _streamRemoteItems(String userId, DatumSyncScope? scope) async* {
+    // For adapters that support streaming, use their stream method
+    // For now, fall back to batching the readAll method
+    final allItems = await remoteAdapter.readAll(userId: userId, scope: scope);
+
+    for (var i = 0; i < allItems.length; i += config.remoteStreamBatchSize) {
+      final end = (i + config.remoteStreamBatchSize < allItems.length) ? i + config.remoteStreamBatchSize : allItems.length;
+      final batch = allItems.sublist(i, end);
+
+      for (final item in batch) {
+        yield item;
+      }
+
+      // Allow other async operations to proceed
+      await Future.delayed(Duration.zero);
+    }
+  }
+
+  // Process a batch of remote items
+  Future<int> _processRemoteBatch(
+    List<T> remoteBatch,
+    String userId,
+    DatumSyncOptions<T>? options,
+    List<DatumSyncEvent<T>> generatedEvents,
+    int processedCount,
+    int cumulativeBytesSoFar,
+  ) async {
+    int batchBytes = 0;
+
+    // Get local items for this batch only
     final localItemsMap = await localAdapter.readByIds(
-      remoteItems.map((e) => e.id).toList(),
+      remoteBatch.map((e) => e.id).toList(),
       userId: userId,
     );
 
-    for (var i = 0; i < remoteItems.length; i++) {
-      final remoteItem = remoteItems[i];
-      if (statusSubject.value.status != DatumSyncStatus.syncing) break;
-
+    for (var i = 0; i < remoteBatch.length; i++) {
+      final remoteItem = remoteBatch[i];
       final localItem = localItemsMap[remoteItem.id];
+
       final context = conflictDetector.detect(
         localItem: localItem,
         remoteItem: remoteItem,
@@ -474,27 +546,30 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
           // This is a new item from remote.
           await localAdapter.create(remoteItem);
           final size = jsonEncode(remoteItem.toDatumMap()).length;
-          bytesPulled += size;
-          cumulativeBytesPulled += size;
+          batchBytes += size;
         } else {
           // This is an update from remote for an existing item.
           await localAdapter.update(remoteItem);
           final size = jsonEncode(remoteItem.toDatumMap()).length;
-          bytesPulled += size;
-          cumulativeBytesPulled += size;
+          batchBytes += size;
         }
-        // Emit a single progress event for each pulled item.
-        final progressEvent = DatumSyncProgressEvent<T>(
-          userId: userId,
-          // Use i + 1 for completed count to reflect current item.
-          completed: i + 1,
-          total: remoteItems.length,
-          // Pass the running total of bytes pulled.
-          bytesPulled: cumulativeBytesPulled,
-        );
-        generatedEvents.add(progressEvent);
-        _notifyObservers(progressEvent);
 
+        // Note: syncedCount is not incremented for pull operations in the global sync result
+        // as per the design where only push operations contribute to the global synced count
+
+        // Emit progress event less frequently to reduce allocations
+        // Only emit every N items or when batch is complete
+        final currentTotal = processedCount + i + 1;
+        if (currentTotal % config.progressEventFrequency == 0 || i == remoteBatch.length - 1) {
+          final progressEvent = DatumSyncProgressEvent<T>(
+            userId: userId,
+            completed: currentTotal,
+            total: -1, // Unknown total for streaming approach
+            bytesPulled: cumulativeBytesSoFar + batchBytes,
+          );
+          generatedEvents.add(progressEvent);
+          _notifyObservers(progressEvent);
+        }
         continue;
       }
 
@@ -545,8 +620,7 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
       );
     }
 
-    await _updateMetadata(userId);
-    return bytesPulled;
+    return batchBytes;
   }
 
   void _notifyPreOperationObservers(DatumSyncOperation<T> operation) {
@@ -784,41 +858,4 @@ class SyncExceptionWithEvents<T extends DatumEntityInterface> implements Excepti
     this.originalStackTrace,
     this.events,
   );
-}
-
-/// Utility class for handling sync-related errors consistently across the framework.
-class SyncErrorHandler {
-  /// Handles sync errors by processing events and returning appropriate Future errors.
-  ///
-  /// This simplifies the complex pattern of checking if an error is already wrapped,
-  /// processing events, and returning Future.error with the correct parameters.
-  static Future<T> handleSyncError<T extends DatumEntityInterface>(
-    Object error,
-    StackTrace stack,
-    List<DatumSyncEvent<T>> events,
-    void Function(List<DatumSyncEvent<T>>) eventProcessor,
-  ) {
-    if (error is SyncExceptionWithEvents<T>) {
-      // Error is already wrapped, just process events and rethrow
-      eventProcessor(error.events);
-      return Future.error(error.originalError, error.originalStackTrace);
-    }
-
-    // Create new wrapped exception for unwrapped errors
-    final wrapped = SyncExceptionWithEvents<T>(error, stack, events);
-    eventProcessor(wrapped.events);
-    return Future.error(wrapped.originalError, wrapped.originalStackTrace);
-  }
-
-  /// Handles sync errors with automatic event processing for DatumManager.
-  ///
-  /// This is a convenience method that automatically calls _processSyncEvents.
-  static Future<T> handleManagerSyncError<T extends DatumEntityInterface>(
-    Object error,
-    StackTrace stack,
-    List<DatumSyncEvent<T>> events,
-    void Function(List<DatumSyncEvent<T>>) eventProcessor,
-  ) {
-    return handleSyncError(error, stack, events, eventProcessor);
-  }
 }

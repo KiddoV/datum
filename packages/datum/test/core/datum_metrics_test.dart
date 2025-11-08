@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/models/performance_metrics.dart';
 import 'package:meta/meta.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -302,4 +303,130 @@ void main() {
       expect(metricsReceived.last.successfulSyncs, 1);
     },
   );
+
+  test('toString includes basic sync information', () {
+    const metrics = DatumMetrics(
+      totalSyncOperations: 5,
+      successfulSyncs: 3,
+      failedSyncs: 2,
+      conflictsDetected: 1,
+      conflictsResolvedAutomatically: 1,
+      activeUsers: {'user1', 'user2'},
+      totalBytesPushed: 1024,
+      totalBytesPulled: 2048,
+    );
+
+    final result = metrics.toString();
+    expect(result, contains('Syncs: 5'));
+    expect(result, contains('✅: 3'));
+    expect(result, contains('❌: 2'));
+    expect(result, contains('Conflicts: 1'));
+    expect(result, contains('Resolved: 1'));
+    expect(result, contains('Users: 2'));
+    expect(result, contains('Pushed: 1.00 KB'));
+    expect(result, contains('Pulled: 2.00 KB'));
+  });
+
+  test('toString includes performance information when baselines exist', () {
+    final baseline = PerformanceBaseline(
+      operationName: 'test_op',
+      averageDuration: const Duration(milliseconds: 100),
+      stdDevDuration: const Duration(milliseconds: 10),
+      averageMemoryDelta: 1024,
+      stdDevMemoryDelta: 100,
+      sampleCount: 10,
+      lastUpdated: DateTime.now(),
+    );
+
+    final metrics = DatumMetrics(
+      performanceBaselines: {'test_op': baseline},
+      performanceRegressionsDetected: 2,
+    );
+
+    final result = metrics.toString();
+    expect(result, contains('Regressions: 2'));
+    expect(result, contains('Baselines: 1'));
+  });
+
+  test('toString includes memory information when available', () {
+    const memoryUsage = MemoryUsage(
+      heapUsage: 1024 * 1024, // 1 MB
+      peakHeapUsage: 2 * 1024 * 1024, // 2 MB
+      externalUsage: 512 * 1024, // 512 KB
+      heapSize: 3 * 1024 * 1024, // 3 MB
+      rss: 4 * 1024 * 1024, // 4 MB
+    );
+
+    const metrics = DatumMetrics(
+      currentMemoryUsage: memoryUsage,
+    );
+
+    final result = metrics.toString();
+    expect(result, contains('Memory: 1.00 MB'));
+  });
+
+  test('toString includes average sync duration when available', () {
+    const metrics = DatumMetrics(
+      averageSyncDuration: Duration(milliseconds: 250),
+    );
+
+    final result = metrics.toString();
+    expect(result, contains('Avg Sync: 250ms'));
+  });
+
+  test('toString combines all performance information', () {
+    final baseline = PerformanceBaseline(
+      operationName: 'sync_op',
+      averageDuration: const Duration(milliseconds: 100),
+      stdDevDuration: const Duration(milliseconds: 10),
+      averageMemoryDelta: 1024,
+      stdDevMemoryDelta: 100,
+      sampleCount: 10,
+      lastUpdated: DateTime.now(),
+    );
+
+    const memoryUsage = MemoryUsage(
+      heapUsage: 2 * 1024 * 1024, // 2 MB
+      peakHeapUsage: 3 * 1024 * 1024, // 3 MB
+      externalUsage: 1024 * 1024, // 1 MB
+      heapSize: 4 * 1024 * 1024, // 4 MB
+      rss: 5 * 1024 * 1024, // 5 MB
+    );
+
+    final metrics = DatumMetrics(
+      totalSyncOperations: 10,
+      successfulSyncs: 8,
+      failedSyncs: 2,
+      performanceBaselines: {'sync_op': baseline},
+      performanceRegressionsDetected: 1,
+      currentMemoryUsage: memoryUsage,
+      averageSyncDuration: const Duration(milliseconds: 150),
+    );
+
+    final result = metrics.toString();
+    expect(result, contains('Syncs: 10'));
+    expect(result, contains('✅: 8'));
+    expect(result, contains('❌: 2'));
+    expect(result, contains('Regressions: 1'));
+    expect(result, contains('Baselines: 1'));
+    expect(result, contains('Memory: 2.00 MB'));
+    expect(result, contains('Avg Sync: 150ms'));
+  });
+
+  test('toString excludes performance info when not available', () {
+    const metrics = DatumMetrics(
+      totalSyncOperations: 3,
+      successfulSyncs: 3,
+      failedSyncs: 0,
+    );
+
+    final result = metrics.toString();
+    expect(result, contains('Syncs: 3'));
+    expect(result, contains('✅: 3'));
+    expect(result, contains('❌: 0'));
+    expect(result, isNot(contains('Regressions:')));
+    expect(result, isNot(contains('Baselines:')));
+    expect(result, isNot(contains('Memory:')));
+    expect(result, isNot(contains('Avg Sync:')));
+  });
 }

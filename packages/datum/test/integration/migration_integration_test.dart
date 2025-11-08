@@ -94,8 +94,15 @@ void main() {
       // Stub default connectivity behavior
       when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
       // Stub logger to prevent console noise and allow verification
-      when(() => mockLogger.copyWith(enabled: any(named: 'enabled'))).thenReturn(mockLogger);
-      when(() => mockLogger.info(any())).thenAnswer((_) {});
+      when(() => mockLogger.copyWith(
+        enabled: any(named: 'enabled'),
+        colors: any(named: 'colors'),
+        minimumLevel: any(named: 'minimumLevel'),
+        samplers: any(named: 'samplers'),
+        enablePerformanceLogging: any(named: 'enablePerformanceLogging'),
+        performanceThreshold: any(named: 'performanceThreshold'),
+      )).thenReturn(mockLogger);
+      when(() => mockLogger.info(any(), category: any(named: 'category'), metadata: any(named: 'metadata'))).thenAnswer((_) {});
       when(() => mockLogger.error(any(), any())).thenAnswer((_) {});
 
       // Stub default behaviors for the mocktail-based local adapter
