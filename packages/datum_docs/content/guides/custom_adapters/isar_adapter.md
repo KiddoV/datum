@@ -1,6 +1,7 @@
 ---
 title: Isar Local Adapter
 ---
+
 This guide shows how to implement a complete Isar local adapter for Datum.
 
 ## Overview

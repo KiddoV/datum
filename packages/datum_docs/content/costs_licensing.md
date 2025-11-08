@@ -1,5 +1,8 @@
 ## Cost and Licensing
 
+
+
+
 Datum is **free and open-source**, released under the generous **MIT License**. You can use it in any personal or commercial project without any fees.
 
 While the `datum` library itself is free, it is designed to connect to a backend service of your choice. Please be aware that you are responsible for any costs associated with the backend infrastructure you choose to use (e.g., Supabase, Firebase, self-hosted server costs).
@@ -32,6 +35,7 @@ Datum also requires a separate table or collection in your database (both local 
 For your remote backend to work correctly with Datum, you need to create a `sync_metadata` table with the following structure:
 
 **SQL (PostgreSQL/Supabase):**
+
 ```sql
 CREATE TABLE sync_metadata (
   user_id TEXT PRIMARY KEY,

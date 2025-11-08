@@ -3,6 +3,7 @@ title: Local Adapter Implementation
 ---
 
 
+
 Datum uses adapters to interact with your local storage (e.g., SQLite, Hive) and remote backend (e.g., REST API, GraphQL). You need to implement `LocalAdapter` and `RemoteAdapter` for each `DatumEntity` you define.
 
 These examples are simplified; your actual implementations will contain logic for data persistence and network communication.

@@ -1,7 +1,12 @@
 ---
+
+
+
+
 title:  🔧 Troubleshooting Guide
 description: Debug and resolve common Datum sync issues.
 ---
+
 
 
 
@@ -279,5 +284,6 @@ If these solutions don't resolve your issue:
 4. **Report on GitHub** - Include logs, configuration, and reproduction steps
 
 ---
+
 
 *This guide covers the most common Datum issues. For more advanced debugging, check the [Advanced Sync Patterns](guides/advanced_sync) guide.*

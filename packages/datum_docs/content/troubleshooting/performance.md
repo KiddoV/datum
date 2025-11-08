@@ -1,7 +1,12 @@
 ---
+
+
+
+
 title: ⚡ Performance Troubleshooting
 description: Debug and optimize Datum performance issues.
 ---
+
 
 
 Identify and resolve performance bottlenecks in Datum applications.
@@ -378,5 +383,6 @@ if (memoryUsage > 100 * 1024 * 1024) { // 100MB
 ```
 
 ---
+
 
 *For more performance optimization techniques, check the [Advanced Sync Patterns](../guides/advanced_sync.md) guide.*

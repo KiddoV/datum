@@ -4,6 +4,7 @@ title: Advanced Synchronization Patterns
 
 
 
+
 This guide covers advanced synchronization patterns, monitoring, and control features in Datum. These patterns help you build robust, production-ready applications with sophisticated data synchronization requirements.
 
 ## Sync Strategies and Execution

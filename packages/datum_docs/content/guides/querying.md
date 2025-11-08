@@ -1,6 +1,7 @@
 ---
 title: Querying Data
 ---
+
 This guide covers how to query and filter data in Datum using the powerful query API.
 
 ## Overview

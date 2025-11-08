@@ -1,6 +1,11 @@
 ---
+
+
+
+
 title: Firebase Remote Adapter
 ---
+
 This guide shows how to implement a complete Firebase remote adapter for Datum.
 
 ## Overview

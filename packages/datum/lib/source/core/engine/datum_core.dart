@@ -564,9 +564,40 @@ class Datum {
     if (_adapterPairs.isNotEmpty) {
       logBuffer.writeln('├─ 🚀 Initializing Managers');
     }
+
+    // Parallel initialization of managers for better performance
+    final initializationFutures = <Future<StringBuffer>>[];
     for (final type in _adapterPairs.keys) {
-      await _initializeManagerForType(type, logBuffer);
+      initializationFutures.add(_initializeManagerForTypeParallel(type));
     }
+
+    // Wait for all managers to initialize in parallel
+    final logBuffers = await Future.wait(initializationFutures);
+
+    // Append all log messages in the order they were initiated
+    for (final buffer in logBuffers) {
+      logBuffer.write(buffer);
+    }
+  }
+
+  Future<StringBuffer> _initializeManagerForTypeParallel(Type type) async {
+    final logBuffer = StringBuffer();
+    final adapters = _adapterPairs[type];
+    if (adapters == null) {
+      throw StateError('AdapterPair not found for type $type during initialization.');
+    }
+
+    final manager = adapters.createManager(this);
+    logBuffer.writeln('│  └─ ✨ Manager for ${_cyan(type)} ready.');
+    _managers[type] = manager;
+
+    final subscription = manager.eventStream.listen(
+      _eventController.add,
+      onError: _eventController.addError,
+    );
+    _managerSubscriptions.add(subscription);
+    await manager.initialize();
+    return logBuffer;
   }
 
   Future<void> _initializeManagerForType(Type type, StringBuffer logBuffer) async {

@@ -1,7 +1,12 @@
 ---
+
+
+
+
 title: 🔌 Adapter Troubleshooting
 description: Debug and resolve adapter-specific issues in Datum.
 ---
+
 
 Debug and resolve issues specific to Datum adapters (local and remote).
 
@@ -808,5 +813,6 @@ class DisposableAdapter extends RemoteAdapter<Task> implements Disposable {
 ```
 
 ---
+
 
 *For adapter implementation details, check the [Adapter Module](../../modules/adapter.md) documentation.*

@@ -3,6 +3,7 @@ title: Coming Soon
 description: Upcoming features and improvements for Datum.
 ---
 
+
 # 🚀 What's Next for Datum
 
 Exciting features and improvements coming soon!
@@ -32,6 +33,7 @@ Exciting features and improvements coming soon!
 - 📈 **Built-in Metrics** - Performance analytics & health monitoring
 
 ---
+
 
 *Note: Advanced sync features like selective sync, progress indicators, and bandwidth control are already available in the current version! Check the [Advanced Sync Patterns](../guides/advanced_sync) guide.*
 

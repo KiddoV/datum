@@ -1,6 +1,11 @@
 ---
+
+
+
+
 title: REST API Remote Adapter
 ---
+
 This guide shows how to implement a complete REST API remote adapter for Datum.
 
 ## Overview

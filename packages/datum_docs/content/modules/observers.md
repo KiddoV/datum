@@ -1,6 +1,11 @@
 ---
+
+
+
 title: Observers & Middleware
 ---
+
+
 The Observers & Middleware module provides hooks for customizing and monitoring Datum operations through observers and middleware.
 
 ## Overview

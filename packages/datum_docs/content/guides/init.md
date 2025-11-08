@@ -2,6 +2,8 @@
 title: Datum Initialization
 ---
 
+
+
 Before using Datum, you must initialize it with your configuration, connectivity checker, and entity registrations. This typically happens once at your application's startup.
 
 ## 1. Define Your Entities

@@ -1,6 +1,7 @@
 ---
 title: Supabase Remote Adapter
 ---
+
 This guide shows how to use the production-ready Supabase remote adapter for Datum from the example project.
 
 ## Overview

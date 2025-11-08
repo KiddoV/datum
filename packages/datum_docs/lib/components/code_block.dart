@@ -37,7 +37,7 @@ class CustomHighlighter {
     if (language.toLowerCase() == 'dart') {
       _highlighter = Highlighter(language: language, theme: theme);
     } else {
-      _highlighter = null; // Will render as plain text
+      _highlighter = Highlighter(language: "dart", theme: theme); // Will render as plain text
     }
   }
 
@@ -46,7 +46,7 @@ class CustomHighlighter {
       return _highlighter.highlight(code);
     } else {
       // Return plain text for unsupported languages
-      return TextSpan(text: code);
+      return _highlighter!.highlight(code);
     }
   }
 }
@@ -115,10 +115,14 @@ class CodeBlock extends CustomComponent {
         zIndex: ZIndex(10),
         width: 1.25.rem,
         height: 1.25.rem,
-        opacity: 0,
+        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        radius: BorderRadius.circular(0.25.rem),
+        opacity: 0.5,
         color: Color('hsl(var(--foreground))'),
+        backgroundColor: Color('hsl(var(--muted))'),
+        raw: {'transition' : 'opacity 0.2s ease'},
       ),
-      css('&:hover button').styles(opacity: 0.75),
+      css('&:hover button').styles(opacity: 1),
     ]),
   ];
 }

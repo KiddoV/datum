@@ -1,5 +1,8 @@
 # Sync Patterns Guide
 
+
+
+
 This guide covers common synchronization patterns and best practices for handling data sync in different scenarios like app startup, user login, and relogin.
 
 ## Table of Contents

@@ -3,6 +3,58 @@ import 'dart:convert';
 import 'package:jaspr/jaspr.dart';
 import 'package:universal_web/web.dart' as web;
 
+/// A script component that applies theme immediately on page load to prevent flash
+class ThemeScript extends StatelessComponent {
+  const ThemeScript({super.key});
+
+  @override
+  Component build(BuildContext context) {
+    return script(
+      content: '''
+        (function() {
+          // Theme initialization
+          try {
+            var storage = window.localStorage;
+            var storageData = storage.getItem('enhanced_theme_toggle_cache');
+            var themeValue = 'light'; // default
+
+            if (storageData) {
+              var data = JSON.parse(storageData);
+              var themeString = data.theme;
+              var timestamp = data.timestamp;
+              var now = Date.now();
+
+              // Check if cache is not expired (24 hours)
+              if (themeString && timestamp && (now - timestamp) < 86400000) {
+                if (themeString === 'dark') {
+                  themeValue = 'dark';
+                } else if (themeString === 'light') {
+                  themeValue = 'light';
+                } else if (themeString === 'auto') {
+                  // Check system preference
+                  themeValue = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+              }
+            } else {
+              // No cached preference, check system preference
+              themeValue = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            }
+
+            // Apply theme immediately
+            document.documentElement.setAttribute('data-theme', themeValue);
+          } catch (e) {
+            // Fallback to system preference
+            var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            document.documentElement.setAttribute('data-theme', prefersDark ? 'dark' : 'light');
+          }
+
+
+        })();
+      ''',
+    );
+  }
+}
+
 /// An enhanced theme toggle button with auto, dark, and light options.
 /// Uses caching similar to CacheManager for theme preferences.
 @client
@@ -27,6 +79,12 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
       return;
     }
 
+    // Apply theme immediately to prevent flash
+    _initializeTheme();
+    _isInitialized = true;
+  }
+
+  void _initializeTheme() {
     // Load cached theme preference
     final cachedTheme = _loadCachedTheme();
     if (cachedTheme != null) {
@@ -37,8 +95,21 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
       _currentMode = prefersDark ? ThemeMode.dark : ThemeMode.light;
     }
 
-    _applyTheme();
-    _isInitialized = true;
+    // Apply theme synchronously before any rendering
+    _applyThemeImmediately();
+  }
+
+  void _applyThemeImmediately() {
+    if (!kIsWeb) return;
+
+    final themeValue = switch (_currentMode) {
+      ThemeMode.auto => web.window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light',
+      ThemeMode.dark => 'dark',
+      ThemeMode.light => 'light',
+    };
+
+    // Apply immediately to prevent flash
+    web.document.documentElement?.setAttribute('data-theme', themeValue);
   }
 
   ThemeMode? _loadCachedTheme() {

@@ -1,5 +1,8 @@
 # Adapter Module
 
+
+
+
 The Adapter module provides the abstraction layer that allows Datum to work with any local database and remote backend. This module defines the interfaces and base implementations for adapters.
 
 ## Local Adapters

@@ -2,6 +2,7 @@
 title: Quick Start
 ---
 
+
 ## Installation
 
 Add Datum to your Dart or Flutter project:

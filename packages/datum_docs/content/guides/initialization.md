@@ -1,6 +1,7 @@
 ---
 title: Initialization & Global API
 ---
+
 This guide covers how to initialize Datum and use the global API for managing your data synchronization.
 
 ## Overview

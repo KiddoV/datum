@@ -3,6 +3,7 @@ title: Datum
 ---
 
 
+
 <Image src="/images/logo.webp" alt="Datum Logo" width="300" height="300" />
 
 <p style="text-align: center; font-size: clamp(2.5rem, 10vw, 4.5rem); font-weight: 700; margin-top: 1rem; margin-bottom: 0;">Datum</p>
@@ -61,6 +62,7 @@ Datum is built around a few key ideas:
 - **Offline-First:** All data operations are performed on the local database first, ensuring a snappy UI. Datum then automatically syncs changes to the remote backend when a connection is available.
 
 ---
+
 
 ## Why Datum?
 

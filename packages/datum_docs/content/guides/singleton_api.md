@@ -2,6 +2,7 @@
 title: Datum Singleton API
 ---
 
+
 The `Datum` class provides a global singleton instance that offers convenient access to all Datum functionality. While you can access managers directly through `Datum.manager<T>()`, the singleton also provides high-level convenience methods for common operations.
 
 ## Initialization

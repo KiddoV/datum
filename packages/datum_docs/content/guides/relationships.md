@@ -1,6 +1,7 @@
 ---
 title: Working with Relationships
 ---
+
 This guide covers how to work with relationships in Datum, including defining relationships, accessing related data, and performing queries with relationships.
 
 ## Overview

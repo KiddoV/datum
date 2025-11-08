@@ -22,6 +22,8 @@ import 'components/steps.dart';
 import 'components/card.dart';
 import 'components/badge.dart';
 import 'components/tip.dart';
+import 'components/responsive_docs_layout.dart';
+import 'page_extensions.dart';
 
 void main() {
   // Initializes the server environment with the generated default options.
@@ -37,7 +39,6 @@ void main() {
     ContentApp(
       // Enables mustache templating inside the markdown files.
       templateEngine: MustacheTemplateEngine(),
-
       debugPrint: true,
       parsers: [
         MarkdownParser(),
@@ -48,6 +49,16 @@ void main() {
         HeadingAnchorsExtension(),
         // Generates a table of contents for each page.
         TableOfContentsExtension(),
+        // Estimates reading time based on word count.
+        ReadingTimeExtension(),
+        // Adds SEO enhancements like meta tags and structured data.
+        SEOEnhancementsExtension(),
+        // Adds last modified date based on file modification time.
+        LastModifiedExtension(),
+        // Generates breadcrumb navigation data.
+        BreadcrumbExtension(),
+        // Generates previous/next page navigation (basic implementation).
+        PageNavigationExtension(),
       ],
       components: [
         // Adds syntax highlighting to code blocks.
@@ -64,7 +75,7 @@ void main() {
         // Custom tip component for helpful information
         Tip(),
         // Comparison table component for feature comparisons
-       //// ComparisonTable(),
+        //// ComparisonTable(),
         // Adds a custom Jaspr component to be used as <Clicker/> in markdown.
         // CustomComponent(
         //   pattern: 'Clicker',
@@ -76,8 +87,8 @@ void main() {
       ],
 
       layouts: [
-        // Out-of-the-box layout for documentation sites.
-        DocsLayout(
+        // Enhanced responsive layout for documentation sites.
+        ResponsiveDocsLayout(
           header: CustomHeader(
             title: 'Datum',
             subtitle: "Data, Seamlessly Synced",
@@ -183,8 +194,8 @@ void main() {
             builder: (context) {
               return div(
                 styles: Styles(
-                  position: Position.fixed(bottom: 0.px, left: 24.px, right: 0.px),
-                  padding: Spacing.only(left: 8.px, bottom: 24.px),
+                  position: Position.fixed(bottom: 0.px, right: 24.px),
+                  padding: Spacing.only(bottom: 24.px),
                   backgroundColor: Color('hsl(var(--background))'),
                   raw: {
                     'transition': 'all 0.3s ease-in-out',

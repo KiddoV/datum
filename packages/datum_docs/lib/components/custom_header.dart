@@ -1,5 +1,6 @@
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/components/sidebar_toggle_button.dart';
+import 'package:datum_docs/components/enhanced_theme_toggle.dart';
 
 /// A header component with a logo, title, and additional items.
 class CustomHeader extends StatelessComponent {
@@ -32,14 +33,19 @@ class CustomHeader extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return fragment([
-      Document.head(children: [
-        Style(styles: _styles),
-        Style(styles: [
-          css('body').styles(
-            padding: Padding.only(bottom: 80.px),
+      Document.head(
+        children: [
+          Style(styles: _styles),
+          Style(
+            styles: [
+              css('body').styles(
+                padding: Padding.only(bottom: 80.px),
+              ),
+            ],
           ),
-        ]),
-      ]),
+          ThemeScript(),
+        ],
+      ),
       header(classes: 'header', [
         ...leading,
         a(classes: 'header-title', href: '/', [
@@ -70,15 +76,15 @@ class CustomHeader extends StatelessComponent {
         ),
         alignItems: AlignItems.center,
         gap: Gap(column: 1.rem),
+        raw: {'backdrop-filter': 'none', 'background-color': 'var(--background) !important'},
       ),
-      css.media(MediaQuery.all(minWidth: 768.px), [css('&').styles(padding: Padding.symmetric(horizontal: 2.5.rem))]),
       css('.header-title', [
         css('&').styles(
           display: Display.inlineFlex,
           alignItems: AlignItems.center,
           gap: Gap(column: .75.rem),
           flex: Flex(grow: 1),
-          textDecoration: TextDecoration.none, // Remove underline from the link
+          textDecoration: TextDecoration.none,
           raw: {'position': 'relative'},
         ),
         css('img').styles(
@@ -104,6 +110,9 @@ class CustomHeader extends StatelessComponent {
           gap: Gap(column: 0.0625.rem),
         ),
       ]),
+    ]),
+    css.media(MediaQuery.all(minWidth: 768.px), [
+      css('.header').styles(padding: Padding.symmetric(horizontal: 2.5.rem)),
     ]),
     // Responsive design for mobile
     css.media(MediaQuery.all(maxWidth: 640.px), [

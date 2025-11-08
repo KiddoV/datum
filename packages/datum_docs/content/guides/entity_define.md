@@ -1,6 +1,10 @@
 ---
 title: Entity Define
 ---
+
+
+
+
 First, you need to define your data models by extending either `DatumEntity` or `RelationalDatumEntity`. These classes provide the core structure for your entities, including properties like `id`, `userId`, `createdAt`, `modifiedAt`, `isDeleted`, and `version`.
 
 ## Entity Types

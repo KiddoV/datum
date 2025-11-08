@@ -1,6 +1,7 @@
 ---
 title: Migration Module
 ---
+
 The Migration module handles database schema and data migrations when upgrading between different versions of your Datum entities.
 
 ## Overview

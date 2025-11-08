@@ -1,5 +1,7 @@
+---
 title: Hive Local Adapters
 ---
+
 This guide shows how to use the production-ready Hive local adapters for Datum from the example project.
 
 ## Overview

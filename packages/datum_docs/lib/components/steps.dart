@@ -36,7 +36,7 @@ class Steps extends CustomComponentBase {
       css('&').styles(
         padding: Padding.zero,
         margin: Margin.symmetric(vertical: 2.rem),
-        raw: {'counter-reset' : 'step-counter'},
+        raw: {'counter-reset': 'step-counter'},
       ),
       // More specific selectors to override Card component styles
       css('&.steps > li, &.steps li').styles(
@@ -48,7 +48,11 @@ class Steps extends CustomComponentBase {
         alignItems: AlignItems.start,
         gap: Gap(column: 1.rem),
         backgroundColor: Color('hsl(var(--card))'),
-        raw: {'position' : 'relative', 'transition' : 'all 0.2s ease-in-out', 'box-shadow' : '0 1px 3px hsl(var(--foreground) / 0.1)'},
+        raw: {
+          'position': 'relative',
+          'transition': 'all 0.2s ease-in-out',
+          'box-shadow': '0 1px 3px hsl(var(--foreground) / 0.1)',
+        },
       ),
       css('&.steps > li:hover, &.steps li:hover').styles(
         backgroundColor: Color('hsl(var(--card) / 0.8)'),
@@ -86,7 +90,7 @@ class Steps extends CustomComponentBase {
         margin: Margin.only(left: 2.5.rem),
         flex: Flex(grow: 1),
         color: Color('hsl(var(--foreground))'),
-        raw: {'line-height' : '1.6'},
+        raw: {'line-height': '1.6'},
       ),
       css('&.steps > li > .step-content p, &.steps li > .step-content p').styles(
         margin: Margin.only(bottom: 0.5.rem),
@@ -100,14 +104,14 @@ class Steps extends CustomComponentBase {
         border: Border(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.5.rem),
         backgroundColor: Color('hsl(var(--muted))'),
-        raw: {'overflow' : 'auto', 'box-shadow' : 'inset 0 1px 3px hsl(var(--foreground) / 0.1)'},
+        raw: {'overflow': 'auto', 'box-shadow': 'inset 0 1px 3px hsl(var(--foreground) / 0.1)'},
       ),
       css('&.steps > li > .step-content code, &.steps li > .step-content code').styles(
         padding: Padding.symmetric(horizontal: 0.25.rem, vertical: 0.125.rem),
         radius: BorderRadius.circular(0.25.rem),
         color: Color('hsl(var(--foreground))'),
         backgroundColor: Color('hsl(var(--muted))'),
-        raw: {'font-size' : '0.875em', 'font-family' : 'var(--font-mono)'},
+        raw: {'font-size': '0.875em', 'font-family': 'var(--font-mono)'},
       ),
     ]),
   ];
@@ -145,12 +149,14 @@ class _StepsComponent extends StatelessComponent {
       final stepMatch = RegExp(r'^(\d+)\.\s*(.*)$').firstMatch(line);
       if (stepMatch != null) {
         final stepContent = stepMatch.group(2) ?? '';
-        steps.add(li([
-          div(classes: 'step-content', [
-            // Parse the step content for markdown formatting
-            _parseStepContent(stepContent),
+        steps.add(
+          li([
+            div(classes: 'step-content', [
+              // Parse the step content for markdown formatting
+              _parseStepContent(stepContent),
+            ]),
           ]),
-        ]));
+        );
       }
     }
 
@@ -170,9 +176,11 @@ class _StepsComponent extends StatelessComponent {
       }
 
       // Add the bold text
-      parts.add(span(styles: Styles(fontWeight: FontWeight.w600), [
-        text(match.group(1)!),
-      ]));
+      parts.add(
+        span(styles: Styles(fontWeight: FontWeight.w600), [
+          text(match.group(1)!),
+        ]),
+      );
 
       lastIndex = match.end;
     }

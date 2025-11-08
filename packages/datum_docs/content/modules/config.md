@@ -4,6 +4,7 @@ title: Configuration Module
 
 
 
+
 The Configuration module provides comprehensive options for customizing Datum's behavior to match your application's requirements. Configuration affects everything from sync intervals to conflict resolution strategies.
 
 <Info>

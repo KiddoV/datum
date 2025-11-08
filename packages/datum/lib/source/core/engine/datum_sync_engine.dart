@@ -785,3 +785,40 @@ class SyncExceptionWithEvents<T extends DatumEntityInterface> implements Excepti
     this.events,
   );
 }
+
+/// Utility class for handling sync-related errors consistently across the framework.
+class SyncErrorHandler {
+  /// Handles sync errors by processing events and returning appropriate Future errors.
+  ///
+  /// This simplifies the complex pattern of checking if an error is already wrapped,
+  /// processing events, and returning Future.error with the correct parameters.
+  static Future<T> handleSyncError<T extends DatumEntityInterface>(
+    Object error,
+    StackTrace stack,
+    List<DatumSyncEvent<T>> events,
+    void Function(List<DatumSyncEvent<T>>) eventProcessor,
+  ) {
+    if (error is SyncExceptionWithEvents<T>) {
+      // Error is already wrapped, just process events and rethrow
+      eventProcessor(error.events);
+      return Future.error(error.originalError, error.originalStackTrace);
+    }
+
+    // Create new wrapped exception for unwrapped errors
+    final wrapped = SyncExceptionWithEvents<T>(error, stack, events);
+    eventProcessor(wrapped.events);
+    return Future.error(wrapped.originalError, wrapped.originalStackTrace);
+  }
+
+  /// Handles sync errors with automatic event processing for DatumManager.
+  ///
+  /// This is a convenience method that automatically calls _processSyncEvents.
+  static Future<T> handleManagerSyncError<T extends DatumEntityInterface>(
+    Object error,
+    StackTrace stack,
+    List<DatumSyncEvent<T>> events,
+    void Function(List<DatumSyncEvent<T>>) eventProcessor,
+  ) {
+    return handleSyncError(error, stack, events, eventProcessor);
+  }
+}

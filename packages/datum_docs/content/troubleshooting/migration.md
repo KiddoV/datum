@@ -3,6 +3,7 @@ title: 🔄 Migration Troubleshooting
 description: Debug and resolve Datum migration issues.
 ---
 
+
 Handle schema changes, data transformations, and version upgrades in Datum.
 
 ## Schema Migration Failures
@@ -427,5 +428,6 @@ class MigrationMonitor {
 ```
 
 ---
+
 
 *For more migration patterns, check the [Migration Module](../../modules/migration.md) documentation.*

@@ -1,6 +1,7 @@
 ---
 title: Health Module
 ---
+
 The Health module provides comprehensive monitoring and diagnostics for the Datum system's operational status.
 
 ## Overview

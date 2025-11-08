@@ -3,6 +3,7 @@ title: Remote Adapter Implementation
 ---
 
 
+
 ## Example of Remote Adapter
 
 

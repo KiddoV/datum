@@ -6,6 +6,17 @@ import 'package:datum/datum.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 
+// Weak reference wrapper for observers to prevent memory leaks
+class _WeakObserver<U extends Object> {
+  final WeakReference<U> _ref;
+
+  _WeakObserver(U observer) : _ref = WeakReference(observer);
+
+  U? get target => _ref.target;
+
+  bool get isAlive => target != null;
+}
+
 class DatumManager<T extends DatumEntityInterface> with Disposable {
   final LocalAdapter<T> localAdapter;
   final RemoteAdapter<T> remoteAdapter;
@@ -25,8 +36,8 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   final DatumConfig<T> config;
   final DatumConnectivityChecker _connectivity;
   final DatumLogger _logger;
-  final List<DatumObserver<T>> _localObservers = [];
-  final List<GlobalDatumObserver> _globalObservers = [];
+  final List<_WeakObserver<DatumObserver<T>>> _localObservers = [];
+  final List<_WeakObserver<GlobalDatumObserver>> _globalObservers = [];
   final List<DatumMiddleware<T>> _middlewares = [];
   final DatumSyncRequestStrategy _syncRequestStrategy;
   final String? deviceId;
@@ -41,7 +52,29 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   late final QueueManager<T> _queueManager;
   late final IsolateHelper _isolateHelper;
   late final DatumConflictDetector<T> _conflictDetector;
-  late final DatumSyncEngine<T> _syncEngine;
+  DatumSyncEngine<T>? _syncEngine;
+
+  /// Gets the sync engine, initializing it lazily if needed.
+  DatumSyncEngine<T> get _syncEngineInstance {
+    _syncEngine ??= DatumSyncEngine<T>(
+      localAdapter: localAdapter,
+      remoteAdapter: remoteAdapter,
+      conflictResolver: _conflictResolver,
+      queueManager: _queueManager,
+      conflictDetector: _conflictDetector,
+      logger: _logger,
+      config: config,
+      connectivityChecker: _connectivity,
+      eventController: _eventController,
+      statusSubject: _statusSubject,
+      metadataSubject: _metadataSubject,
+      isolateHelper: _isolateHelper,
+      localObservers: _localObservers.map((w) => w.target).whereType<DatumObserver<T>>().toList(),
+      globalObservers: _globalObservers.map((w) => w.target).whereType<GlobalDatumObserver>().toList(),
+      deviceId: deviceId,
+    );
+    return _syncEngine!;
+  }
   late final StreamController<DatumSyncEvent<T>> _eventController;
   late final BehaviorSubject<DatumSyncStatusSnapshot> _statusSubject;
   late final BehaviorSubject<DatumSyncMetadata> _metadataSubject;
@@ -108,8 +141,8 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
         _logger = (logger ?? DatumLogger()).copyWith(enabled: datumConfig?.enableLogging ?? true),
         _conflictResolver = conflictResolver ?? datumConfig?.defaultConflictResolver ?? LastWriteWinsResolver<T>(),
         _syncRequestStrategy = syncRequestStrategy ?? datumConfig?.syncRequestStrategy ?? const SequentialRequestStrategy() {
-    _localObservers.addAll(localObservers ?? []);
-    _globalObservers.addAll(globalObservers ?? []);
+    _localObservers.addAll((localObservers ?? []).map(_WeakObserver.new));
+    _globalObservers.addAll((globalObservers ?? []).map(_WeakObserver.new));
     _middlewares.addAll(middlewares ?? []);
 
     _initializeInternalComponents();
@@ -131,23 +164,6 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     _queueManager = QueueManager<T>(
       localAdapter: localAdapter,
       logger: _logger,
-    );
-    _syncEngine = DatumSyncEngine<T>(
-      localAdapter: localAdapter,
-      remoteAdapter: remoteAdapter,
-      conflictResolver: _conflictResolver,
-      queueManager: _queueManager,
-      conflictDetector: _conflictDetector,
-      logger: _logger,
-      config: config,
-      connectivityChecker: _connectivity,
-      eventController: _eventController,
-      statusSubject: _statusSubject,
-      metadataSubject: _metadataSubject,
-      isolateHelper: _isolateHelper,
-      localObservers: _localObservers,
-      globalObservers: _globalObservers,
-      deviceId: deviceId,
     );
   }
 
@@ -401,7 +417,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   }) async {
     _ensureInitialized();
     // Check for user switch before proceeding.
-    await _syncEngine.checkForUserSwitch(userId);
+    await _syncEngineInstance.checkForUserSwitch(userId);
 
     final transformed = await _applyPreSaveTransforms(item);
     final existing = await localAdapter.read(item.id, userId: userId);
@@ -427,11 +443,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     final userId = transformed.userId;
 
     _logger.debug('Notifying observers of onCreateStart for ${transformed.id}');
-    for (final observer in _localObservers) {
-      observer.onCreateStart(transformed);
+    for (final weakObserver in _localObservers) {
+      weakObserver.target?.onCreateStart(transformed);
     }
-    for (final observer in _globalObservers) {
-      observer.onCreateStart(transformed);
+    for (final weakObserver in _globalObservers) {
+      weakObserver.target?.onCreateStart(transformed);
     }
     await localAdapter.create(transformed);
 
@@ -460,11 +476,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     );
 
     _logger.debug('Notifying observers of onCreateEnd for ${transformed.id}');
-    for (final observer in _localObservers) {
-      observer.onCreateEnd(transformed);
+    for (final weakObserver in _localObservers) {
+      weakObserver.target?.onCreateEnd(transformed);
     }
-    for (final observer in _globalObservers) {
-      observer.onCreateEnd(transformed);
+    for (final weakObserver in _globalObservers) {
+      weakObserver.target?.onCreateEnd(transformed);
     }
 
     return transformed;
@@ -474,11 +490,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     final userId = transformed.userId;
 
     _logger.debug('Notifying observers of onUpdateStart for ${transformed.id}');
-    for (final observer in _localObservers) {
-      observer.onUpdateStart(transformed);
+    for (final weakObserver in _localObservers) {
+      weakObserver.target?.onUpdateStart(transformed);
     }
-    for (final observer in _globalObservers) {
-      observer.onUpdateStart(transformed);
+    for (final weakObserver in _globalObservers) {
+      weakObserver.target?.onUpdateStart(transformed);
     }
 
     await localAdapter.patch(id: transformed.id, delta: delta, userId: userId);
@@ -502,11 +518,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     );
 
     _logger.debug('Notifying observers of onUpdateEnd for ${transformed.id}');
-    for (final observer in _localObservers) {
-      observer.onUpdateEnd(transformed);
+    for (final weakObserver in _localObservers) {
+      weakObserver.target?.onUpdateEnd(transformed);
     }
-    for (final observer in _globalObservers) {
-      observer.onUpdateEnd(transformed);
+    for (final weakObserver in _globalObservers) {
+      weakObserver.target?.onUpdateEnd(transformed);
     }
     return transformed;
   }
@@ -719,7 +735,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   }) async {
     _ensureInitialized();
     // Check for user switch before proceeding.
-    await _syncEngine.checkForUserSwitch(userId);
+    await _syncEngineInstance.checkForUserSwitch(userId);
 
     final existing = await localAdapter.read(id, userId: userId);
     if (existing == null) {
@@ -730,31 +746,31 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     }
 
     _logger.debug('Notifying observers of onDeleteStart for $id');
-    for (final observer in _localObservers) {
-      observer.onDeleteStart(id);
+    for (final weakObserver in _localObservers) {
+      weakObserver.target?.onDeleteStart(id);
     }
-    for (final observer in _globalObservers) {
-      observer.onDeleteStart(id);
+    for (final weakObserver in _globalObservers) {
+      weakObserver.target?.onDeleteStart(id);
     }
     final deleted = await localAdapter.delete(id, userId: userId);
     if (!deleted) {
       _logger.warn('Local adapter failed to delete entity $id');
       // Notify observers of the failure before returning.
-      for (final observer in _localObservers) {
-        observer.onDeleteEnd(id, success: false);
+      for (final weakObserver in _localObservers) {
+        weakObserver.target?.onDeleteEnd(id, success: false);
       }
-      for (final observer in _globalObservers) {
-        observer.onDeleteEnd(id, success: false);
+      for (final weakObserver in _globalObservers) {
+        weakObserver.target?.onDeleteEnd(id, success: false);
       }
       return false;
     }
 
     _logger.debug('Notifying observers of onDeleteEnd for $id');
-    for (final observer in _localObservers) {
-      observer.onDeleteEnd(id, success: true);
+    for (final weakObserver in _localObservers) {
+      weakObserver.target?.onDeleteEnd(id, success: true);
     }
-    for (final observer in _globalObservers) {
-      observer.onDeleteEnd(id, success: true);
+    for (final weakObserver in _globalObservers) {
+      weakObserver.target?.onDeleteEnd(id, success: true);
     }
     if (source == DataSource.local || forceRemoteSync) {
       final operation = _createOperation(
@@ -915,14 +931,14 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
         }
 
         // Handle user switching logic before proceeding with synchronization.
-        if (_syncEngine.lastActiveUserId != null && _syncEngine.lastActiveUserId != userId) {
+        if (_syncEngineInstance.lastActiveUserId != null && _syncEngineInstance.lastActiveUserId != userId) {
           if (config.defaultUserSwitchStrategy == UserSwitchStrategy.promptIfUnsyncedData) {
             final oldUserOps = await _queueManager.getPending(
-              _syncEngine.lastActiveUserId ?? '',
+              _syncEngineInstance.lastActiveUserId ?? '',
             );
             if (oldUserOps.isNotEmpty) {
               throw UserSwitchException(
-                oldUserId: _syncEngine.lastActiveUserId,
+                oldUserId: _syncEngineInstance.lastActiveUserId,
                 newUserId: userId,
                 message: 'Cannot switch user while unsynced data exists for the previous user.',
               );
@@ -956,7 +972,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
             return DatumSyncResult.skipped(userId, 0);
           }
 
-          final (result, events) = await _syncEngine.synchronize(
+          final (result, events) = await _syncEngineInstance.synchronize(
             userId,
             options: typedOptions,
             scope: scope,
@@ -1000,7 +1016,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
           );
         }
       },
-      isSyncInProgress: () => _syncEngine.isSyncing,
+      isSyncInProgress: () => _syncEngineInstance.isSyncing,
       onSkipped: () {
         _logger.info('Sync for user $userId skipped: another sync is in progress.');
         return DatumSyncResult.skipped(
@@ -1266,8 +1282,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   }
 
   void _notifyObservers(void Function(DatumObserver<T> observer) action) {
-    for (final observer in _localObservers) {
-      action(observer);
+    for (final weakObserver in _localObservers) {
+      final observer = weakObserver.target;
+      if (observer != null) {
+        action(observer);
+      }
     }
   }
 
@@ -1350,7 +1369,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// Performs a health check on the local and remote adapters and updates the
   /// [health] stream with the result.
   Future<DatumHealth> checkHealth() async {
-    return _syncEngine.checkHealth();
+    return _syncEngineInstance.checkHealth();
   }
 
   /// Pauses all synchronization activity for this manager.
