@@ -274,7 +274,7 @@ class PageNavigationExtension extends PageExtension {
     // This would need access to the site structure to determine prev/next pages
     // For now, we'll implement a basic version that could be enhanced
 
-    final url = page.data['url'] as String? ?? '';
+    final _ = page.data['url'] as String? ?? '';
 
     // This is a simplified implementation - in a real scenario,
     // you'd want to build a proper navigation tree

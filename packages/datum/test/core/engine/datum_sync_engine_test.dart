@@ -152,7 +152,7 @@ void main() {
       when(() => remoteAdapter.updateSyncMetadata(any(), userId))
           .thenAnswer((_) async {});
 
-      final (result, _) = await syncEngine.synchronize(userId);
+      final (_, _) = await syncEngine.synchronize(userId);
 
       // Verify that items were processed
       // Note: syncedCount is not incremented for pull operations
@@ -210,7 +210,7 @@ void main() {
       when(() => remoteAdapter.updateSyncMetadata(any(), userId))
           .thenAnswer((_) async {});
 
-      final (result, _) = await customSyncEngine.synchronize(userId);
+      final (_, _) = await customSyncEngine.synchronize(userId);
 
       // Note: syncedCount is not incremented for pull operations
       verify(() => localAdapter.create(any())).called(3);
@@ -251,7 +251,7 @@ void main() {
       when(() => remoteAdapter.updateSyncMetadata(any(), userId))
           .thenAnswer((_) async {});
 
-      final (result, _) = await syncEngine.synchronize(userId);
+      final (_, _) = await syncEngine.synchronize(userId);
 
       // Note: syncedCount is not incremented for pull operations
       verify(() => localAdapter.create(any())).called(5);
