@@ -121,8 +121,7 @@ class ExcludableEntity extends DatumEntity {
         localOnlyFields,
         remoteOnlyFields,
       ];
-
-  @override
   // Setting stringify to true provides a more descriptive toString() output.
+  @override
   bool get stringify => true;
 }

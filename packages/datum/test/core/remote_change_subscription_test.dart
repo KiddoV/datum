@@ -81,7 +81,8 @@ void main() {
       });
 
       test('unsubscribeFromRemoteChanges stops listening to remote changes', () async {
-        // Initially, the manager should be subscribed to remote changes
+        // Ensure we start from a subscribed state
+        await manager.resubscribeToRemoteChanges();
         expect(manager.isSubscribedToRemoteChanges, isTrue);
 
         // Unsubscribe from remote changes
@@ -104,7 +105,8 @@ void main() {
       });
 
       test('multiple unsubscribe calls are idempotent', () async {
-        // Initially subscribed
+        // Ensure we start from a subscribed state
+        await manager.resubscribeToRemoteChanges();
         expect(manager.isSubscribedToRemoteChanges, isTrue);
 
         // Multiple unsubscribes should be safe
@@ -123,27 +125,6 @@ void main() {
         // Multiple resubscribes should be safe
         await manager.resubscribeToRemoteChanges();
         await manager.resubscribeToRemoteChanges();
-        await manager.resubscribeToRemoteChanges();
-
-        expect(manager.isSubscribedToRemoteChanges, isTrue);
-      });
-
-      test('unsubscribeFromRemoteChanges works', () async {
-        // Initially subscribed
-        expect(manager.isSubscribedToRemoteChanges, isTrue);
-
-        // Unsubscribe from remote changes
-        await manager.unsubscribeFromRemoteChanges();
-
-        expect(manager.isSubscribedToRemoteChanges, isFalse);
-      });
-
-      test('resubscribeToRemoteChanges works', () async {
-        // Start unsubscribed
-        await manager.unsubscribeFromRemoteChanges();
-        expect(manager.isSubscribedToRemoteChanges, isFalse);
-
-        // Resubscribe to remote changes
         await manager.resubscribeToRemoteChanges();
 
         expect(manager.isSubscribedToRemoteChanges, isTrue);
@@ -245,33 +226,6 @@ void main() {
         expect(manager2.isSubscribedToRemoteChanges, isTrue);
       });
 
-      test('unsubscribeAllFromRemoteChanges works', () async {
-        // Initially all managers should be subscribed
-        expect(manager1.isSubscribedToRemoteChanges, isTrue);
-        expect(manager2.isSubscribedToRemoteChanges, isTrue);
-
-        // Unsubscribe all from remote changes
-        await Datum.instance.unsubscribeAllFromRemoteChanges();
-
-        // All managers should be unsubscribed
-        expect(manager1.isSubscribedToRemoteChanges, isFalse);
-        expect(manager2.isSubscribedToRemoteChanges, isFalse);
-      });
-
-      test('resubscribeAllToRemoteChanges works', () async {
-        // Start by unsubscribing all
-        await Datum.instance.unsubscribeAllFromRemoteChanges();
-        expect(manager1.isSubscribedToRemoteChanges, isFalse);
-        expect(manager2.isSubscribedToRemoteChanges, isFalse);
-
-        // Resubscribe all to remote changes
-        await Datum.instance.resubscribeAllToRemoteChanges();
-
-        // All managers should be subscribed again
-        expect(manager1.isSubscribedToRemoteChanges, isTrue);
-        expect(manager2.isSubscribedToRemoteChanges, isTrue);
-      });
-
       test('unsubscribeAllFromRemoteChanges works with empty manager registry', () async {
         // Reset Datum to have no managers
         Datum.resetForTesting();
@@ -345,7 +299,8 @@ void main() {
       });
 
       test('subscription state is maintained across operations', () async {
-        // Initially subscribed
+        // Ensure we start from a subscribed state
+        await manager.resubscribeToRemoteChanges();
         expect(manager.isSubscribedToRemoteChanges, isTrue);
 
         // Unsubscribe

@@ -624,29 +624,32 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
   }
 
   void _notifyPreOperationObservers(DatumSyncOperation<T> operation) {
-    if (operation.data == null) return;
-    final item = operation.data!;
     switch (operation.type) {
       case DatumOperationType.create:
-        for (final observer in localObservers) {
-          observer.onCreateStart(item);
-        }
-        for (final observer in globalObservers) {
-          observer.onCreateStart(item);
-        }
       case DatumOperationType.update:
-        for (final observer in localObservers) {
-          observer.onUpdateStart(item);
-        }
-        for (final observer in globalObservers) {
-          observer.onUpdateStart(item);
+        if (operation.data == null) return;
+        final item = operation.data!;
+        if (operation.type == DatumOperationType.create) {
+          for (final observer in localObservers) {
+            observer.onCreateStart(item);
+          }
+          for (final observer in globalObservers) {
+            observer.onCreateStart(item);
+          }
+        } else {
+          for (final observer in localObservers) {
+            observer.onUpdateStart(item);
+          }
+          for (final observer in globalObservers) {
+            observer.onUpdateStart(item);
+          }
         }
       case DatumOperationType.delete:
         for (final observer in localObservers) {
-          observer.onDeleteStart(item.id);
+          observer.onDeleteStart(operation.entityId);
         }
         for (final observer in globalObservers) {
-          observer.onDeleteStart(item.id);
+          observer.onDeleteStart(operation.entityId);
         }
     }
   }

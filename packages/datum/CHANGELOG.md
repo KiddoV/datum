@@ -1,131 +1,25 @@
 # Unreleased
 
 ## 🗑️ Breaking Changes
-
-- **core**: Removed deprecated `pause()` and `resume()` methods from `DatumManager` and `Datum` classes
-  - These methods were deprecated in favor of `unsubscribeFromRemoteChanges()` and `resubscribeToRemoteChanges()`
-  - Update your code to use the new method names for remote change subscription management
+- **core**: Removed deprecated `pause()` and `resume()` methods from `DatumManager` and `Datum` classes - use `unsubscribeFromRemoteChanges()` and `resubscribeToRemoteChanges()` instead
 
 ## ✨ Core Library Features
-
-### Entity & Model System
-- **feat(datum)**: enhance entity definition with interface and mixin
-  - introduce DatumEntityInterface for flexible entity implementations
-  - add DatumEntityMixin for simplified entity creation
-  - update all adapters and engine classes to use DatumEntityInterface
-  - improve relational entity support with interface and mixin
-
-- **feat(datum)**: enhance entity mixins and relational detection
-  - migrate Plan to use RelationalDatumEntityMixin
-  - make Task extend DatumEntity and use DatumEntityMixin
-  - add isRelational getter to Task
-  - update tests to reflect mixin changes
-  - improve relational status detection for mixin entities
-
-### Sync Engine & Data Synchronization
-- **feat**: add initial sync handling on user authentication
-  - Implement waiting for initial sync completion when user signs in
-  - Clear sync metadata to force fresh data fetch from server
-  - Add sync status listener to track sync state
-  - Update auth listener to handle sign-in events asynchronously
-  - Resume sync and perform pull-then-push with full sync options on login
-  - This ensures data consistency by fetching the latest remote data upon authentication, preventing stale local data issues
-
-- **feat(datum)**: enhance sync engine with metadata comparison and device tracking
-  - add sync metadata comparison to skip sync if no changes are detected
-  - fetch local and remote metadata and compare data hash and entity counts
-  - skip sync if metadata matches and there are no pending local operations
-  - add device tracking to sync metadata
-  - track device id and last sync time for each device
-  - update sync metadata with device information
-  - add new sync statuses to enum
-  - add isSyncing/isLastSyncSuccessful flags
-  - add migrations
-  - add migration for schema version 0 to 1
-  - add forceFullSync option
-  - add forceFullSync option to bypass metadata comparison and force a full sync
-  - refactor sync engine to handle errors and events more robustly
-  - wrap errors in SyncExceptionWithEvents to transport events back to the manager
-  - handle manager disposal during sync to prevent event processing after disposal
-  - improve error handling and logging for sync failures
-  - add related entities support
-  - add syncScope to the remoteAdapter
-
-- **feat(datum)**: enhance auto-sync and initial data fetching
-  - add auto-sync on login and app start
-  - improve sync execution strategy
-  - enhance logging and error handling
-
-- **feat(datum)**: add startAutoSync method to Datum class
-  - introduce startAutoSync method to start auto-sync across managers
-  - refactor auto-sync management in DatumManager
-
-### Configuration & Options
-- **feat(core)**: add default sync options and remote metadata
-  - 【DatumConfig】Add defaultSyncOptions to DatumConfig for default sync settings
-  - Allows specifying default sync options in DatumConfig
-  - Options are merged with those passed to individual sync calls
-  - 【DatumManager】Implement sync option merging in DatumManager
-  - Implement _mergeSyncOptions to merge provided and default options
-  - Provided options take precedence over defaults
-  - 【DatumManager】Add getRemoteSyncMetadata method to DatumManager
-  - Fetches sync metadata from the remote server for the specified entity type
-  - 【DatumCore】Add getRemoteSyncMetadata method to DatumCore
-  - For easier access of remote sync metadata
-  - 【Tests】Add tests for default sync options and merging
-  - Add tests to verify default sync options and merging behavior
-  - 【Docs】Update documentation to reflect the new sync metadata and options
-
-### Logging & Monitoring
-- **feat(datum)**: enhance CustomDatumLogger with advanced logging features
-  - add support for minimum log levels, sampling rules, performance logging, and synchronous logging to improve flexibility, reduce log noise, and enable performance monitoring
+- **Entity System**: Enhanced entity definitions with interfaces and mixins for more flexible implementations
+- **Sync Engine**: Added initial sync on user authentication, metadata comparison for optimized syncing, device tracking, and improved error handling
+- **Auto-sync**: Enhanced auto-sync functionality with better scheduling and management
+- **Configuration**: Added default sync options and remote metadata access
+- **Logging**: Advanced logging features with performance monitoring and sampling
 
 ## ♻️ Refactors
-
-- **refactor(datum)**: enhance entity definition with interface and mixin
-  - introduce DatumEntityInterface for flexible entity implementations
-  - add DatumEntityMixin for simplified entity creation
-  - update all adapters and engine classes to use DatumEntityInterface
-  - improve relational entity support with interface and mixin
-
-- **refactor(datum)**: enhance entity mixins and relational detection
-  - migrate Plan to use RelationalDatumEntityMixin
-  - make Task extend DatumEntity and use DatumEntityMixin
-  - add isRelational getter to Task
-  - update tests to reflect mixin changes
-  - improve relational status detection for mixin entities
-
-- **refactor(datum)**: improve sync engine with batch processing and performance monitoring
-  - implement batch processing for remote sync to reduce memory usage
-  - add performance monitoring with baselines and regression detection
-  - enhance datum config with performance and logging options
-  - introduce error boundaries for sync operations
-  - improve logging with structured entries and sampling
-  - add sync error handler for consistent error management
-
-- **refactor(datum)**: improve sync and error handling
-  - Improve concurrent operation handling by using AsyncQueue
-  - Enhance error handling for sync operations
-  - Improve performance and memory usage monitoring
-  - Enhance auto-sync scheduling
-  - Improve logging and metrics reporting
+- **Entity Handling**: Improved entity mixins and relational detection
+- **Sync Performance**: Batch processing, performance monitoring, and enhanced error boundaries
+- **Concurrent Operations**: Better handling of concurrent sync operations
 
 ## 🐛 Bug Fixes
-
-- **fix(sync_engine)**: correct return values and unused variables in sync engine tests
-  - remove unused result variables from synchronize calls in tests
-  - fix the return value of synchronize function
-  - rename unused url variable to _
+- **Sync Engine**: Fixed return values and unused variables in tests
 
 ## 📖 Documentation
-
-- **docs(docs)**: enhance documentation with Datum singleton API
-  - add documentation for Datum singleton API with usage examples
-  - add advanced synchronization patterns and features documentation
-  - add troubleshooting guide for Datum issues
-  - add documentation for migration issues
-  - add documentation for adapter issues
-  - add documentation for performance issues
+- **API Documentation**: Enhanced documentation for Datum singleton API, sync patterns, and troubleshooting guides
 
 # 0.0.13
 - fixed type casting error in `initialize()` method in Datum

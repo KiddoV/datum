@@ -17,6 +17,10 @@ class MockLocalAdapter<T extends DatumEntityInterface> extends Mock implements L
 
 class MockRemoteAdapter<T extends DatumEntityInterface> extends Mock implements RemoteAdapter<T> {}
 
+class MockDatumObserver<T extends DatumEntityInterface> extends Mock implements DatumObserver<T> {}
+
+class MockGlobalDatumObserver extends Mock implements GlobalDatumObserver {}
+
 void main() {
   group('DatumSyncEngine', () {
     late MockLocalAdapter<TestEntity> localAdapter;
@@ -721,5 +725,231 @@ void main() {
         );
       },
     );
+  });
+
+  group('Observer Notifications', () {
+    late MockLocalAdapter<TestEntity> localAdapter;
+    late MockRemoteAdapter<TestEntity> remoteAdapter;
+    late QueueManager<TestEntity> queueManager;
+    late MockConnectivityChecker connectivity;
+    late StreamController<DatumSyncEvent<TestEntity>> eventController;
+    late BehaviorSubject<DatumSyncStatusSnapshot> statusSubject;
+    late BehaviorSubject<DatumSyncMetadata> metadataSubject;
+    late MockIsolateHelper isolateHelper;
+    late MockLogger logger;
+    late MockDatumObserver<TestEntity> localObserver;
+    late MockGlobalDatumObserver globalObserver;
+    late DatumSyncEngine<TestEntity> syncEngine;
+
+    setUpAll(() {
+      registerFallbackValue(
+        const DatumSyncMetadata(
+          userId: 'fb',
+          lastSyncTime: null,
+          dataHash: 'fb',
+        ),
+      );
+      registerFallbackValue(
+        TestEntity(
+          id: 'fallback',
+          userId: 'fallback',
+          name: 'fallback',
+          value: 0,
+          modifiedAt: DateTime(0),
+          createdAt: DateTime(0),
+          version: 0,
+        ),
+      );
+      registerFallbackValue(
+        DatumSyncOperation<TestEntity>(
+          id: 'fallback',
+          userId: 'fallback',
+          entityId: 'fallback',
+          type: DatumOperationType.create,
+          timestamp: DateTime(0),
+        ),
+      );
+      registerFallbackValue(
+        DatumConflictContext(
+          userId: 'fb',
+          entityId: 'fb',
+          type: DatumConflictType.bothModified,
+          detectedAt: DateTime(0),
+        ),
+      );
+    });
+
+    setUp(() {
+      localAdapter = MockLocalAdapter<TestEntity>();
+      remoteAdapter = MockRemoteAdapter<TestEntity>();
+      localObserver = MockDatumObserver<TestEntity>();
+      globalObserver = MockGlobalDatumObserver();
+      final pendingOpsByUser = <String, List<DatumSyncOperation<TestEntity>>>{};
+
+      queueManager = QueueManager<TestEntity>(
+        localAdapter: localAdapter,
+        logger: DatumLogger(enabled: false),
+      );
+      connectivity = MockConnectivityChecker();
+      eventController = StreamController<DatumSyncEvent<TestEntity>>.broadcast();
+      statusSubject = BehaviorSubject<DatumSyncStatusSnapshot>.seeded(
+        DatumSyncStatusSnapshot.initial(''),
+      );
+      logger = MockLogger();
+      metadataSubject = BehaviorSubject<DatumSyncMetadata>();
+      isolateHelper = MockIsolateHelper();
+
+      syncEngine = DatumSyncEngine<TestEntity>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        conflictResolver: LastWriteWinsResolver<TestEntity>(),
+        queueManager: queueManager,
+        conflictDetector: DatumConflictDetector<TestEntity>(),
+        logger: logger,
+        config: const DatumConfig(),
+        connectivityChecker: connectivity,
+        eventController: eventController,
+        statusSubject: statusSubject,
+        metadataSubject: metadataSubject,
+        isolateHelper: isolateHelper,
+        localObservers: [localObserver],
+        globalObservers: [globalObserver],
+      );
+
+      // Add default stubs
+      when(() => connectivity.isConnected).thenAnswer((_) async => true);
+      when(() => logger.info(any())).thenAnswer((_) {});
+      when(() => logger.warn(any())).thenAnswer((_) {});
+      when(() => logger.debug(any())).thenAnswer((_) {});
+      when(() => logger.error(any(), any())).thenAnswer((_) {});
+      when(() => remoteAdapter.create(any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.update(any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.delete(any(), userId: any(named: 'userId'))).thenAnswer((_) async {});
+      when(() => remoteAdapter.readAll(userId: any(named: 'userId'), scope: any(named: 'scope'))).thenAnswer((_) async => []);
+      when(() => localAdapter.readByIds(any(), userId: any(named: 'userId'))).thenAnswer((_) async => {});
+
+      // Stateful mock for pending operations
+      when(() => localAdapter.getPendingOperations(any())).thenAnswer((
+        inv,
+      ) async {
+        final userId = inv.positionalArguments.first as String;
+        return pendingOpsByUser[userId] ?? [];
+      });
+      when(() => localAdapter.addPendingOperation(any(), any())).thenAnswer((
+        inv,
+      ) async {
+        final userId = inv.positionalArguments[0] as String;
+        final op = inv.positionalArguments[1] as DatumSyncOperation<TestEntity>;
+        pendingOpsByUser.putIfAbsent(userId, () => []).add(op);
+      });
+      when(() => localAdapter.removePendingOperation(any())).thenAnswer((
+        inv,
+      ) async {
+        final opId = inv.positionalArguments.first as String;
+        for (final ops in pendingOpsByUser.values) {
+          ops.removeWhere((op) => op.id == opId);
+        }
+      });
+
+      when(() => localAdapter.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
+      when(() => localAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
+      when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.getLastSyncResult(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.update(any())).thenAnswer((_) async {});
+      when(() => localAdapter.create(any())).thenAnswer((_) async {});
+    });
+
+    tearDown(() async {
+      await eventController.close();
+      await statusSubject.close();
+      await metadataSubject.close();
+    });
+
+    test('notifies observers on create operation start', () async {
+      // Arrange
+      final newEntity = TestEntity.create('e1', 'user-1', 'New Item');
+      final operation = DatumSyncOperation<TestEntity>(
+        id: 'op1',
+        userId: 'user-1',
+        entityId: newEntity.id,
+        type: DatumOperationType.create,
+        timestamp: DateTime.now(),
+        data: newEntity,
+      );
+      await queueManager.enqueue(operation);
+
+      // Act
+      await syncEngine.synchronize('user-1');
+
+      // Assert
+      verify(() => localObserver.onCreateStart(newEntity)).called(1);
+      verify(() => globalObserver.onCreateStart(newEntity)).called(1);
+    });
+
+    test('notifies observers on update operation start', () async {
+      // Arrange
+      final updatedEntity = TestEntity.create('e1', 'user-1', 'Updated Item');
+      final operation = DatumSyncOperation<TestEntity>(
+        id: 'op1',
+        userId: 'user-1',
+        entityId: updatedEntity.id,
+        type: DatumOperationType.update,
+        timestamp: DateTime.now(),
+        data: updatedEntity,
+      );
+      await queueManager.enqueue(operation);
+
+      // Act
+      await syncEngine.synchronize('user-1');
+
+      // Assert
+      verify(() => localObserver.onUpdateStart(updatedEntity)).called(1);
+      verify(() => globalObserver.onUpdateStart(updatedEntity)).called(1);
+    });
+
+    test('notifies observers on delete operation start', () async {
+      // Arrange
+      final operation = DatumSyncOperation<TestEntity>(
+        id: 'op1',
+        userId: 'user-1',
+        entityId: 'e1',
+        type: DatumOperationType.delete,
+        timestamp: DateTime.now(),
+      );
+      await queueManager.enqueue(operation);
+
+      // Act
+      await syncEngine.synchronize('user-1');
+
+      // Assert
+      verify(() => localObserver.onDeleteStart('e1')).called(1);
+      verify(() => globalObserver.onDeleteStart('e1')).called(1);
+    });
+
+    test('does not notify observers when operation data is null', () async {
+      // Arrange: Create operation with null data (should not happen in practice, but test edge case)
+      final operation = DatumSyncOperation<TestEntity>(
+        id: 'op1',
+        userId: 'user-1',
+        entityId: 'e1',
+        type: DatumOperationType.create,
+        timestamp: DateTime.now(),
+        data: null, // This should prevent observer notification
+      );
+      await queueManager.enqueue(operation);
+
+      // Act: This will fail due to null data, but we want to check observer calls
+      try {
+        await syncEngine.synchronize('user-1');
+      } catch (_) {
+        // Expected to fail due to null data
+      }
+
+      // Assert: Observers should not be called because operation.data is null
+      verifyNever(() => localObserver.onCreateStart(any()));
+      verifyNever(() => globalObserver.onCreateStart(any()));
+    });
   });
 }

@@ -473,6 +473,158 @@ void main() {
       expect(baseline1.props, isNot(equals(baseline3.props)));
       expect(baseline1.props.length, 7); // All fields should be included
     });
+
+    test('checkRegression calculates memory Z-score correctly', () {
+      final baseline = PerformanceBaseline(
+        operationName: 'memory_zscore_test',
+        averageDuration: const Duration(milliseconds: 100),
+        stdDevDuration: const Duration(milliseconds: 10),
+        averageMemoryDelta: 1000, // 1000 bytes average
+        stdDevMemoryDelta: 100, // 100 bytes std dev
+        sampleCount: 20,
+        lastUpdated: DateTime.now(),
+      );
+
+      // Test with memory data - should calculate Z-score
+      const startMemory = MemoryUsage(
+        heapUsage: 1000,
+        peakHeapUsage: 1500,
+        externalUsage: 200,
+        heapSize: 2000,
+        rss: 3000,
+      );
+
+      const endMemory = MemoryUsage(
+        heapUsage: 1200, // 200 bytes increase
+        peakHeapUsage: 1600,
+        externalUsage: 250,
+        heapSize: 2100,
+        rss: 3100,
+      );
+
+      final timingWithMemory = OperationTiming(
+        operationName: 'memory_zscore_test',
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        duration: const Duration(milliseconds: 100), // Normal duration
+        startMemory: startMemory,
+        endMemory: endMemory,
+      );
+
+      // Z-score = (200 - 1000) / 100 = (-800) / 100 = -8.0
+      // Since we take abs, it should be 8.0
+      final regressionLevel = baseline.checkRegression(timingWithMemory);
+      expect(regressionLevel, 3); // Severe regression due to high memory Z-score
+    });
+
+    test('checkRegression ignores memory when no memory data available', () {
+      final baseline = PerformanceBaseline(
+        operationName: 'no_memory_test',
+        averageDuration: const Duration(milliseconds: 100),
+        stdDevDuration: const Duration(milliseconds: 10),
+        averageMemoryDelta: 1000,
+        stdDevMemoryDelta: 100,
+        sampleCount: 20,
+        lastUpdated: DateTime.now(),
+      );
+
+      // Test without memory data - should only use duration
+      final timingNoMemory = OperationTiming(
+        operationName: 'no_memory_test',
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        duration: const Duration(milliseconds: 100), // Normal duration
+      );
+
+      final regressionLevel = baseline.checkRegression(timingNoMemory);
+      expect(regressionLevel, 0); // No regression
+    });
+
+    test('checkRegression uses maximum Z-score from duration and memory', () {
+      final baseline = PerformanceBaseline(
+        operationName: 'max_zscore_test',
+        averageDuration: const Duration(milliseconds: 100),
+        stdDevDuration: const Duration(milliseconds: 10), // Low variance
+        averageMemoryDelta: 1000,
+        stdDevMemoryDelta: 100, // Low variance
+        sampleCount: 20,
+        lastUpdated: DateTime.now(),
+      );
+
+      // Create timing with both high duration and high memory usage
+      const startMemory = MemoryUsage(
+        heapUsage: 1000,
+        peakHeapUsage: 1500,
+        externalUsage: 200,
+        heapSize: 2000,
+        rss: 3000,
+      );
+
+      const endMemory = MemoryUsage(
+        heapUsage: 1100, // Only 100 bytes increase (normal)
+        peakHeapUsage: 1600,
+        externalUsage: 250,
+        heapSize: 2100,
+        rss: 3100,
+      );
+
+      final timing = OperationTiming(
+        operationName: 'max_zscore_test',
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        duration: const Duration(milliseconds: 130), // 3 std devs from mean (100 + 3*10 = 130)
+        startMemory: startMemory,
+        endMemory: endMemory,
+      );
+
+      final regressionLevel = baseline.checkRegression(timing);
+      expect(regressionLevel, 3); // Severe regression (memory Z-score = 9.0 > duration Z-score = 3.0)
+    });
+
+    test('fromTimings sets lastUpdated to current time', () {
+      final timings = [
+        OperationTiming(
+          operationName: 'last_updated_test',
+          startTime: DateTime.now(),
+          endTime: DateTime.now(),
+          duration: const Duration(milliseconds: 100),
+        ),
+      ];
+
+      final beforeCreation = DateTime.now();
+      final baseline = PerformanceBaseline.fromTimings('last_updated_test', timings);
+      final afterCreation = DateTime.now();
+
+      expect(baseline.lastUpdated.isAfter(beforeCreation.subtract(const Duration(seconds: 1))), isTrue);
+      expect(baseline.lastUpdated.isBefore(afterCreation.add(const Duration(seconds: 1))), isTrue);
+    });
+
+    test('updateWith sets lastUpdated to current time', () {
+      final baseline = PerformanceBaseline(
+        operationName: 'update_last_updated_test',
+        averageDuration: const Duration(milliseconds: 100),
+        stdDevDuration: const Duration(milliseconds: 10),
+        averageMemoryDelta: 1000,
+        stdDevMemoryDelta: 100,
+        sampleCount: 10,
+        lastUpdated: DateTime(2023, 1, 1), // Old date
+      );
+
+      final timing = OperationTiming(
+        operationName: 'update_last_updated_test',
+        startTime: DateTime.now(),
+        endTime: DateTime.now(),
+        duration: const Duration(milliseconds: 110),
+      );
+
+      final beforeUpdate = DateTime.now();
+      final updatedBaseline = baseline.updateWith(timing);
+      final afterUpdate = DateTime.now();
+
+      expect(updatedBaseline.lastUpdated.isAfter(beforeUpdate.subtract(const Duration(seconds: 1))), isTrue);
+      expect(updatedBaseline.lastUpdated.isBefore(afterUpdate.add(const Duration(seconds: 1))), isTrue);
+      expect(updatedBaseline.lastUpdated, isNot(equals(baseline.lastUpdated)));
+    });
   });
 
   group('MemoryUsage', () {
@@ -858,6 +1010,80 @@ void main() {
       final result = event.toString();
       expect(result, contains('PerformanceRegressionEvent(regression_display_test: severe regression'));
       expect(result, contains('200ms vs baseline 100ms'));
+    });
+  });
+
+  group('PerformanceConfig', () {
+    test('props returns correct equality properties', () {
+      const config1 = PerformanceConfig(
+        enabled: true,
+        trackMemory: true,
+        trackOperationTimings: true,
+        detectRegressions: true,
+        regressionThreshold: 2.0,
+        maxTimingSamples: 100,
+        monitoredOperations: {'op1', 'op2'},
+      );
+
+      const config2 = PerformanceConfig(
+        enabled: true,
+        trackMemory: true,
+        trackOperationTimings: true,
+        detectRegressions: true,
+        regressionThreshold: 2.0,
+        maxTimingSamples: 100,
+        monitoredOperations: {'op1', 'op2'},
+      );
+
+      const config3 = PerformanceConfig(
+        enabled: false, // Different
+        trackMemory: true,
+        trackOperationTimings: true,
+        detectRegressions: true,
+        regressionThreshold: 2.0,
+        maxTimingSamples: 100,
+        monitoredOperations: {'op1', 'op2'},
+      );
+
+      expect(config1.props, equals(config2.props));
+      expect(config1.props, isNot(equals(config3.props)));
+      expect(config1.props.length, 7); // All fields should be included
+    });
+
+    test('monitorAll creates config with empty monitored operations', () {
+      const config = PerformanceConfig.monitorAll();
+
+      expect(config.enabled, isTrue);
+      expect(config.trackMemory, isTrue);
+      expect(config.trackOperationTimings, isTrue);
+      expect(config.detectRegressions, isTrue);
+      expect(config.regressionThreshold, 2.0);
+      expect(config.maxTimingSamples, 100);
+      expect(config.monitoredOperations, isEmpty);
+    });
+
+    test('shouldMonitor returns true for empty monitored operations', () {
+      const config = PerformanceConfig.monitorAll();
+
+      expect(config.shouldMonitor('any_operation'), isTrue);
+    });
+
+    test('shouldMonitor returns true for operations in monitored set', () {
+      const config = PerformanceConfig(
+        monitoredOperations: {'allowed_op', 'another_op'},
+      );
+
+      expect(config.shouldMonitor('allowed_op'), isTrue);
+      expect(config.shouldMonitor('another_op'), isTrue);
+    });
+
+    test('shouldMonitor returns false for operations not in monitored set', () {
+      const config = PerformanceConfig(
+        monitoredOperations: {'allowed_op'},
+      );
+
+      expect(config.shouldMonitor('blocked_op'), isFalse);
+      expect(config.shouldMonitor('another_blocked'), isFalse);
     });
   });
 }

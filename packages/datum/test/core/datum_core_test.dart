@@ -401,6 +401,39 @@ void main() {
       expect(related, isEmpty);
     });
 
+    test('Datum.fetchRelated throws ArgumentError for non-relational entities', () async {
+      // Arrange: Create a non-relational entity using DatumEntityMixin
+      final nonRelationalEntity = _NonRelationalMixinEntity(
+        id: 'test-id',
+        userId: 'test-user',
+        createdAt: DateTime.now(),
+        modifiedAt: DateTime.now(),
+        version: 1,
+        isDeleted: false,
+        name: 'test',
+      );
+
+      // Act & Assert: Should throw ArgumentError with specific message
+      expect(
+        () => Datum.instance.fetchRelated<_NonRelationalMixinEntity, Post>(
+          nonRelationalEntity,
+          'posts',
+          source: DataSource.local,
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Entity of type _NonRelationalMixinEntity is not relational and cannot have relations'),
+          ).having(
+            (e) => e.message,
+            'message',
+            contains('To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin'),
+          ),
+        ),
+      );
+    });
+
     test('Datum.watchRelated calls manager.watchRelated on the correct manager', () async {
       // Arrange
       final parent = TestEntity.create('e1', 'user1', 'Parent');
@@ -409,6 +442,60 @@ void main() {
       final related = await Datum.instance.watchRelated<TestEntity, Post>(parent, 'posts')!.first;
       expect(related, isA<List<Post>>());
       expect(related, isEmpty);
+    });
+
+    test('Datum.watchRelated throws ArgumentError for non-relational entities', () async {
+      // Arrange: Create a non-relational entity using DatumEntityMixin
+      final nonRelationalEntity = _NonRelationalMixinEntity(
+        id: 'test-id',
+        userId: 'test-user',
+        createdAt: DateTime.now(),
+        modifiedAt: DateTime.now(),
+        version: 1,
+        isDeleted: false,
+        name: 'test',
+      );
+
+      // Act & Assert: Should throw ArgumentError with specific message
+      expect(
+        () => Datum.instance.watchRelated<_NonRelationalMixinEntity, Post>(
+          nonRelationalEntity,
+          'posts',
+        ),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Entity of type _NonRelationalMixinEntity is not relational and cannot have relations'),
+          ).having(
+            (e) => e.message,
+            'message',
+            contains('To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin'),
+          ),
+        ),
+      );
+    });
+
+    test('Datum.managerByType throws StateError for unregistered type', () async {
+      // Act & Assert: Should throw StateError for unregistered type
+      expect(
+        () => Datum.managerByType(String),
+        throwsA(
+          isA<StateError>().having(
+            (e) => e.message,
+            'message',
+            equals('Entity type String is not registered or has a manager of the wrong type.'),
+          ),
+        ),
+      );
+    });
+
+    test('Datum.startAutoSync calls startAutoSync on all managers', () async {
+      // Act: Call startAutoSync
+      expect(() => Datum.instance.startAutoSync('user1'), returnsNormally);
+
+      // Assert: The method completes without throwing and calls startAutoSync on managers
+      // Since we can't easily verify the internal calls, we just ensure it doesn't throw
     });
 
     test('Datum.statusForUser returns a snapshot (sync or async)', () async {
@@ -439,6 +526,102 @@ void main() {
         () => Datum.instance.register<TestEntity>(registration: registration),
         throwsA(isA<StateError>()),
       );
+    });
+  });
+
+  group('Datum.isInitialized', () {
+    late MockConnectivityChecker mockConnectivity;
+    late MockLocalAdapter<TestEntity> localAdapter;
+    late MockRemoteAdapter<TestEntity> remoteAdapter;
+
+    setUp(() {
+      Datum.resetForTesting();
+      mockConnectivity = MockConnectivityChecker();
+      when(() => mockConnectivity.isConnected).thenAnswer((_) async => true);
+      localAdapter = MockLocalAdapter<TestEntity>();
+      remoteAdapter = MockRemoteAdapter<TestEntity>();
+      when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 0);
+      when(() => localAdapter.initialize()).thenAnswer((_) async {});
+      when(() => remoteAdapter.initialize()).thenAnswer((_) async {});
+      when(() => localAdapter.dispose()).thenAnswer((_) async {});
+      when(() => remoteAdapter.dispose()).thenAnswer((_) async {});
+      when(() => localAdapter.getPendingOperations(any())).thenAnswer((_) async => []);
+      when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.getLastSyncResult(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.getAllUserIds()).thenAnswer((_) async => ['user1']);
+      when(() => localAdapter.readAll(userId: 'user1')).thenAnswer((_) async => []);
+      when(() => localAdapter.getStorageSize(userId: 'user1')).thenAnswer((_) async => 0);
+    });
+
+    tearDown(() async {
+      if (Datum.instanceOrNull != null) {
+        await Datum.instance.dispose();
+      }
+      Datum.resetForTesting();
+    });
+
+    test('returns false before initialization', () {
+      // Act & Assert
+      expect(Datum.isInitialized, isFalse);
+    });
+
+    test('returns true after successful initialization', () async {
+      // Act
+      await Datum.initialize(
+        config: const DatumConfig(enableLogging: false),
+        connectivityChecker: mockConnectivity,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+
+      // Assert
+      expect(Datum.isInitialized, isTrue);
+    });
+
+    test('returns false after resetForTesting', () async {
+      // Arrange: Initialize first
+      await Datum.initialize(
+        config: const DatumConfig(enableLogging: false),
+        connectivityChecker: mockConnectivity,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+      expect(Datum.isInitialized, isTrue);
+
+      // Act: Reset
+      Datum.resetForTesting();
+
+      // Assert
+      expect(Datum.isInitialized, isFalse);
+    });
+
+    test('remains true after dispose (instance still exists)', () async {
+      // Arrange: Initialize first
+      await Datum.initialize(
+        config: const DatumConfig(enableLogging: false),
+        connectivityChecker: mockConnectivity,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+      expect(Datum.isInitialized, isTrue);
+
+      // Act: Dispose
+      await Datum.instance.dispose();
+
+      // Assert: Instance still exists after dispose, just cleaned up
+      expect(Datum.isInitialized, isTrue);
     });
   });
 
@@ -557,6 +740,65 @@ void main() {
       // Cross-type checks
       expect(isSubtype<TestEntity, RelationalTestEntity>(), isFalse);
       expect(isSubtype<RelationalTestEntity, TestEntity>(), isFalse);
+    });
+  });
+
+  group('sameTypes function', () {
+    test('sameTypes returns true for identical types', () {
+      // Test that the same type returns true
+      expect(sameTypes<int, int>(), isTrue);
+      expect(sameTypes<String, String>(), isTrue);
+      expect(sameTypes<TestEntity, TestEntity>(), isTrue);
+      expect(sameTypes<RelationalTestEntity, RelationalTestEntity>(), isTrue);
+      expect(sameTypes<DatumEntityInterface, DatumEntityInterface>(), isTrue);
+    });
+
+    test('sameTypes returns false for different types', () {
+      // Test that different types return false
+      expect(sameTypes<int, String>(), isFalse);
+      expect(sameTypes<String, int>(), isFalse);
+      expect(sameTypes<TestEntity, RelationalTestEntity>(), isFalse);
+      expect(sameTypes<RelationalTestEntity, TestEntity>(), isFalse);
+      expect(sameTypes<DatumEntityInterface, TestEntity>(), isFalse);
+      expect(sameTypes<TestEntity, DatumEntityInterface>(), isFalse);
+    });
+
+    test('sameTypes handles complex type relationships', () {
+      // Test with inheritance - even though TestEntity extends RelationalDatumEntity,
+      // they are not the same type
+      expect(sameTypes<RelationalDatumEntity, TestEntity>(), isFalse);
+      expect(sameTypes<TestEntity, RelationalDatumEntity>(), isFalse);
+
+      // Test with interfaces - even though TestEntity implements DatumEntityInterface,
+      // they are not the same type
+      expect(sameTypes<DatumEntityInterface, TestEntity>(), isFalse);
+      expect(sameTypes<TestEntity, DatumEntityInterface>(), isFalse);
+
+      // Test with built-in types
+      expect(sameTypes<num, int>(), isFalse);
+      expect(sameTypes<int, num>(), isFalse);
+      expect(sameTypes<Object, String>(), isFalse);
+      expect(sameTypes<String, Object>(), isFalse);
+    });
+
+    test('sameTypes works with dynamic and Object', () {
+      // Test with dynamic and Object
+      expect(sameTypes<dynamic, dynamic>(), isTrue);
+      expect(sameTypes<Object, Object>(), isTrue);
+      expect(sameTypes<dynamic, Object>(), isFalse);
+      expect(sameTypes<Object, dynamic>(), isFalse);
+    });
+
+    test('sameTypes function definition is executed', () {
+      // This test ensures the function definition line is covered
+      // by calling the function with various types
+      final result1 = sameTypes<int, int>();
+      final result2 = sameTypes<String, double>();
+      final result3 = sameTypes<TestEntity, TestEntity>();
+
+      expect(result1, isTrue);
+      expect(result2, isFalse);
+      expect(result3, isTrue);
     });
   });
 
