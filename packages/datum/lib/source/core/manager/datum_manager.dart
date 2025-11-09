@@ -1164,27 +1164,25 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     stopAutoSync(userId: userId);
 
     final syncInterval = interval ?? config.autoSyncInterval;
+
     _autoSyncTimers[userId] = Timer.periodic(syncInterval, (_) {
       // Use an async block to allow try-catch without affecting the timer's
       // void callback signature.
       unawaited(() async {
         try {
           await synchronize(userId);
-          // Update the next sync time after successful sync
-          if (!_nextSyncTimeSubject.isClosed) {
-            _nextSyncTimeSubject.add(DateTime.now().add(syncInterval));
-          }
+          // After sync, update the global next sync time based on all active timers
+          _updateNextSyncTime();
         } catch (e, stack) {
           _logger.error('Auto-sync for user $userId failed: $e', stack);
           // Still update the next sync time even on failure to keep the countdown going
-          if (!_nextSyncTimeSubject.isClosed) {
-            _nextSyncTimeSubject.add(DateTime.now().add(syncInterval));
-          }
+          _updateNextSyncTime();
         }
       }());
     });
 
-    _nextSyncTimeSubject.add(DateTime.now().add(syncInterval));
+    // Update the global next sync time after starting this timer
+    _updateNextSyncTime();
 
     _logger.info(
       'Auto-sync started for user $userId (interval: $syncInterval)',
@@ -1202,10 +1200,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
         _pausedAutoSyncUserIds.remove(userId);
       }
 
-      // Only add an event if the subject is not already closed, which can
-      // happen during a rapid dispose cycle.
-      if (timer != null && !_nextSyncTimeSubject.isClosed) {
-        _nextSyncTimeSubject.add(null);
+      // Update the global next sync time after stopping this timer
+      _updateNextSyncTime();
+
+      // Only log if a timer was actually stopped
+      if (timer != null) {
         _logger.info('Auto-sync stopped for user: $userId');
       }
       return;
@@ -1220,9 +1219,29 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       _pausedAutoSyncUserIds.clear();
     }
 
-    if (!_nextSyncTimeSubject.isClosed) {
+    // Update the global next sync time after stopping all timers
+    _updateNextSyncTime();
+  }
+
+  /// Updates the global next sync time based on all active auto-sync timers.
+  ///
+  /// If no timers are active, sets the next sync time to null.
+  /// If timers are active, calculates the earliest next sync time.
+  void _updateNextSyncTime() {
+    if (_nextSyncTimeSubject.isClosed) return;
+
+    if (_autoSyncTimers.isEmpty) {
       _nextSyncTimeSubject.add(null);
+      return;
     }
+
+    // Since all timers use the same interval and are started at roughly the same time,
+    // they should all fire at the same time. But to be safe, we'll calculate the earliest.
+    final now = DateTime.now();
+    final syncInterval = config.autoSyncInterval;
+    final nextSyncTime = now.add(syncInterval);
+
+    _nextSyncTimeSubject.add(nextSyncTime);
   }
 
   /// Unsubscribes from remote change events.

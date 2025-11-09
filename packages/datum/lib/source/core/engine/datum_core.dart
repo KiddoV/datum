@@ -1092,6 +1092,17 @@ class Datum {
     }
   }
 
+  /// Starts automatic periodic synchronization for the specified user across all managers.
+  ///
+  /// Uses the auto-sync interval from the configuration.
+  /// Automatically stops any existing auto-sync for the same user across all managers.
+  void startAutoSync(String userId) {
+    logger.info('Starting auto-sync for user $userId across all managers...');
+    for (final manager in _managers.allManagers) {
+      manager.startAutoSync(userId);
+    }
+  }
+
   /// Unsubscribes all managers from remote change events.
   ///
   /// This method calls [unsubscribeFromRemoteChanges] on all registered managers,

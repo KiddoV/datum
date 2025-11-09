@@ -56,16 +56,19 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     enableLogging: true,
     autoStartSync: true,
     initialUserId: Supabase.instance.client.auth.currentUser?.id,
-    changeCacheDuration: Duration(milliseconds: 300),
+    changeCacheDuration: Duration(milliseconds: 0),
+    remoteEventDebounceTime: Duration(milliseconds: 0),
     autoSyncInterval: Duration(
       seconds: 30,
     ),
     syncRequestStrategy: SequentialRequestStrategy(),
     syncExecutionStrategy: IsolateStrategy(
-      DatumSyncExecutionStrategy.sequential(),
+      DatumSyncExecutionStrategy.parallel(),
     ),
     schemaVersion: 0,
     migrations: [],
+    enablePerformanceLogging: true,
+    logLevel: LogLevel.trace,
     onMigrationError: (error, stackTrace) async {
       talker.error(error, stackTrace);
     },
@@ -91,31 +94,6 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       ),
     ],
   );
-
-  // Ensure at least one remote data fetch on app start
-  final datumInstance = datum.fold(
-    (l, s) => throw l,
-    (r) => r,
-  );
-
-  // If there's a current user, perform an initial sync to fetch remote data
-  final currentUserId = Supabase.instance.client.auth.currentUser?.id;
-  if (currentUserId != null) {
-    try {
-      talker.info('Performing initial remote data fetch on app start for user: $currentUserId');
-      await datumInstance.synchronize(
-        currentUserId,
-        options: const DatumSyncOptions(
-          direction: SyncDirection.pullThenPush,
-          forceFullSync: true,
-        ),
-      );
-      talker.info('Initial remote data fetch completed successfully');
-    } catch (e) {
-      talker.warning('Initial remote data fetch failed, but app will continue: $e');
-      // Don't throw here - we don't want to crash the app if initial sync fails
-    }
-  }
 
   return ProviderContainer(
     overrides: [

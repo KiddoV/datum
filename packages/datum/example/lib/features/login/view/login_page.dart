@@ -1,3 +1,6 @@
+import 'package:datum/source/config/datum_config.dart';
+import 'package:datum/source/core/engine/datum_core.dart';
+import 'package:datum/source/core/models/datum_sync_options.dart';
 import 'package:example/bootstrap.dart';
 import 'package:example/core/router/router.gr.dart';
 import 'package:example/core/router/router_pod.dart';
@@ -34,7 +37,31 @@ class _LoginPageState extends ConsumerState<LoginPage> with GlobalHelper {
         if (authResponse.user != null && authResponse.session != null) {
           talker.debug(authResponse.user);
           talker.debug(authResponse.session);
-          ref.read(autorouterProvider).replaceAll([SimpleDatumRoute()]);
+          // If there's a current user, perform an initial sync to fetch remote data
+          final currentUserId = Supabase.instance.client.auth.currentUser?.id;
+          if (currentUserId != null) {
+            try {
+              talker.info(
+                  'Performing initial remote data fetch on login for user: $currentUserId');
+              await Datum.instance.synchronize(
+                currentUserId,
+                options: const DatumSyncOptions(
+                  direction: SyncDirection.pullThenPush,
+                  forceFullSync: true,
+                ),
+              );
+              talker.info('Initial remote data fetch completed successfully');
+
+              // Start auto-sync for the logged-in user
+              Datum.instance.synchronize(currentUserId);
+              talker.info('Auto-sync started for user: $currentUserId');
+            } catch (e) {
+              talker.warning(
+                  'Initial remote data fetch failed, but app will continue: $e');
+              // Don't throw here - we don't want to crash the app if initial sync fails
+            }
+          }
+          await ref.read(autorouterProvider).replaceAll([SimpleDatumRoute()]);
         }
       } on AuthException catch (e, s) {
         talker.error(e, s);
