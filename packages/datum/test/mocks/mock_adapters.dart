@@ -344,6 +344,7 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
   @override
   Future<List<T>> query(DatumQuery query, {String? userId}) async {
     // Simulate querying by fetching all and then applying the query logic.
+    // For relational queries, don't filter by userId
     final allItems = await readAll(userId: userId);
     return applyQuery(allItems, query);
   }

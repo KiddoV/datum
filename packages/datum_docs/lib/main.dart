@@ -157,6 +157,7 @@ void main() {
                   SidebarLink(text: "Define Your Entity", href: '/guides/entity_define'),
                   SidebarLink(text: "Initialization & Global API", href: '/guides/initialization'),
                   SidebarLink(text: "Working with Relationships", href: '/guides/relationships'),
+                  SidebarLink(text: "Cascading Delete", href: '/guides/cascading_delete'),
                   SidebarLink(text: "Querying Data", href: '/guides/querying'),
                   SidebarLink(text: "Define Your Local Adapter", href: '/guides/local_adapter_implement'),
                   SidebarLink(text: "Define Your Remote Adapter", href: '/guides/remote_adapter_implement'),

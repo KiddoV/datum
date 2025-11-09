@@ -86,6 +86,11 @@ The main entry point for Datum operations, providing a comprehensive API for dat
 - `stopAutoSync({String? userId})`: Stops auto-sync
 - `pauseSync()` / `resumeSync()`: Pause/resume all sync activity
 
+**Cascading Delete:**
+- `cascadeDelete(String id, String userId, ...)`: Delete entity and related entities based on cascade behaviors
+- `deleteCascade(String entityId)`: Fluent API builder for cascade delete operations
+- `executeCascadeDeleteWithOptions(String entityId, String userId, CascadeOptions options)`: Advanced cascade delete with full control
+
 **User Management:**
 - `switchUser(String? oldUserId, String newUserId, ...)`: Switches active user with configurable strategy
 

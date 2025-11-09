@@ -9,6 +9,7 @@
 - **Auto-sync**: Enhanced auto-sync functionality with better scheduling and management
 - **Configuration**: Added default sync options and remote metadata access
 - **Logging**: Advanced logging features with performance monitoring and sampling
+- **Cascading Delete**: Major enhancements to cascading delete functionality including dry-run mode, progress callbacks, cancellation support, timeout protection, and improved error handling. Added comprehensive dry-run capabilities for safely previewing deletion operations before execution. Enhanced cascading delete integration tests with 48 total test cases covering complex relationship scenarios, mixin usage patterns, restrict violations, and edge cases.
 
 ## ♻️ Refactors
 - **Entity Handling**: Improved entity mixins and relational detection
@@ -17,9 +18,17 @@
 
 ## 🐛 Bug Fixes
 - **Sync Engine**: Fixed return values and unused variables in tests
+- **Cascading Delete**: Removed unused `_CascadeDeleteStep` and `_CascadeDeletePlan` classes and fixed method call in `CascadeDeleteBuilder.execute()`
 
 ## 📖 Documentation
 - **API Documentation**: Enhanced documentation for Datum singleton API, sync patterns, and troubleshooting guides
+
+_Medium Priority (Next Release):_
+
+1. Parallel execution
+2. Progress callbacks
+3. Relationship caching
+4. Rollback capability
 
 # 0.0.13
 - fixed type casting error in `initialize()` method in Datum

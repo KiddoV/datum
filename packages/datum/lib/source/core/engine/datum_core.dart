@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/cascade_delete.dart';
 import 'package:datum/source/core/metrics/performance_monitor.dart';
 import 'package:datum/source/core/models/datum_either.dart';
 import 'package:datum/source/core/models/performance_metrics.dart';
@@ -934,6 +935,47 @@ class Datum {
     required String userId,
   }) async {
     return Datum.manager<T>().delete(id: id, userId: userId);
+  }
+
+  /// Deletes an entity with cascading behavior based on relationship configurations.
+  ///
+  /// This method respects the [CascadeDeleteBehavior] configured on each relationship:
+  /// - [CascadeDeleteBehavior.cascade]: Related entities are also deleted
+  /// - [CascadeDeleteBehavior.restrict]: Delete fails if related entities exist
+  /// - [CascadeDeleteBehavior.setNull]: Foreign keys are set to null (BelongsTo only)
+  /// - [CascadeDeleteBehavior.none]: No cascading behavior (default)
+  ///
+  /// The method performs deletes in dependency order to avoid foreign key constraint violations.
+  ///
+  /// Returns a [CascadeDeleteResult] containing information about the operation.
+  Future<CascadeDeleteResult<T>> cascadeDelete<T extends DatumEntityInterface>({
+    required String id,
+    required String userId,
+    DataSource source = DataSource.local,
+    bool forceRemoteSync = false,
+  }) async {
+    return Datum.manager<T>().cascadeDelete(
+      id: id,
+      userId: userId,
+      source: source,
+      forceRemoteSync: forceRemoteSync,
+    );
+  }
+
+  /// Creates a fluent API builder for cascade delete operations.
+  ///
+  /// This provides a convenient way to configure and execute cascading delete operations
+  /// with options like dry-run mode, progress callbacks, cancellation, and timeouts.
+  ///
+  /// Example usage:
+  /// ```dart
+  /// final result = await Datum.deleteCascade<Post>('post-123')
+  ///   .forUser('user-456')
+  ///   .dryRun()
+  ///   .execute();
+  /// ```
+  CascadeDeleteBuilder<T> deleteCascade<T extends DatumEntityInterface>(String entityId) {
+    return Datum.manager<T>().deleteCascade(entityId);
   }
 
   Future<(T, DatumSyncResult<T>)> pushAndSync<T extends DatumEntityInterface>({

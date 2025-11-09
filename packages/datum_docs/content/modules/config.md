@@ -487,4 +487,291 @@ final config = DatumConfig(
 );
 ```
 
+## DatumConfigPresets
+
+Configuration presets provide optimized settings for common use cases, allowing you to quickly configure Datum for different environments and scenarios without manually tuning every parameter.
+
+### Available Presets
+
+#### Development Preset
+
+Optimized for development environments with verbose logging, short timeouts, and frequent cleanup:
+
+```dart
+final config = DatumConfigPresets.development();
+
+// Equivalent to:
+DatumConfig(
+  autoSyncInterval: Duration(minutes: 5),
+  autoStartSync: true,
+  syncTimeout: Duration(seconds: 30),
+  enableLogging: true,
+  logLevel: LogLevel.debug,
+  enablePerformanceLogging: true,
+  performanceLogThreshold: Duration(milliseconds: 50),
+  changeCacheDuration: Duration(seconds: 10),
+  maxChangeCacheSize: 500,
+  changeCacheCleanupInterval: Duration(seconds: 15),
+  remoteSyncBatchSize: 50,
+  remoteStreamBatchSize: 25,
+  progressEventFrequency: 25,
+  remoteEventDebounceTime: Duration(milliseconds: 25),
+);
+```
+
+**Features:**
+- Verbose logging for debugging
+- Short timeouts for faster feedback
+- Frequent cache cleanup
+- Auto-sync enabled with short intervals
+
+#### Production Preset
+
+Optimized for production environments with minimal logging, longer timeouts, and performance tuning:
+
+```dart
+final config = DatumConfigPresets.production();
+
+// Equivalent to:
+DatumConfig(
+  autoSyncInterval: Duration(minutes: 30),
+  autoStartSync: true,
+  syncTimeout: Duration(minutes: 5),
+  enableLogging: true,
+  logLevel: LogLevel.warn,
+  enablePerformanceLogging: false,
+  changeCacheDuration: Duration(minutes: 2),
+  maxChangeCacheSize: 2000,
+  changeCacheCleanupInterval: Duration(minutes: 5),
+  remoteSyncBatchSize: 200,
+  remoteStreamBatchSize: 100,
+  progressEventFrequency: 100,
+  remoteEventDebounceTime: Duration(milliseconds: 100),
+);
+```
+
+**Features:**
+- Minimal logging for performance
+- Longer timeouts for reliability
+- Optimized batch sizes
+- Auto-sync enabled with reasonable intervals
+
+#### High Performance Preset
+
+Maximum performance configuration with large batches and minimal overhead:
+
+```dart
+final config = DatumConfigPresets.highPerformance();
+
+// Equivalent to:
+DatumConfig(
+  autoSyncInterval: Duration(hours: 1),
+  autoStartSync: true,
+  syncTimeout: Duration(minutes: 10),
+  enableLogging: false,
+  logLevel: LogLevel.error,
+  enablePerformanceLogging: false,
+  changeCacheDuration: Duration(minutes: 5),
+  maxChangeCacheSize: 5000,
+  changeCacheCleanupInterval: Duration(minutes: 15),
+  remoteSyncBatchSize: 500,
+  remoteStreamBatchSize: 250,
+  progressEventFrequency: 250,
+  remoteEventDebounceTime: Duration(milliseconds: 200),
+);
+```
+
+**Features:**
+- Minimal logging and overhead
+- Large batch sizes for efficiency
+- Extended cache durations
+- Auto-sync with longer intervals
+
+#### Low Memory Preset
+
+Memory-efficient configuration with small caches and frequent cleanup:
+
+```dart
+final config = DatumConfigPresets.lowMemory();
+
+// Equivalent to:
+DatumConfig(
+  autoSyncInterval: Duration(hours: 2),
+  autoStartSync: false,
+  syncTimeout: Duration(minutes: 2),
+  enableLogging: true,
+  logLevel: LogLevel.info,
+  enablePerformanceLogging: false,
+  changeCacheDuration: Duration(seconds: 30),
+  maxChangeCacheSize: 200,
+  changeCacheCleanupInterval: Duration(seconds: 30),
+  remoteSyncBatchSize: 25,
+  remoteStreamBatchSize: 10,
+  progressEventFrequency: 10,
+  remoteEventDebounceTime: Duration(milliseconds: 10),
+);
+```
+
+**Features:**
+- Small cache sizes
+- Frequent cache cleanup
+- Minimal batch sizes
+- Auto-sync disabled by default
+
+#### Testing Preset
+
+Optimized for testing environments with minimal logging and fast timeouts:
+
+```dart
+final config = DatumConfigPresets.testing();
+
+// Equivalent to:
+DatumConfig(
+  autoSyncInterval: Duration(hours: 1),
+  autoStartSync: false,
+  syncTimeout: Duration(seconds: 10),
+  enableLogging: false,
+  logLevel: LogLevel.error,
+  enablePerformanceLogging: false,
+  changeCacheDuration: Duration(seconds: 5),
+  maxChangeCacheSize: 50,
+  changeCacheCleanupInterval: Duration(seconds: 5),
+  remoteSyncBatchSize: 10,
+  remoteStreamBatchSize: 5,
+  progressEventFrequency: 5,
+  remoteEventDebounceTime: Duration(milliseconds: 1),
+);
+```
+
+**Features:**
+- Minimal logging
+- Very short timeouts
+- Small caches for fast cleanup
+- Auto-sync disabled
+
+#### Offline-First Preset
+
+Optimized for offline-first applications with extended caching and moderate sync intervals:
+
+```dart
+final config = DatumConfigPresets.offlineFirst();
+
+// Equivalent to:
+DatumConfig(
+  autoSyncInterval: Duration(minutes: 15),
+  autoStartSync: true,
+  syncTimeout: Duration(minutes: 3),
+  enableLogging: true,
+  logLevel: LogLevel.info,
+  enablePerformanceLogging: false,
+  changeCacheDuration: Duration(minutes: 10),
+  maxChangeCacheSize: 1000,
+  changeCacheCleanupInterval: Duration(minutes: 10),
+  remoteSyncBatchSize: 100,
+  remoteStreamBatchSize: 50,
+  progressEventFrequency: 50,
+  remoteEventDebounceTime: Duration(milliseconds: 50),
+);
+```
+
+**Features:**
+- Extended cache durations
+- Auto-sync enabled with moderate intervals
+- Larger batch sizes for efficiency
+- Moderate logging
+
+#### Real-Time Preset
+
+Optimized for real-time applications with short debounce times and frequent sync:
+
+```dart
+final config = DatumConfigPresets.realTime();
+
+// Equivalent to:
+DatumConfig(
+  autoSyncInterval: Duration(seconds: 30),
+  autoStartSync: true,
+  syncTimeout: Duration(seconds: 30),
+  enableLogging: true,
+  logLevel: LogLevel.warn,
+  enablePerformanceLogging: false,
+  changeCacheDuration: Duration(seconds: 10),
+  maxChangeCacheSize: 100,
+  changeCacheCleanupInterval: Duration(seconds: 10),
+  remoteSyncBatchSize: 20,
+  remoteStreamBatchSize: 10,
+  progressEventFrequency: 10,
+  remoteEventDebounceTime: Duration(milliseconds: 10),
+);
+```
+
+**Features:**
+- Very short debounce times
+- Frequent auto-sync
+- Small batch sizes for responsiveness
+- Minimal caching
+
+### Customizing Presets
+
+Extend existing presets with custom values:
+
+```dart
+// Start with production preset and customize
+final customConfig = DatumConfigPresets.custom(
+  base: DatumConfigPresets.production(),
+  autoSyncInterval: Duration(minutes: 10), // Override sync interval
+  enableLogging: true,                      // Override logging
+  maxChangeCacheSize: 3000,                 // Override cache size
+);
+
+// Or create entirely custom configuration
+final customConfig = DatumConfig(
+  // Mix and match settings from different presets
+  autoSyncInterval: DatumConfigPresets.development().autoSyncInterval,
+  remoteSyncBatchSize: DatumConfigPresets.highPerformance().remoteSyncBatchSize,
+  enableLogging: true,
+  // ... other custom settings
+);
+```
+
+### Preset Selection Guide
+
+Choose the appropriate preset based on your use case:
+
+| Preset | Environment | Use Case |
+|--------|-------------|----------|
+| `development()` | Development | Fast feedback, debugging, testing |
+| `production()` | Production | Balanced performance and reliability |
+| `highPerformance()` | High-throughput | Maximum performance, large datasets |
+| `lowMemory()` | Memory-constrained | Mobile apps, embedded systems |
+| `testing()` | Automated testing | Fast test execution, minimal overhead |
+| `offlineFirst()` | Offline-capable | Apps that work offline extensively |
+| `realTime()` | Live collaboration | Real-time sync, instant updates |
+
+### Environment-Based Configuration
+
+```dart
+DatumConfig getConfigForEnvironment(String environment) {
+  switch (environment) {
+    case 'development':
+      return DatumConfigPresets.development();
+    case 'staging':
+      return DatumConfigPresets.custom(
+        base: DatumConfigPresets.production(),
+        enableLogging: true,
+        logLevel: LogLevel.debug,
+      );
+    case 'production':
+      return DatumConfigPresets.production();
+    case 'testing':
+      return DatumConfigPresets.testing();
+    default:
+      return DatumConfigPresets.production();
+  }
+}
+
+// Usage
+final config = getConfigForEnvironment(Platform.environment['ENVIRONMENT'] ?? 'development');
+```
+
 This configuration system provides extensive control over Datum's behavior while maintaining sensible defaults for most use cases.

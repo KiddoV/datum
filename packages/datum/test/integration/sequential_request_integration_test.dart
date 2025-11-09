@@ -7,6 +7,9 @@ import 'package:mocktail/mocktail.dart';
 import '../mocks/mock_connectivity_checker.dart';
 import '../mocks/test_entity.dart';
 
+// This test focuses specifically on sync request strategy behavior
+// and should not require 100% coverage of the entire DatumManager
+
 class MockedLocalAdapter<T extends DatumEntityInterface> extends Mock implements LocalAdapter<T> {}
 
 class MockedRemoteAdapter<T extends DatumEntityInterface> extends Mock implements RemoteAdapter<T> {}
@@ -67,9 +70,6 @@ void main() {
         await Datum.instance.dispose();
         Datum.resetForTesting();
       }
-      // Ensure SequentialRequestStrategy queues are disposed
-      const strategy = SequentialRequestStrategy();
-      strategy.dispose();
     });
 
     test('concurrent synchronize calls are executed sequentially', () async {

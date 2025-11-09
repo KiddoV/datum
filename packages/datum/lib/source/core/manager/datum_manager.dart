@@ -6,7 +6,36 @@ import 'package:datum/datum.dart';
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
 
+import '../cascade_delete.dart';
 import '../engine/error_boundary.dart';
+
+// Internal class representing a step in the cascade delete plan.
+class _CascadeDeleteStep {
+  final DatumEntityInterface entity;
+  final dynamic manager;
+  final String? relationName;
+
+  const _CascadeDeleteStep({
+    required this.entity,
+    required this.manager,
+    this.relationName,
+  });
+}
+
+/// Internal class representing the complete cascade delete plan.
+class _CascadeDeletePlan<T extends DatumEntityInterface> {
+  final T mainEntity;
+  final List<_CascadeDeleteStep> steps;
+  final bool canDelete;
+  final Map<String, List<DatumEntityInterface>> restrictedRelations;
+
+  const _CascadeDeletePlan({
+    required this.mainEntity,
+    required this.steps,
+    required this.canDelete,
+    required this.restrictedRelations,
+  });
+}
 
 // Weak reference wrapper for observers to prevent memory leaks
 class _WeakObserver<U extends Object> {
@@ -53,6 +82,17 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
   /// Last cache cleanup time
   DateTime _lastCacheCleanup = DateTime.now();
+
+
+
+  /// Cache for relationship query results to improve performance
+  final Map<String, List<DatumEntityInterface>> _relationshipQueryCache = {};
+
+  /// Cache for entity existence checks
+  final Map<String, bool> _entityExistenceCache = {};
+
+  /// Cache for query results
+  final Map<String, List<T>> _queryCache = {};
 
   late final QueueManager<T> _queueManager;
   late final IsolateHelper _isolateHelper;
@@ -470,10 +510,20 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
         return transformed;
       }
       // If we are here, it's a valid update with changes.
-      return _performUpdate(transformed, delta, source, forceRemoteSync);
+      final result = await _performUpdate(transformed, delta, source, forceRemoteSync);
+
+      // Invalidate caches that might be affected by this update
+      _invalidateCachesForEntity(result);
+
+      return result;
     } else {
       // This is a new creation.
-      return _performCreate(transformed, source, forceRemoteSync);
+      final result = await _performCreate(transformed, source, forceRemoteSync);
+
+      // Invalidate caches that might be affected by this creation
+      _invalidateCachesForEntity(result);
+
+      return result;
     }
   }
 
@@ -639,7 +689,26 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// Reads a single entity by its ID from the primary local adapter.
   Future<T?> read(String id, {String? userId}) async {
     _ensureInitialized();
+
+    // Create cache key for entity existence
+    final cacheKey = '${T.toString()}:$id:${userId ?? ''}';
+
+    // Check entity existence cache first
+    final cachedExists = _entityExistenceCache[cacheKey];
+    if (cachedExists != null) {
+      if (!cachedExists) {
+        _logger.debug('Using cached entity existence (does not exist) for key: $cacheKey');
+        return null;
+      }
+      // If cache says it exists, we still need to fetch it
+    }
+
     final entity = await localAdapter.read(id, userId: userId);
+
+    // Cache the existence result
+    _entityExistenceCache[cacheKey] = entity != null;
+    _logger.debug('Cached entity existence for key: $cacheKey (exists: ${entity != null})');
+
     if (entity == null) return null;
     return _applyPostFetchTransforms(entity);
   }
@@ -701,11 +770,29 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     String? userId,
   }) async {
     _ensureInitialized();
+
+    // Create a cache key for this query
+    final cacheKey = _createQueryCacheKey(query, source, userId);
+
+    // Check cache first (only for local queries without related entities for simplicity)
+    if (source == DataSource.local && query.withRelated.isEmpty) {
+      final cached = _getCachedQuery(cacheKey);
+      if (cached != null) {
+        _logger.debug('Using cached query results for key: $cacheKey');
+        return Future.wait(cached.map(_applyPostFetchTransforms));
+      }
+    }
+
     final adapter = (source == DataSource.local ? localAdapter : remoteAdapter) as dynamic;
     final entities = await adapter.query(query, userId: userId) as List<T>;
 
     if (query.withRelated.isNotEmpty && entities.isNotEmpty) {
       await _fetchAndStitchRelations(entities, query.withRelated, source, userId);
+    }
+
+    // Cache the results (only for local queries without related entities)
+    if (source == DataSource.local && query.withRelated.isEmpty) {
+      _cacheQuery(cacheKey, entities);
     }
 
     return Future.wait(entities.map(_applyPostFetchTransforms));
@@ -840,6 +927,9 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       ),
     );
 
+    // Invalidate caches for the deleted entity
+    _invalidateCachesForEntity(existing);
+
     return true;
   }
 
@@ -859,6 +949,655 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     final wasDeleted = await delete(id: id, userId: userId);
     final syncResult = await synchronize(userId, options: syncOptions);
     return (wasDeleted, syncResult);
+  }
+
+  /// Deletes an entity with cascading behavior based on relationship configurations.
+  ///
+  /// This method respects the [CascadeDeleteBehavior] configured on each relationship:
+  /// - [CascadeDeleteBehavior.cascade]: Related entities are also deleted
+  /// - [CascadeDeleteBehavior.restrict]: Delete fails if related entities exist
+  /// - [CascadeDeleteBehavior.setNull]: Foreign keys are set to null (BelongsTo only)
+  /// - [CascadeDeleteBehavior.none]: No cascading behavior (default)
+  ///
+  /// The method performs deletes in dependency order to avoid foreign key constraint violations.
+  ///
+  /// Returns a [CascadeDeleteResult] containing information about the operation.
+  Future<CascadeDeleteResult<T>> cascadeDelete({
+    required String id,
+    required String userId,
+    DataSource source = DataSource.local,
+    bool forceRemoteSync = false,
+  }) async {
+    _ensureInitialized();
+    // Check for user switch before proceeding.
+    await _syncEngineInstance.checkForUserSwitch(userId);
+
+    final entity = await localAdapter.read(id, userId: userId);
+    if (entity == null) {
+      _logger.debug('Entity $id does not exist for user $userId, skipping cascade delete');
+      return CascadeDeleteResult<T>(
+        success: false,
+        entity: null,
+        deletedEntities: {},
+        restrictedRelations: {},
+        errors: ['Entity $id does not exist'],
+      );
+    }
+
+    if (!entity.isRelational) {
+      // Fall back to regular delete for non-relational entities
+      final deleted = await delete(id: id, userId: userId, source: source, forceRemoteSync: forceRemoteSync);
+      return CascadeDeleteResult<T>(
+        success: deleted,
+        entity: entity,
+        deletedEntities: deleted
+            ? {
+                T: [entity]
+              }
+            : {},
+        restrictedRelations: {},
+        errors: deleted ? [] : ['Failed to delete entity'],
+      );
+    }
+
+    final deletePlan = await _buildCascadeDeletePlan(entity, userId, CascadeAnalyticsBuilder());
+
+    if (!deletePlan.canDelete) {
+      return CascadeDeleteResult<T>(
+        success: false,
+        entity: entity,
+        deletedEntities: {},
+        restrictedRelations: deletePlan.restrictedRelations,
+        errors: ['Delete restricted by relationships'],
+      );
+    }
+
+    // Execute the delete plan
+    final result = await _executeCascadeDeletePlan(deletePlan, userId, source, forceRemoteSync);
+
+    // Emit the main entity delete event
+    _eventController.add(
+      DataChangeEvent<T>(
+        userId: userId,
+        data: entity,
+        changeType: ChangeType.deleted,
+        source: source,
+      ),
+    );
+
+    return result;
+  }
+
+  /// Creates a fluent API builder for cascade delete operations.
+  CascadeDeleteBuilder<T> deleteCascade(String entityId) {
+    return CascadeDeleteBuilder<T>(this, entityId);
+  }
+
+  /// Executes cascade delete with enhanced options (dry-run, progress, etc.).
+  Future<CascadeResult<T>> executeCascadeDeleteWithOptions(
+    String entityId,
+    String userId,
+    CascadeOptions options,
+  ) async {
+    final analyticsBuilder = CascadeAnalyticsBuilder();
+    analyticsBuilder.startOperation(dryRun: options.dryRun);
+
+    try {
+      _ensureInitialized();
+
+      // Check for cancellation at the start
+      if (options.cancellationToken?.isCancelled ?? false) {
+        analyticsBuilder.completeOperation();
+        return CascadeFailure<T>(
+          entity: null,
+          error: CascadeError.cancelled(),
+        );
+      }
+
+      // Check for user switch before proceeding.
+      await _syncEngineInstance.checkForUserSwitch(userId);
+
+      final entity = await localAdapter.read(entityId, userId: userId);
+      analyticsBuilder.recordQueryExecuted();
+
+      if (entity == null) {
+        analyticsBuilder.completeOperation();
+        return CascadeFailure<T>(
+          entity: null,
+          error: CascadeError.entityNotFound(entityId),
+        );
+      }
+
+      analyticsBuilder.recordEntityProcessed(entity.runtimeType);
+
+      if (!entity.isRelational) {
+        // Fall back to regular delete for non-relational entities
+        if (options.dryRun) {
+          analyticsBuilder.recordEntityDeleted(entity.runtimeType);
+          analyticsBuilder.completeOperation();
+          return CascadeSuccess<T>(
+            entity: entity,
+            totalDeleted: 1,
+            deletedEntities: {
+              T: [entity]
+            },
+            restrictedRelations: {},
+            analytics: analyticsBuilder.build(),
+          );
+        }
+
+        final deleted = await delete(id: entityId, userId: userId);
+        if (deleted) {
+          analyticsBuilder.recordEntityDeleted(entity.runtimeType);
+          analyticsBuilder.completeOperation();
+          return CascadeSuccess<T>(
+            entity: entity,
+            totalDeleted: 1,
+            deletedEntities: {
+              T: [entity]
+            },
+            restrictedRelations: {},
+            analytics: analyticsBuilder.build(),
+          );
+        } else {
+          analyticsBuilder.recordError();
+          analyticsBuilder.completeOperation();
+          return CascadeFailure<T>(
+            entity: entity,
+            error: CascadeError.deleteFailed(T.toString(), entityId, 'Delete operation failed'),
+          );
+        }
+      }
+
+      final deletePlan = await _buildCascadeDeletePlan(entity, userId, analyticsBuilder);
+
+      // For dry-run, just return the plan without executing
+      if (options.dryRun) {
+        final deletedEntities = <Type, List<DatumEntityInterface>>{};
+        var completed = 0;
+
+        // Simulate progress for dry-run
+        for (final step in deletePlan.steps) {
+          deletedEntities.putIfAbsent(step.entity.runtimeType, () => []).add(step.entity);
+          analyticsBuilder.recordEntityDeleted(step.entity.runtimeType);
+          completed++;
+          options.onProgress?.call(CascadeProgress(
+            completed: completed,
+            total: deletePlan.steps.length,
+            currentEntityType: step.entity.runtimeType.toString(),
+            currentEntityId: step.entity.id,
+            message: 'Planning deletion of ${step.entity.runtimeType.toString()}',
+          ));
+        }
+
+        analyticsBuilder.completeOperation();
+        return CascadeSuccess<T>(
+          entity: entity,
+          totalDeleted: deletePlan.steps.length,
+          deletedEntities: deletedEntities,
+          restrictedRelations: deletePlan.restrictedRelations,
+          analytics: analyticsBuilder.build(),
+        );
+      }
+
+      if (!deletePlan.canDelete) {
+        final restrictedEntityIds = deletePlan.restrictedRelations.values.expand((entities) => entities).map((e) => e.id).toList();
+        analyticsBuilder.recordRestrictViolation();
+        analyticsBuilder.completeOperation();
+
+        return CascadeFailure<T>(
+          entity: entity,
+          error: CascadeError.restrictViolation(
+            deletePlan.restrictedRelations.keys.first,
+            restrictedEntityIds,
+          ),
+        );
+      }
+
+      // Execute the delete plan with progress tracking
+      final result = await _executeCascadeDeletePlanWithProgress(
+        deletePlan,
+        userId,
+        DataSource.local,
+        false,
+        options,
+        analyticsBuilder,
+      );
+
+      // Emit the main entity delete event
+      _eventController.add(
+        DataChangeEvent<T>(
+          userId: userId,
+          data: entity,
+          changeType: ChangeType.deleted,
+          source: DataSource.local,
+        ),
+      );
+
+      analyticsBuilder.completeOperation();
+
+      if (result.success) {
+        return CascadeSuccess<T>(
+          entity: entity,
+          totalDeleted: result.totalDeleted,
+          deletedEntities: result.deletedEntities,
+          restrictedRelations: result.restrictedRelations,
+          analytics: analyticsBuilder.build(),
+        );
+      } else {
+        analyticsBuilder.recordError();
+        return CascadeFailure<T>(
+          entity: entity,
+          error: CascadeError.deleteFailed(T.toString(), entityId, result.errors.join(', ')),
+          errors: result.errors,
+        );
+      }
+    } catch (e) {
+      analyticsBuilder.recordError();
+      analyticsBuilder.completeOperation();
+      rethrow;
+    }
+  }
+
+  /// Executes cascade delete plan with progress tracking and cancellation support.
+  Future<CascadeDeleteResult<T>> _executeCascadeDeletePlanWithProgress(
+    _CascadeDeletePlan<T> plan,
+    String userId,
+    DataSource source,
+    bool forceRemoteSync,
+    CascadeOptions options,
+    CascadeAnalyticsBuilder analyticsBuilder,
+  ) async {
+    final deletedEntities = <Type, List<DatumEntityInterface>>{};
+    final errors = <String>[];
+    var completed = 0;
+
+    // Execute deletes in the planned order
+    for (final step in plan.steps) {
+      // Check for cancellation
+      if (options.cancellationToken?.isCancelled ?? false) {
+        analyticsBuilder.recordError();
+        errors.add('Operation cancelled');
+        break;
+      }
+
+      // Check for timeout
+      final startTime = DateTime.now();
+      if (startTime.difference(DateTime.now()) > options.timeout) {
+        analyticsBuilder.recordError();
+        errors.add('Operation timed out');
+        break;
+      }
+
+      try {
+        analyticsBuilder.recordQueryExecuted();
+        final success = await step.manager.performDeleteWithoutEvents(
+          id: step.entity.id,
+          userId: userId,
+          source: source,
+          forceRemoteSync: forceRemoteSync,
+        );
+
+        if (success) {
+          analyticsBuilder.recordEntityDeleted(step.entity.runtimeType);
+          deletedEntities.putIfAbsent(step.entity.runtimeType, () => []).add(step.entity);
+        } else {
+          analyticsBuilder.recordError();
+          errors.add('Failed to delete ${step.entity.runtimeType}:${step.entity.id}');
+          if (!options.allowPartialDeletes) {
+            break; // Stop on first failure if partial deletes not allowed
+          }
+        }
+      } catch (e) {
+        analyticsBuilder.recordError();
+        errors.add('Error deleting ${step.entity.runtimeType}:${step.entity.id}: $e');
+        if (!options.allowPartialDeletes) {
+          break; // Stop on first error if partial deletes not allowed
+        }
+      }
+
+      completed++;
+      options.onProgress?.call(CascadeProgress(
+        completed: completed,
+        total: plan.steps.length,
+        currentEntityType: step.entity.runtimeType.toString(),
+        currentEntityId: step.entity.id,
+        message: 'Deleting ${step.entity.runtimeType.toString()}',
+      ));
+    }
+
+    return CascadeDeleteResult<T>(
+      success: errors.isEmpty,
+      entity: plan.mainEntity,
+      deletedEntities: deletedEntities,
+      restrictedRelations: plan.restrictedRelations,
+      errors: errors,
+    );
+  }
+
+  /// Builds a cascade delete plan for the given entity.
+  Future<_CascadeDeletePlan<T>> _buildCascadeDeletePlan(
+    T entity,
+    String userId,
+    CascadeAnalyticsBuilder analyticsBuilder,
+  ) async {
+    final restrictedRelations = <String, List<DatumEntityInterface>>{};
+    final deleteOrder = <_CascadeDeleteStep>[];
+    final visitedEntities = <String>{};
+
+    // Start with the main entity
+    final mainStep = _CascadeDeleteStep(
+      entity: entity,
+      manager: this,
+      relationName: null,
+    );
+
+    await _buildDeletePlanRecursive(
+      mainStep,
+      userId,
+      deleteOrder,
+      restrictedRelations,
+      visitedEntities,
+    );
+
+    // Reverse the order so dependencies are deleted first
+    final reversedOrder = deleteOrder.reversed.toList();
+    deleteOrder.clear();
+    deleteOrder.addAll(reversedOrder);
+
+    return _CascadeDeletePlan(
+      mainEntity: entity,
+      steps: deleteOrder,
+      canDelete: restrictedRelations.isEmpty,
+      restrictedRelations: restrictedRelations,
+    );
+  }
+
+  /// Recursively builds the delete plan for cascading deletes.
+  Future<void> _buildDeletePlanRecursive(
+    _CascadeDeleteStep currentStep,
+    String userId,
+    List<_CascadeDeleteStep> deleteOrder,
+    Map<String, List<DatumEntityInterface>> restrictedRelations,
+    Set<String> visitedEntities,
+  ) async {
+    final entity = currentStep.entity;
+    final entityKey = '${entity.runtimeType}:${entity.id}';
+
+    // Prevent infinite loops from circular references
+    if (visitedEntities.contains(entityKey)) {
+      return;
+    }
+    visitedEntities.add(entityKey);
+
+    // Add current entity to delete order
+    deleteOrder.add(currentStep);
+
+    // If this is not a relational entity, we're done
+    if (!entity.isRelational) {
+      return;
+    }
+
+    final relationalEntity = entity;
+
+    // Process each relationship
+    final relations = (relationalEntity as dynamic).relations as Map<String, Relation>;
+    for (final entry in relations.entries) {
+      final relationName = entry.key;
+      final relation = entry.value;
+
+      if (relation.shouldRestrictDelete) {
+        // Check if related entities exist
+        final relatedEntities = await _getRelatedEntities(relationalEntity, relation, userId);
+        if (relatedEntities.isNotEmpty) {
+          restrictedRelations[relationName] = relatedEntities;
+        }
+      } else if (relation.shouldCascadeDelete) {
+        // Add related entities to delete plan
+        final relatedEntities = await _getRelatedEntities(relationalEntity, relation, userId);
+        for (final relatedEntity in relatedEntities) {
+          final relatedStep = _CascadeDeleteStep(
+            entity: relatedEntity,
+            manager: relation.getRelatedManager(),
+            relationName: relationName,
+          );
+
+          await _buildDeletePlanRecursive(
+            relatedStep,
+            userId,
+            deleteOrder,
+            restrictedRelations,
+            visitedEntities,
+          );
+        }
+      } else if (relation.shouldSetNullOnDelete && relation is BelongsTo) {
+        // For setNull behavior on BelongsTo relationships, we need to update the foreign key to null
+        // instead of deleting the related entity. This is handled during execution, not planning.
+        // We don't add anything to the delete plan for setNull operations.
+      }
+      // For none behavior, do nothing during planning
+    }
+  }
+
+  /// Gets related entities for a given relation.
+  Future<List<DatumEntityInterface>> _getRelatedEntities(
+    DatumEntityInterface parent,
+    Relation relation,
+    String userId,
+  ) async {
+    // Create a cache key for this relationship query
+    final cacheKey = '${parent.runtimeType}:${parent.id}:${relation.runtimeType}:$userId';
+
+    // Check cache first
+    final cached = _getCachedRelationshipQuery(cacheKey);
+    if (cached != null) {
+      return cached;
+    }
+
+    List<DatumEntityInterface> results;
+
+    if (relation is HasMany) {
+      final localKeyValue = parent.toDatumMap()[relation.localKey];
+      if (localKeyValue == null) return [];
+
+      final manager = relation.getRelatedManager();
+      results = await manager.query(
+        DatumQuery(filters: [Filter(relation.foreignKey, FilterOperator.equals, localKeyValue)]),
+        source: DataSource.local,
+        // For cascade delete, don't filter by userId to find all related entities
+      );
+    } else if (relation is HasOne) {
+      final localKeyValue = parent.toDatumMap()[relation.localKey];
+      if (localKeyValue == null) return [];
+
+      final manager = relation.getRelatedManager();
+      results = await manager.query(
+        DatumQuery(filters: [Filter(relation.foreignKey, FilterOperator.equals, localKeyValue)]),
+        source: DataSource.local,
+        // For cascade delete, don't filter by userId to find all related entities
+      );
+    } else if (relation is ManyToMany) {
+      final thisLocalKeyValue = parent.toDatumMap()[relation.thisLocalKey];
+      if (thisLocalKeyValue == null) return [];
+
+      // Get the manager for the pivot entity
+      final pivotManager = Datum.managerByType(relation.pivotEntity.runtimeType);
+
+      // Query the pivot entity to find related pivot entities
+      final pivotEntities = await pivotManager.query(
+        DatumQuery(filters: [Filter(relation.thisForeignKey, FilterOperator.equals, thisLocalKeyValue)]),
+        source: DataSource.local,
+        // For cascade delete, don't filter by userId to find all related entities
+      );
+
+      // Extract the foreign keys of the related entities from the pivot entities
+      final otherForeignKeys = pivotEntities.map((e) => e.toDatumMap()[relation.otherForeignKey]).nonNulls.toSet().toList();
+
+      if (otherForeignKeys.isEmpty) return [];
+
+      // Get the manager for the target entity type
+      final relatedManager = relation.getRelatedManager();
+
+      // Query the target entity manager to get the related entities
+      results = await relatedManager.query(
+        DatumQuery(filters: [Filter('id', FilterOperator.isIn, otherForeignKeys)]),
+        source: DataSource.local,
+        // For cascade delete, don't filter by userId to find all related entities
+      );
+    } else if (relation is BelongsTo) {
+      final foreignKeyValue = parent.toDatumMap()[relation.foreignKey];
+      if (foreignKeyValue == null) return [];
+
+      final manager = relation.getRelatedManager();
+      final entity = await manager.read(foreignKeyValue); // Don't filter by userId for cascade delete
+      results = entity != null ? [entity] : [];
+    } else {
+      results = [];
+    }
+
+    // Cache the results
+    _cacheRelationshipQuery(cacheKey, results);
+    return results;
+  }
+
+  /// Executes the cascade delete plan.
+  Future<CascadeDeleteResult<T>> _executeCascadeDeletePlan(
+    _CascadeDeletePlan<T> plan,
+    String userId,
+    DataSource source,
+    bool forceRemoteSync,
+  ) async {
+    final deletedEntities = <Type, List<DatumEntityInterface>>{};
+    final errors = <String>[];
+
+    // First, handle setNull operations for BelongsTo relationships
+    await _executeSetNullOperations(plan.mainEntity, userId, source, forceRemoteSync, errors);
+
+    // Execute deletes in the planned order
+    for (final step in plan.steps) {
+      try {
+        final success = await step.manager.performDeleteWithoutEvents(
+          id: step.entity.id,
+          userId: userId,
+          source: source,
+          forceRemoteSync: forceRemoteSync,
+        );
+
+        if (success) {
+          deletedEntities.putIfAbsent(step.entity.runtimeType, () => []).add(step.entity);
+        } else {
+          errors.add('Failed to delete ${step.entity.runtimeType}:${step.entity.id}');
+        }
+      } catch (e) {
+        errors.add('Error deleting ${step.entity.runtimeType}:${step.entity.id}: $e');
+      }
+    }
+
+    return CascadeDeleteResult<T>(
+      success: errors.isEmpty,
+      entity: plan.mainEntity,
+      deletedEntities: deletedEntities,
+      restrictedRelations: plan.restrictedRelations,
+      errors: errors,
+    );
+  }
+
+  /// Executes setNull operations for BelongsTo relationships.
+  Future<void> _executeSetNullOperations(
+    T entity,
+    String userId,
+    DataSource source,
+    bool forceRemoteSync,
+    List<String> errors,
+  ) async {
+    if (!entity.isRelational) {
+      return;
+    }
+
+    final relationalEntity = entity as RelationalDatumEntity;
+
+    // Process each relationship to find setNull operations
+    final relations = relationalEntity.relations;
+    for (final entry in relations.entries) {
+      final relationName = entry.key;
+      final relation = entry.value;
+
+      if (relation.shouldSetNullOnDelete && relation is BelongsTo) {
+        try {
+          // For setNull on BelongsTo, we need to find entities that reference this entity
+          // and set their foreign keys to null
+          final relatedManager = relation.getRelatedManager();
+
+          // Query for entities that have this entity's ID as their foreign key
+          final entitiesToUpdate = await relatedManager.query(
+            DatumQuery(filters: [Filter(relation.foreignKey, FilterOperator.equals, entity.id)]),
+            source: DataSource.local,
+            userId: userId,
+          );
+
+          // Update each related entity to set the foreign key to null
+          for (final relatedEntity in entitiesToUpdate) {
+            // Create a patch operation to set the foreign key to null
+            final patchData = {relation.foreignKey: null};
+            await relatedManager.localAdapter.patch(
+              id: relatedEntity.id,
+              delta: patchData,
+              userId: userId,
+            );
+
+            // Queue the update for sync if needed
+            if (source == DataSource.local || forceRemoteSync) {
+              final operation = relatedManager._createOperation(
+                userId: userId,
+                type: DatumOperationType.update,
+                entityId: relatedEntity.id,
+                data: relatedEntity,
+                delta: patchData,
+              );
+              final payload = operation.delta ?? operation.data?.toDatumMap(target: MapTarget.remote);
+              final encoded = payload != null ? await relatedManager._isolateHelper.computeJsonEncode(payload) : '';
+              final size = encoded.length;
+              await relatedManager._queueManager.enqueue(operation.copyWith(sizeInBytes: size));
+            }
+          }
+        } catch (e) {
+          errors.add('Error executing setNull operation for relation "$relationName": $e');
+        }
+      }
+    }
+  }
+
+  /// Performs a delete without firing events (used internally for cascading).
+  Future<bool> performDeleteWithoutEvents({
+    required String id,
+    required String userId,
+    DataSource source = DataSource.local,
+    bool forceRemoteSync = false,
+  }) async {
+    final existing = await localAdapter.read(id); // Don't filter by userId for cascade deletes
+    if (existing == null) {
+      return false;
+    }
+
+    final deleted = await localAdapter.delete(id, userId: existing.userId); // Use the entity's actual userId
+    if (!deleted) {
+      return false;
+    }
+
+    if (source == DataSource.local || forceRemoteSync) {
+      final operation = _createOperation(
+        userId: existing.userId, // Use the entity's actual userId
+        type: DatumOperationType.delete,
+        entityId: id,
+      );
+      // Calculate size for delete operation (it's small, just the ID)
+      final payload = {'id': id};
+      final size = (await _isolateHelper.computeJsonEncode(payload)).length;
+
+      await _queueManager.enqueue(operation.copyWith(sizeInBytes: size));
+    }
+
+    return true;
   }
 
   /// DEPRECATED: This method will be removed in a future version. Use the `withRelated` parameter in the `query` method for eager loading, or the `fetch()` method on the relation object for lazy loading.
@@ -1283,11 +2022,124 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     _isSubscribedToRemoteChanges = true;
   }
 
+  /// Gets cached relationship query results.
+  List<DatumEntityInterface>? _getCachedRelationshipQuery(String cacheKey) {
+    final cached = _relationshipQueryCache[cacheKey];
+    if (cached != null) {
+      _logger.debug('Using cached relationship query results for key: $cacheKey');
+    }
+    return cached;
+  }
+
+  /// Caches relationship query results.
+  void _cacheRelationshipQuery(String cacheKey, List<DatumEntityInterface> results) {
+    _relationshipQueryCache[cacheKey] = results;
+    _logger.debug('Cached relationship query results for key: $cacheKey (${results.length} entities)');
+  }
+
+  /// Creates a cache key for a query.
+  String _createQueryCacheKey(DatumQuery query, DataSource source, String? userId) {
+    final buffer = StringBuffer();
+    buffer.write('${T.toString()}:${source.name}');
+    if (userId != null) buffer.write(':$userId');
+
+    // Include filters in cache key (order matters for consistency)
+    if (query.filters.isNotEmpty) {
+      buffer.write(':filters=');
+      for (final filter in query.filters) {
+        if (filter is Filter) {
+          buffer.write('${filter.field}${filter.operator}${filter.value};');
+        } else if (filter is CompositeFilter) {
+          buffer.write('composite${filter.operator}${filter.conditions.length};');
+        }
+      }
+    }
+
+    // Include sorting in cache key
+    if (query.sorting.isNotEmpty) {
+      buffer.write(':sort=');
+      for (final sort in query.sorting) {
+        buffer.write('${sort.field}${sort.descending ? 'desc' : 'asc'};');
+      }
+    }
+
+    // Include limit/offset in cache key
+    if (query.limit != null) {
+      buffer.write(':limit=${query.limit}');
+    }
+    if (query.offset != null) {
+      buffer.write(':offset=${query.offset}');
+    }
+
+    return buffer.toString();
+  }
+
+  /// Gets cached query results.
+  List<T>? _getCachedQuery(String cacheKey) {
+    final cached = _queryCache[cacheKey];
+    if (cached != null) {
+      _logger.debug('Using cached query results for key: $cacheKey');
+    }
+    return cached;
+  }
+
+  /// Caches query results.
+  void _cacheQuery(String cacheKey, List<T> results) {
+    _queryCache[cacheKey] = results;
+    _logger.debug('Cached query results for key: $cacheKey (${results.length} entities)');
+  }
+
+  /// Clears all caches. Useful for testing or when data consistency is critical.
+  void clearCaches() {
+    _relationshipQueryCache.clear();
+    _entityExistenceCache.clear();
+    _queryCache.clear();
+    _logger.debug('All caches cleared');
+  }
+
+  /// Clears relationship caches for a specific entity type.
+  void clearRelationshipCacheForType(Type entityType) {
+    // Also clear related query caches
+    _relationshipQueryCache.removeWhere((key, _) => key.startsWith('${entityType.toString()}:'));
+    _logger.debug('Cleared relationship caches for $entityType');
+  }
+
+  /// Invalidates caches that might be affected by changes to an entity.
+  void _invalidateCachesForEntity(T entity) {
+    // Clear query caches that might be affected by this entity change
+    _queryCache.removeWhere((key, _) {
+      // For simplicity, clear all query caches when any entity changes
+      // In a more sophisticated implementation, we could be more selective
+      return true;
+    });
+
+    // Clear relationship query caches that involve this entity
+    _relationshipQueryCache.removeWhere((key, _) {
+      // Remove caches where this entity is the parent or child in relationships
+      return key.startsWith('${entity.runtimeType}:${entity.id}:') || key.contains(':${entity.runtimeType}:${entity.id}');
+    });
+
+    // Clear entity existence cache for this entity
+    _entityExistenceCache.remove('${entity.runtimeType}:${entity.id}');
+
+    _logger.debug('Invalidated caches for entity ${entity.runtimeType}:${entity.id}');
+  }
+
+  /// Gets cache statistics for monitoring and debugging.
+  Map<String, int> getCacheStats() {
+    return {
+      'relationship_queries': _relationshipQueryCache.length,
+      'entity_existence': _entityExistenceCache.length,
+      'queries': _queryCache.length,
+    };
+  }
+
   /// Releases all resources held by the manager and its adapters.
   @override
   Future<void> dispose() async {
     if (isDisposed) return;
     stopAutoSync();
+    clearCaches(); // Clear caches on dispose
     await _queueManager.dispose();
     _syncRequestStrategy.dispose();
     _isolateHelper.dispose();

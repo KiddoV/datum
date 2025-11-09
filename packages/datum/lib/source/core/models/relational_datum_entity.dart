@@ -1,14 +1,47 @@
 import 'package:datum/datum.dart';
 import 'package:equatable/equatable.dart';
 
+/// Defines the cascading behavior for delete operations on relationships.
+enum CascadeDeleteBehavior {
+  /// Do not cascade delete - this is the default behavior.
+  /// The related entities will remain, potentially becoming orphaned.
+  none,
+
+  /// Cascade delete to related entities.
+  /// When the parent is deleted, all related entities will also be deleted.
+  cascade,
+
+  /// Prevent deletion if related entities exist.
+  /// The delete operation will fail if there are related entities.
+  restrict,
+
+  /// Set foreign keys to null instead of deleting.
+  /// Only applicable to BelongsTo relationships.
+  setNull,
+}
+
 // A sealed class representing the different types of relationships between entities.
 sealed class Relation<T extends DatumEntityInterface> {
   final RelationalDatumEntity _parent;
-  const Relation(this._parent);
+  final CascadeDeleteBehavior cascadeDeleteBehavior;
+
+  const Relation(
+    this._parent, {
+    this.cascadeDeleteBehavior = CascadeDeleteBehavior.none,
+  });
 
   dynamic get value;
 
   DatumManager<T> getRelatedManager();
+
+  /// Returns true if this relation should cascade delete operations.
+  bool get shouldCascadeDelete => cascadeDeleteBehavior == CascadeDeleteBehavior.cascade;
+
+  /// Returns true if this relation should restrict delete operations.
+  bool get shouldRestrictDelete => cascadeDeleteBehavior == CascadeDeleteBehavior.restrict;
+
+  /// Returns true if this relation should set foreign keys to null.
+  bool get shouldSetNullOnDelete => cascadeDeleteBehavior == CascadeDeleteBehavior.setNull;
 }
 
 class BelongsTo<T extends DatumEntityInterface> extends Relation<T> {
@@ -17,7 +50,14 @@ class BelongsTo<T extends DatumEntityInterface> extends Relation<T> {
   T? _value;
   bool _isLoaded = false;
 
-  BelongsTo(super._parent, this.foreignKey, {this.localKey = 'id', T? value}) : _value = value {
+  BelongsTo(
+    super.parent,
+    this.foreignKey, {
+    this.localKey = 'id',
+    T? value,
+    super.cascadeDeleteBehavior = CascadeDeleteBehavior.none,
+  }) {
+    _value = value;
     if (value != null) {
       _isLoaded = true;
     }
@@ -58,7 +98,14 @@ class HasMany<T extends DatumEntityInterface> extends Relation<T> {
   List<T>? _value;
   bool _isLoaded = false;
 
-  HasMany(super._parent, this.foreignKey, {this.localKey = 'id', List<T>? value}) : _value = value {
+  HasMany(
+    super.parent,
+    this.foreignKey, {
+    this.localKey = 'id',
+    List<T>? value,
+    super.cascadeDeleteBehavior = CascadeDeleteBehavior.none,
+  }) {
+    _value = value;
     if (value != null) {
       _isLoaded = true;
     }
@@ -103,7 +150,14 @@ class HasOne<T extends DatumEntityInterface> extends Relation<T> {
   T? _value;
   bool _isLoaded = false;
 
-  HasOne(super._parent, this.foreignKey, {this.localKey = 'id', T? value}) : _value = value {
+  HasOne(
+    super.parent,
+    this.foreignKey, {
+    this.localKey = 'id',
+    T? value,
+    super.cascadeDeleteBehavior = CascadeDeleteBehavior.none,
+  }) {
+    _value = value;
     if (value != null) {
       _isLoaded = true;
     }
@@ -154,14 +208,16 @@ class ManyToMany<T extends DatumEntityInterface> extends Relation<T> {
   bool _isLoaded = false;
 
   ManyToMany(
-    super._parent,
+    super.parent,
     this.pivotEntity,
     this.thisForeignKey,
     this.otherForeignKey, {
     this.thisLocalKey = 'id',
     this.otherLocalKey = 'id',
     List<T>? value,
-  }) : _value = value {
+    super.cascadeDeleteBehavior = CascadeDeleteBehavior.none,
+  }) {
+    _value = value;
     if (value != null) {
       _isLoaded = true;
     }
