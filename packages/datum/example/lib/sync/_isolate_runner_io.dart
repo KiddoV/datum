@@ -109,11 +109,13 @@ class _SyncError {
 }
 
 /// The entry point for the background isolate.
-void _isolateEntryPoint<T extends DatumEntityInterface>(_IsolateInitMessage<T> initMessage) {
+void _isolateEntryPoint<T extends DatumEntityInterface>(
+    _IsolateInitMessage<T> initMessage) {
   final mainSendPort = initMessage.mainToIsolateSendPort;
   final operations = initMessage.operations;
 
-  Future<void> requestProcessing(DatumSyncOperation<DatumEntityInterface> operation) async {
+  Future<void> requestProcessing(
+      DatumSyncOperation<DatumEntityInterface> operation) async {
     final responsePort = ReceivePort();
     mainSendPort.send(
       _ProcessOperationRequest(operation.id, responsePort.sendPort),

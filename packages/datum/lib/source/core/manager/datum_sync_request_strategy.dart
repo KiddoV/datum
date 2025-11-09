@@ -60,7 +60,7 @@ class SequentialRequestStrategy implements DatumSyncRequestStrategy {
     required T Function() onSkipped,
   }) {
     final completer = Completer<T>();
-    (_instanceQueues[this] ??= AsyncQueue.autoStart()).addJob(
+    _getOrCreateQueue().addJob(
       (queue) async {
         try {
           final result = await action();
@@ -83,7 +83,12 @@ class SequentialRequestStrategy implements DatumSyncRequestStrategy {
 
   @override
   void dispose() {
-    _instanceQueues[this]?.stop();
+    final queue = _instanceQueues.remove(this);
+    queue?.stop();
+  }
+
+  AsyncQueue _getOrCreateQueue() {
+    return _instanceQueues[this] ??= AsyncQueue.autoStart();
   }
 }
 

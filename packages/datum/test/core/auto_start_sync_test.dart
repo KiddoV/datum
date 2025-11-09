@@ -3,6 +3,8 @@ import 'package:datum/source/core/manager/datum_manager.dart';
 import 'package:datum/source/core/models/datum_operation.dart';
 import 'package:datum/source/core/models/datum_sync_metadata.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
+import 'package:datum/source/core/models/datum_sync_options.dart';
+import 'package:datum/source/core/models/datum_sync_result.dart';
 import 'package:datum/source/core/query/datum_query.dart';
 import 'package:datum/source/utils/datum_logger.dart';
 import 'package:test/test.dart';
@@ -145,12 +147,13 @@ void main() {
 
     test('handles multiple users with different data', () {
       fakeAsync((async) async {
-        final entities = List.generate(3, (i) {
+        final entities = List.generate(1000, (i) {
           final index = i + 1;
+          final userIndex = (i % 5) + 1; // Distribute across 5 users
           return TestEntity(
             id: 'entity$index',
-            userId: 'user$index',
-            name: 'User $index Item',
+            userId: 'user$userIndex',
+            name: 'User $userIndex Item $index',
             value: index,
             modifiedAt: DateTime.now(),
             createdAt: DateTime.now(),
@@ -177,9 +180,9 @@ void main() {
         async.elapse(const Duration(milliseconds: 1500));
 
         // All users should have synced data
-        for (var i = 1; i <= 3; i++) {
+        for (var i = 1; i <= 5; i++) {
           final pendingCount = await manager.getPendingCount('user$i');
-          expect(pendingCount, 0, reason: 'Auto-sync should work for user$i');
+          expect(pendingCount, 0, reason: 'Auto-sync should work for user$i with 200 items each');
         }
 
         await manager.dispose();
@@ -550,6 +553,235 @@ void main() {
 
         await manager.dispose();
       });
+    });
+  });
+
+  group('Concurrent Operations', () {
+    setUp(() {
+      // Reset mocks before each test to ensure a clean state
+      localAdapter = MockLocalAdapter<TestEntity>();
+      remoteAdapter = MockRemoteAdapter<TestEntity>();
+      connectivityChecker = MockConnectivityChecker();
+
+      // Default to being online for all tests unless overridden.
+      when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+    });
+
+    tearDown(() {
+      // No-op, as mocks are re-created in setUp.
+    });
+
+    test('concurrent save operations are handled sequentially', () async {
+      // Arrange
+      final manager = DatumManager<TestEntity>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        connectivity: connectivityChecker,
+        datumConfig: const DatumConfig<TestEntity>(
+          schemaVersion: 0,
+        ),
+      );
+
+      await manager.initialize();
+
+      // Act: Perform multiple concurrent save operations
+      final futures = <Future<TestEntity>>[];
+      for (var i = 1; i <= 1000; i++) {
+        final future = manager.push(
+          item: TestEntity.create('entity$i', 'user1', 'Item $i'),
+          userId: 'user1',
+        );
+        futures.add(future);
+      }
+
+      // Wait for all operations to complete
+      final results = await Future.wait(futures);
+
+      // Assert: All operations should succeed and return valid entities
+      expect(results.length, 1000);
+      for (var i = 0; i < results.length; i++) {
+        expect(results[i].id, 'entity${i + 1}');
+        expect(results[i].userId, 'user1');
+        expect(results[i].name, 'Item ${i + 1}');
+      }
+
+      // Verify that all items were queued for sync
+      final pendingCount = await manager.getPendingCount('user1');
+      expect(pendingCount, 1000, reason: 'All save operations should be queued for sync');
+
+      await manager.dispose();
+    });
+
+    test('concurrent sync operations are queued and not skipped', () async {
+      // Arrange
+      final manager = DatumManager<TestEntity>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        connectivity: connectivityChecker,
+        datumConfig: const DatumConfig<TestEntity>(
+          schemaVersion: 0,
+        ),
+      );
+
+      await manager.initialize();
+
+      // Create some data that needs to be synced
+      await manager.push(item: TestEntity.create('e1', 'user1', 'Item 1'), userId: 'user1');
+
+      // Act: Start multiple concurrent sync operations with forceFullSync to ensure they run
+      final syncFutures = <Future<DatumSyncResult<TestEntity>>>[];
+      for (var i = 0; i < 1000; i++) {
+        final future = manager.synchronize(
+          'user1',
+          options: const DatumSyncOptions<TestEntity>(forceFullSync: true),
+        );
+        syncFutures.add(future);
+      }
+
+      // Wait for all sync operations to complete
+      final syncResults = await Future.wait(syncFutures);
+
+      // Assert: All sync operations should complete successfully
+      expect(syncResults.length, 1000);
+      for (final result in syncResults) {
+        expect(result.wasSkipped, isFalse, reason: 'Sync operations should not be skipped');
+        expect(result.userId, 'user1');
+      }
+
+      // Verify that the item was actually synced (pending count should be 0)
+      final pendingCount = await manager.getPendingCount('user1');
+      expect(pendingCount, 0, reason: 'Item should be synced after concurrent operations');
+
+      await manager.dispose();
+    });
+
+    test('concurrent save and sync operations work correctly', () async {
+      // Arrange
+      final manager = DatumManager<TestEntity>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        connectivity: connectivityChecker,
+        datumConfig: const DatumConfig<TestEntity>(
+          schemaVersion: 0,
+        ),
+      );
+
+      await manager.initialize();
+
+      // Act: First perform save operations, then sync operations
+      // Add multiple save operations
+      final saveFutures = <Future>[];
+      for (var i = 1; i <= 1000; i++) {
+        saveFutures.add(
+          manager.push(
+            item: TestEntity.create('entity$i', 'user1', 'Item $i'),
+            userId: 'user1',
+          ),
+        );
+      }
+
+      // Wait for all saves to complete first
+      await Future.wait(saveFutures);
+
+      // Then perform sync operations
+      final syncFutures = <Future>[];
+      for (var i = 0; i < 2; i++) {
+        syncFutures.add(manager.synchronize('user1'));
+      }
+
+      // Wait for all sync operations to complete
+      await Future.wait(syncFutures);
+
+      // Assert: All saves should be synced
+      final pendingCount = await manager.getPendingCount('user1');
+      expect(pendingCount, 0, reason: 'All items should be synced despite concurrency');
+
+      await manager.dispose();
+    });
+
+    test('rapid consecutive sync calls are handled properly', () async {
+      // Arrange
+      final manager = DatumManager<TestEntity>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        connectivity: connectivityChecker,
+        datumConfig: const DatumConfig<TestEntity>(
+          schemaVersion: 0,
+        ),
+      );
+
+      await manager.initialize();
+
+      // Create data that needs syncing
+      await manager.push(item: TestEntity.create('e1', 'user1', 'Item 1'), userId: 'user1');
+
+      // Act: Perform rapid consecutive sync calls with forceFullSync
+      final results = <DatumSyncResult<TestEntity>>[];
+      for (var i = 0; i < 1000; i++) {
+        final result = await manager.synchronize(
+          'user1',
+          options: const DatumSyncOptions<TestEntity>(forceFullSync: true),
+        );
+        results.add(result);
+      }
+
+      // Assert: All sync operations should succeed (not skipped due to forceFullSync)
+      expect(results.length, 1000);
+      for (final result in results) {
+        expect(result.wasSkipped, isFalse, reason: 'Sync operations should not be skipped with forceFullSync');
+        expect(result.userId, 'user1');
+      }
+
+      // Final state should be synced
+      final pendingCount = await manager.getPendingCount('user1');
+      expect(pendingCount, 0, reason: 'Final state should be fully synced');
+
+      await manager.dispose();
+    });
+
+    test('concurrent operations across multiple users work independently', () async {
+      // Arrange
+      final manager = DatumManager<TestEntity>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        connectivity: connectivityChecker,
+        datumConfig: const DatumConfig<TestEntity>(
+          schemaVersion: 0,
+        ),
+      );
+
+      await manager.initialize();
+
+      // Act: First perform all save operations, then sync operations
+      final saveOperations = <Future>[];
+
+      // User 1 save operations
+      saveOperations.add(manager.push(item: TestEntity.create('u1e1', 'user1', 'User1 Item1'), userId: 'user1'));
+      saveOperations.add(manager.push(item: TestEntity.create('u1e2', 'user1', 'User1 Item2'), userId: 'user1'));
+
+      // User 2 save operations
+      saveOperations.add(manager.push(item: TestEntity.create('u2e1', 'user2', 'User2 Item1'), userId: 'user2'));
+      saveOperations.add(manager.push(item: TestEntity.create('u2e2', 'user2', 'User2 Item2'), userId: 'user2'));
+
+      // Wait for all saves to complete first
+      await Future.wait(saveOperations);
+
+      // Then perform sync operations
+      final syncOperations = <Future>[];
+      syncOperations.add(manager.synchronize('user1'));
+      syncOperations.add(manager.synchronize('user2'));
+
+      // Wait for all sync operations to complete
+      await Future.wait(syncOperations);
+
+      // Assert: Both users should be fully synced
+      final user1Pending = await manager.getPendingCount('user1');
+      final user2Pending = await manager.getPendingCount('user2');
+
+      expect(user1Pending, 0, reason: 'User1 should be fully synced');
+      expect(user2Pending, 0, reason: 'User2 should be fully synced');
+
+      await manager.dispose();
     });
   });
 }

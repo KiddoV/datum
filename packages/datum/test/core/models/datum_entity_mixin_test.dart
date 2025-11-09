@@ -30,8 +30,6 @@ class TestEntity extends Equatable with DatumEntityMixin {
     throw UnimplementedError();
   }
 
-
-
   @override
   Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
     throw UnimplementedError();

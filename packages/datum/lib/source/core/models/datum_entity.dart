@@ -1,4 +1,3 @@
-
 import 'package:equatable/equatable.dart';
 
 /// The **target for serialization**, allowing different fields to be included

@@ -91,10 +91,7 @@ class OperationTiming extends Equatable {
   final MemoryUsage? endMemory;
 
   /// Memory usage delta during the operation.
-  MemoryUsage? get memoryDelta =>
-      startMemory != null && endMemory != null
-          ? endMemory!.difference(startMemory!)
-          : null;
+  MemoryUsage? get memoryDelta => startMemory != null && endMemory != null ? endMemory!.difference(startMemory!) : null;
 
   const OperationTiming({
     required this.operationName,
@@ -136,9 +133,7 @@ class OperationTiming extends Equatable {
 
   @override
   String toString() {
-    final memInfo = memoryDelta != null
-        ? ', memory: ${memoryDelta!.heapUsage > 0 ? '+' : ''}${(memoryDelta!.heapUsage / 1024).toStringAsFixed(1)} KB'
-        : '';
+    final memInfo = memoryDelta != null ? ', memory: ${memoryDelta!.heapUsage > 0 ? '+' : ''}${(memoryDelta!.heapUsage / 1024).toStringAsFixed(1)} KB' : '';
     return 'OperationTiming($operationName: ${duration.inMilliseconds}ms$memInfo)';
   }
 }
@@ -199,14 +194,10 @@ class PerformanceBaseline extends Equatable {
     final variance = durations.map((d) => (d - avgDurationMicros) * (d - avgDurationMicros)).reduce((a, b) => a + b) / durations.length;
     final stdDevDurationMicros = variance == 0 ? 0 : math.sqrt(variance);
 
-    final memoryDeltas = timings
-        .where((t) => t.memoryDelta != null)
-        .map((t) => t.memoryDelta!.heapUsage)
-        .toList();
+    final memoryDeltas = timings.where((t) => t.memoryDelta != null).map((t) => t.memoryDelta!.heapUsage).toList();
 
     final avgMemoryDelta = memoryDeltas.isEmpty ? 0 : memoryDeltas.reduce((a, b) => a + b) ~/ memoryDeltas.length;
-    final memoryVariance = memoryDeltas.isEmpty ? 0 :
-        memoryDeltas.map((d) => (d - avgMemoryDelta) * (d - avgMemoryDelta)).reduce((a, b) => a + b) / memoryDeltas.length;
+    final memoryVariance = memoryDeltas.isEmpty ? 0 : memoryDeltas.map((d) => (d - avgMemoryDelta) * (d - avgMemoryDelta)).reduce((a, b) => a + b) / memoryDeltas.length;
     final stdDevMemory = memoryVariance == 0 ? 0 : math.sqrt(memoryVariance);
 
     return PerformanceBaseline(
@@ -255,15 +246,13 @@ class PerformanceBaseline extends Equatable {
   int checkRegression(OperationTiming timing, {double threshold = 2.0}) {
     if (sampleCount < 5) return 0; // Not enough samples for reliable baseline
 
-    final durationZScore = (timing.duration.inMicroseconds - averageDuration.inMicroseconds) /
-        (stdDevDuration.inMicroseconds == 0 ? 1 : stdDevDuration.inMicroseconds);
+    final durationZScore = (timing.duration.inMicroseconds - averageDuration.inMicroseconds) / (stdDevDuration.inMicroseconds == 0 ? 1 : stdDevDuration.inMicroseconds);
 
     // Only consider memory if we have memory data in the timing
     double? memoryZScore;
     if (timing.memoryDelta != null) {
       final memoryDelta = timing.memoryDelta!.heapUsage;
-      memoryZScore = (memoryDelta - averageMemoryDelta) /
-          (stdDevMemoryDelta == 0 ? 1 : stdDevMemoryDelta);
+      memoryZScore = (memoryDelta - averageMemoryDelta) / (stdDevMemoryDelta == 0 ? 1 : stdDevMemoryDelta);
     }
 
     // Use the maximum z-score from available metrics

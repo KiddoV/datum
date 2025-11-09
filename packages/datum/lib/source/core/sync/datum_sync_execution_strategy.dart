@@ -115,7 +115,7 @@ class ParallelStrategy implements DatumSyncExecutionStrategy {
             eagerError: failFast,
           );
           // Report progress only on successful batch completion
-          onProgress(i + batch.length, totalOps);
+          onProgress(end, totalOps);
         } catch (e) {
           // When failing fast, we rethrow immediately. Progress for this batch is not reported.
           rethrow;
@@ -135,7 +135,7 @@ class ParallelStrategy implements DatumSyncExecutionStrategy {
 
         errors.addAll(results.whereType<Object>());
         // Report progress even if there were errors in the batch, as failFast is false.
-        onProgress(i + batch.length, totalOps);
+        onProgress(end, totalOps);
       }
     }
 

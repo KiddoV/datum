@@ -36,7 +36,7 @@ class _TipComponent extends StatelessComponent {
           <path d="M12 16v-4"></path>
           <path d="M12 8h.01"></path>
         </svg>
-        '''
+        ''',
       ),
       'Warning' => (
         'hsl(38 92% 50%)', // amber/yellow
@@ -49,7 +49,7 @@ class _TipComponent extends StatelessComponent {
           <line x1="12" y1="9" x2="12" y2="13"></line>
           <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
-        '''
+        ''',
       ),
       _ => (
         'hsl(142 76% 36%)', // green
@@ -62,7 +62,7 @@ class _TipComponent extends StatelessComponent {
           <path d="M9 18h6"></path>
           <path d="M10 22h4"></path>
         </svg>
-        '''
+        ''',
       ),
     };
 

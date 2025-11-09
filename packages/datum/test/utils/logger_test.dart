@@ -203,10 +203,10 @@ void main() {
       // Should log on 3rd, 6th, 9th, etc. occurrences
       expect(sampler.shouldLog(entry), isFalse); // 1st
       expect(sampler.shouldLog(entry), isFalse); // 2nd
-      expect(sampler.shouldLog(entry), isTrue);  // 3rd
+      expect(sampler.shouldLog(entry), isTrue); // 3rd
       expect(sampler.shouldLog(entry), isFalse); // 4th
       expect(sampler.shouldLog(entry), isFalse); // 5th
-      expect(sampler.shouldLog(entry), isTrue);  // 6th
+      expect(sampler.shouldLog(entry), isTrue); // 6th
     });
 
     test('handles different categories separately', () {
@@ -228,11 +228,11 @@ void main() {
 
       // category1: logs on 2nd occurrence
       expect(sampler.shouldLog(entry1), isFalse); // 1st for category1
-      expect(sampler.shouldLog(entry1), isTrue);  // 2nd for category1
+      expect(sampler.shouldLog(entry1), isTrue); // 2nd for category1
 
       // category2: independent counter
       expect(sampler.shouldLog(entry2), isFalse); // 1st for category2
-      expect(sampler.shouldLog(entry2), isTrue);  // 2nd for category2
+      expect(sampler.shouldLog(entry2), isTrue); // 2nd for category2
     });
   });
 

@@ -144,13 +144,15 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   })  : config = datumConfig ?? const DatumConfig(),
         _connectivity = connectivity,
         // The logger's enabled status should always respect the config.
-        _logger = (logger ?? DatumLogger(
-          enabled: datumConfig?.enableLogging ?? true,
-          minimumLevel: datumConfig?.logLevel ?? LogLevel.info,
-          enablePerformanceLogging: datumConfig?.enablePerformanceLogging ?? false,
-          performanceThreshold: datumConfig?.performanceLogThreshold ?? const Duration(milliseconds: 100),
-          samplers: datumConfig?.logSamplers ?? const {},
-        )).copyWith(
+        _logger = (logger ??
+                DatumLogger(
+                  enabled: datumConfig?.enableLogging ?? true,
+                  minimumLevel: datumConfig?.logLevel ?? LogLevel.info,
+                  enablePerformanceLogging: datumConfig?.enablePerformanceLogging ?? false,
+                  performanceThreshold: datumConfig?.performanceLogThreshold ?? const Duration(milliseconds: 100),
+                  samplers: datumConfig?.logSamplers ?? const {},
+                ))
+            .copyWith(
           enabled: datumConfig?.enableLogging ?? true,
           minimumLevel: datumConfig?.logLevel ?? LogLevel.info,
           enablePerformanceLogging: datumConfig?.enablePerformanceLogging ?? false,
@@ -434,8 +436,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       // Size-based cleanup to prevent unbounded growth
       if (_recentChangeCache.length > config.maxChangeCacheSize) {
         // Remove oldest entries (keep only the most recent half)
-        final entries = _recentChangeCache.entries.toList()
-          ..sort((a, b) => b.value.compareTo(a.value)); // Sort by timestamp descending
+        final entries = _recentChangeCache.entries.toList()..sort((a, b) => b.value.compareTo(a.value)); // Sort by timestamp descending
 
         final keepCount = config.maxChangeCacheSize ~/ 2;
         final entriesToKeep = entries.take(keepCount);
@@ -1165,28 +1166,37 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
     final syncInterval = interval ?? config.autoSyncInterval;
 
-    _autoSyncTimers[userId] = Timer.periodic(syncInterval, (_) {
-      // Use an async block to allow try-catch without affecting the timer's
-      // void callback signature.
-      unawaited(() async {
-        try {
-          await synchronize(userId);
-          // After sync, update the global next sync time based on all active timers
-          _updateNextSyncTime();
-        } catch (e, stack) {
-          _logger.error('Auto-sync for user $userId failed: $e', stack);
-          // Still update the next sync time even on failure to keep the countdown going
-          _updateNextSyncTime();
-        }
-      }());
-    });
-
-    // Update the global next sync time after starting this timer
-    _updateNextSyncTime();
+    // Schedule the first sync immediately, then schedule subsequent syncs after each completes
+    _scheduleNextAutoSync(userId, syncInterval);
 
     _logger.info(
       'Auto-sync started for user $userId (interval: $syncInterval)',
     );
+  }
+
+  /// Schedules the next auto-sync for the specified user after the given interval.
+  void _scheduleNextAutoSync(String userId, Duration interval) {
+    if (isDisposed) {
+      return;
+    }
+
+    _autoSyncTimers[userId] = Timer(interval, () async {
+      // Remove this timer from the map since it's fired
+      _autoSyncTimers.remove(userId);
+
+      try {
+        await synchronize(userId);
+        // After successful sync, schedule the next one
+        _scheduleNextAutoSync(userId, interval);
+      } catch (e, stack) {
+        _logger.error('Auto-sync for user $userId failed: $e', stack);
+        // Even on failure, schedule the next sync to maintain the schedule
+        _scheduleNextAutoSync(userId, interval);
+      }
+    });
+
+    // Update the next sync time after the timer is scheduled
+    _updateNextSyncTime();
   }
 
   /// Stops automatic synchronization for one or all users.

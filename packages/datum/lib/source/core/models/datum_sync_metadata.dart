@@ -132,6 +132,7 @@ class DatumSyncMetadata extends Equatable {
     }
     return value as T;
   }
+
   /// Creates sync metadata.
   const DatumSyncMetadata({
     required this.userId,

@@ -130,27 +130,20 @@ void main() {
         TestEntity.create('item2', userId, 'Item 2'),
       ];
 
-      when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope')))
-          .thenAnswer((_) async => remoteItems);
+      when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope'))).thenAnswer((_) async => remoteItems);
 
-      when(() => localAdapter.readByIds(any(), userId: userId))
-          .thenAnswer((_) async => {});
+      when(() => localAdapter.readByIds(any(), userId: userId)).thenAnswer((_) async => {});
 
       when(() => localAdapter.create(any())).thenAnswer((_) async {});
 
       // Mock metadata to force sync
-      when(() => localAdapter.getSyncMetadata(userId))
-          .thenAnswer((_) async => null);
-      when(() => remoteAdapter.getSyncMetadata(userId))
-          .thenAnswer((_) async => null);
-      when(() => localAdapter.getPendingOperations(userId))
-          .thenAnswer((_) async => []);
+      when(() => localAdapter.getSyncMetadata(userId)).thenAnswer((_) async => null);
+      when(() => remoteAdapter.getSyncMetadata(userId)).thenAnswer((_) async => null);
+      when(() => localAdapter.getPendingOperations(userId)).thenAnswer((_) async => []);
 
       // Mock metadata update
-      when(() => localAdapter.updateSyncMetadata(any(), userId))
-          .thenAnswer((_) async {});
-      when(() => remoteAdapter.updateSyncMetadata(any(), userId))
-          .thenAnswer((_) async {});
+      when(() => localAdapter.updateSyncMetadata(any(), userId)).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateSyncMetadata(any(), userId)).thenAnswer((_) async {});
 
       final (_, _) = await syncEngine.synchronize(userId);
 
@@ -189,26 +182,19 @@ void main() {
         TestEntity.create('item3', userId, 'Item 3'),
       ];
 
-      when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope')))
-          .thenAnswer((_) async => remoteItems);
+      when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope'))).thenAnswer((_) async => remoteItems);
 
-      when(() => localAdapter.readByIds(any(), userId: userId))
-          .thenAnswer((_) async => {});
+      when(() => localAdapter.readByIds(any(), userId: userId)).thenAnswer((_) async => {});
 
       when(() => localAdapter.create(any())).thenAnswer((_) async {});
 
       // Mock metadata
-      when(() => localAdapter.getSyncMetadata(userId))
-          .thenAnswer((_) async => null);
-      when(() => remoteAdapter.getSyncMetadata(userId))
-          .thenAnswer((_) async => null);
-      when(() => localAdapter.getPendingOperations(userId))
-          .thenAnswer((_) async => []);
+      when(() => localAdapter.getSyncMetadata(userId)).thenAnswer((_) async => null);
+      when(() => remoteAdapter.getSyncMetadata(userId)).thenAnswer((_) async => null);
+      when(() => localAdapter.getPendingOperations(userId)).thenAnswer((_) async => []);
 
-      when(() => localAdapter.updateSyncMetadata(any(), userId))
-          .thenAnswer((_) async {});
-      when(() => remoteAdapter.updateSyncMetadata(any(), userId))
-          .thenAnswer((_) async {});
+      when(() => localAdapter.updateSyncMetadata(any(), userId)).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateSyncMetadata(any(), userId)).thenAnswer((_) async {});
 
       final (_, _) = await customSyncEngine.synchronize(userId);
 
@@ -230,26 +216,19 @@ void main() {
         TestEntity.create('item5', userId, 'Item 5'),
       ];
 
-      when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope')))
-          .thenAnswer((_) async => remoteItems);
+      when(() => remoteAdapter.readAll(userId: userId, scope: any(named: 'scope'))).thenAnswer((_) async => remoteItems);
 
-      when(() => localAdapter.readByIds(any(), userId: userId))
-          .thenAnswer((_) async => {});
+      when(() => localAdapter.readByIds(any(), userId: userId)).thenAnswer((_) async => {});
 
       when(() => localAdapter.create(any())).thenAnswer((_) async {});
 
       // Mock metadata
-      when(() => localAdapter.getSyncMetadata(userId))
-          .thenAnswer((_) async => null);
-      when(() => remoteAdapter.getSyncMetadata(userId))
-          .thenAnswer((_) async => null);
-      when(() => localAdapter.getPendingOperations(userId))
-          .thenAnswer((_) async => []);
+      when(() => localAdapter.getSyncMetadata(userId)).thenAnswer((_) async => null);
+      when(() => remoteAdapter.getSyncMetadata(userId)).thenAnswer((_) async => null);
+      when(() => localAdapter.getPendingOperations(userId)).thenAnswer((_) async => []);
 
-      when(() => localAdapter.updateSyncMetadata(any(), userId))
-          .thenAnswer((_) async {});
-      when(() => remoteAdapter.updateSyncMetadata(any(), userId))
-          .thenAnswer((_) async {});
+      when(() => localAdapter.updateSyncMetadata(any(), userId)).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateSyncMetadata(any(), userId)).thenAnswer((_) async {});
 
       final (_, _) = await syncEngine.synchronize(userId);
 

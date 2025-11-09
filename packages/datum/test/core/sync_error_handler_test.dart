@@ -232,5 +232,163 @@ void main() {
         }
       });
     });
+
+    group('handleManagerSyncErrorSync', () {
+      test('processes events and re-throws SyncExceptionWithEvents original error', () {
+        // Arrange
+        final originalError = Exception('Original sync error');
+        final stackTrace = StackTrace.current;
+        final errorEvent = DatumSyncErrorEvent<TestEntity>(
+          userId: testUserId,
+          error: originalError,
+          stackTrace: stackTrace,
+        );
+        final wrappedError = SyncExceptionWithEvents<TestEntity>(
+          originalError,
+          stackTrace,
+          [errorEvent],
+        );
+
+        // Act & Assert
+        expect(
+          () => SyncErrorHandler.handleManagerSyncErrorSync<TestEntity>(
+            wrappedError,
+            stackTrace,
+            [errorEvent],
+            eventProcessor,
+          ),
+          throwsA(same(originalError)),
+        );
+
+        // Verify events were processed
+        expect(capturedEvents, hasLength(1));
+        expect(capturedEvents.first, same(errorEvent));
+      });
+
+      test('processes events and re-throws non-wrapped errors', () {
+        // Arrange
+        final error = Exception('Regular error');
+        final stackTrace = StackTrace.current;
+        final errorEvent = DatumSyncErrorEvent<TestEntity>(
+          userId: testUserId,
+          error: error,
+          stackTrace: stackTrace,
+        );
+
+        // Act & Assert
+        expect(
+          () => SyncErrorHandler.handleManagerSyncErrorSync<TestEntity>(
+            error,
+            stackTrace,
+            [errorEvent],
+            eventProcessor,
+          ),
+          throwsA(same(error)),
+        );
+
+        // Verify events were processed
+        expect(capturedEvents, hasLength(1));
+        expect(capturedEvents.first, same(errorEvent));
+      });
+
+      test('handles empty event list', () {
+        // Arrange
+        final error = Exception('Error with no events');
+        final stackTrace = StackTrace.current;
+
+        // Act & Assert
+        expect(
+          () => SyncErrorHandler.handleManagerSyncErrorSync<TestEntity>(
+            error,
+            stackTrace,
+            [], // Empty event list
+            eventProcessor,
+          ),
+          throwsA(same(error)),
+        );
+
+        // Verify no events were processed
+        expect(capturedEvents, isEmpty);
+      });
+    });
+
+    group('handleEngineSyncError', () {
+      test('returns Future.error with SyncExceptionWithEvents for unwrapped errors', () async {
+        // Arrange
+        final error = Exception('Engine sync error');
+        final stackTrace = StackTrace.current;
+        final events = <DatumSyncEvent<TestEntity>>[
+          DatumSyncStartedEvent<TestEntity>(userId: testUserId, pendingOperations: 1),
+        ];
+
+        // Act & Assert
+        await expectLater(
+          SyncErrorHandler.handleEngineSyncError<TestEntity>(
+            error,
+            stackTrace,
+            testUserId,
+            events,
+          ),
+          throwsA(isA<SyncExceptionWithEvents<TestEntity>>()),
+        );
+
+        // Verify error event was added to events list
+        expect(events, hasLength(2)); // Original event + error event
+        expect(events.last, isA<DatumSyncErrorEvent<TestEntity>>());
+        final errorEvent = events.last as DatumSyncErrorEvent<TestEntity>;
+        expect(errorEvent.error, same(error));
+        expect(errorEvent.userId, testUserId);
+      });
+
+      test('does not add duplicate error event if one already exists', () async {
+        // Arrange
+        final error = Exception('Engine sync error');
+        final stackTrace = StackTrace.current;
+        final existingErrorEvent = DatumSyncErrorEvent<TestEntity>(
+          userId: testUserId,
+          error: Exception('Existing error'),
+          stackTrace: stackTrace,
+        );
+        final events = <DatumSyncEvent<TestEntity>>[
+          DatumSyncStartedEvent<TestEntity>(userId: testUserId, pendingOperations: 1),
+          existingErrorEvent,
+        ];
+
+        // Act & Assert
+        await expectLater(
+          SyncErrorHandler.handleEngineSyncError<TestEntity>(
+            error,
+            stackTrace,
+            testUserId,
+            events,
+          ),
+          throwsA(isA<SyncExceptionWithEvents<TestEntity>>()),
+        );
+
+        // Verify no additional error event was added
+        expect(events, hasLength(2)); // Should still be 2 events
+        expect(events.last, same(existingErrorEvent));
+      });
+
+      test('returns error result for type checking but throws Future.error', () async {
+        // Arrange
+        final error = Exception('Engine sync error');
+        final stackTrace = StackTrace.current;
+
+        // Act
+        final future = SyncErrorHandler.handleEngineSyncError<TestEntity>(
+          error,
+          stackTrace,
+          testUserId,
+          [],
+        );
+
+        // Assert - should throw Future.error
+        await expectLater(
+          future,
+          throwsA(isA<SyncExceptionWithEvents<TestEntity>>()),
+        );
+      });
+    });
   });
 }

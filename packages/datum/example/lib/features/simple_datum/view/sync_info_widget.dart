@@ -80,7 +80,8 @@ class SyncInfoWidget extends ConsumerWidget {
               children: [
                 const Text('Next Auto-Sync'),
                 countdownAsync.easyWhen(
-                  data: (duration) => AnimatedCountdownWidget(duration: duration),
+                  data: (duration) =>
+                      AnimatedCountdownWidget(duration: duration),
                   loadingWidget: () => const Text('...'),
                 ),
               ],

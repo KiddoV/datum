@@ -120,7 +120,7 @@ class CodeBlock extends CustomComponent {
         opacity: 0.5,
         color: Color('hsl(var(--foreground))'),
         backgroundColor: Color('hsl(var(--muted))'),
-        raw: {'transition' : 'opacity 0.2s ease'},
+        raw: {'transition': 'opacity 0.2s ease'},
       ),
       css('&:hover button').styles(opacity: 1),
     ]),

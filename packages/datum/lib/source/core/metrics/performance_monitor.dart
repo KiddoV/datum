@@ -58,7 +58,8 @@ class PerformanceMonitor {
     if (baseline == null) {
       // Create initial baseline from recent timings
       final timings = _recentTimings[timing.operationName]!.toList();
-      if (timings.length >= 5) { // Minimum samples for reliable baseline
+      if (timings.length >= 5) {
+        // Minimum samples for reliable baseline
         _baselines[timing.operationName] = PerformanceBaseline.fromTimings(
           timing.operationName,
           timings,

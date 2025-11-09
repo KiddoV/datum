@@ -131,17 +131,11 @@ class DatumMetrics extends Equatable {
         'Pushed: ${(totalBytesPushed / 1024).toStringAsFixed(2)} KB, '
         'Pulled: ${(totalBytesPulled / 1024).toStringAsFixed(2)} KB';
 
-    final perfInfo = performanceBaselines.isNotEmpty || performanceRegressionsDetected > 0
-        ? ', Regressions: $performanceRegressionsDetected, Baselines: ${performanceBaselines.length}'
-        : '';
+    final perfInfo = performanceBaselines.isNotEmpty || performanceRegressionsDetected > 0 ? ', Regressions: $performanceRegressionsDetected, Baselines: ${performanceBaselines.length}' : '';
 
-    final memInfo = currentMemoryUsage != null
-        ? ', Memory: ${(currentMemoryUsage!.heapUsage / 1024 / 1024).toStringAsFixed(2)} MB'
-        : '';
+    final memInfo = currentMemoryUsage != null ? ', Memory: ${(currentMemoryUsage!.heapUsage / 1024 / 1024).toStringAsFixed(2)} MB' : '';
 
-    final durationInfo = averageSyncDuration != null
-        ? ', Avg Sync: ${averageSyncDuration!.inMilliseconds}ms'
-        : '';
+    final durationInfo = averageSyncDuration != null ? ', Avg Sync: ${averageSyncDuration!.inMilliseconds}ms' : '';
 
     return '$baseInfo$perfInfo$memInfo$durationInfo)';
   }

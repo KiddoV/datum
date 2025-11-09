@@ -60,47 +60,30 @@ class User extends RelationalDatumEntity {
     );
   }
 
-    @override
+  @override
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
+    if (oldVersion is! User) return toDatumMap();
 
-    Map<String, dynamic>? diff(DatumEntityInterface oldVersion) {
+    final diff = <String, dynamic>{};
 
-      if (oldVersion is! User) return toDatumMap();
-
-
-
-      final diff = <String, dynamic>{};
-
-
-
-      if (name != oldVersion.name) {
-
-        diff['name'] = name;
-
-      }
-
-      if (modifiedAt != oldVersion.modifiedAt) {
-
-        diff['modifiedAt'] = modifiedAt.toIso8601String();
-
-      }
-
-      if (version != oldVersion.version) {
-
-        diff['version'] = version;
-
-      }
-
-      if (isDeleted != oldVersion.isDeleted) {
-
-        diff['isDeleted'] = isDeleted;
-
-      }
-
-
-
-      return diff.isEmpty ? null : diff;
-
+    if (name != oldVersion.name) {
+      diff['name'] = name;
     }
+
+    if (modifiedAt != oldVersion.modifiedAt) {
+      diff['modifiedAt'] = modifiedAt.toIso8601String();
+    }
+
+    if (version != oldVersion.version) {
+      diff['version'] = version;
+    }
+
+    if (isDeleted != oldVersion.isDeleted) {
+      diff['isDeleted'] = isDeleted;
+    }
+
+    return diff.isEmpty ? null : diff;
+  }
 
   @override
   bool operator ==(covariant User other) {
@@ -178,24 +161,12 @@ class NonRelationalTestEntity extends DatumEntity {
   @override
   bool operator ==(covariant NonRelationalTestEntity other) {
     if (identical(this, other)) return true;
-    return other.id == id &&
-        other.userId == userId &&
-        other.data == data &&
-        other.modifiedAt == modifiedAt &&
-        other.createdAt == createdAt &&
-        other.version == version &&
-        other.isDeleted == isDeleted;
+    return other.id == id && other.userId == userId && other.data == data && other.modifiedAt == modifiedAt && other.createdAt == createdAt && other.version == version && other.isDeleted == isDeleted;
   }
 
   @override
   int get hashCode {
-    return id.hashCode ^
-        userId.hashCode ^
-        data.hashCode ^
-        modifiedAt.hashCode ^
-        createdAt.hashCode ^
-        version.hashCode ^
-        isDeleted.hashCode;
+    return id.hashCode ^ userId.hashCode ^ data.hashCode ^ modifiedAt.hashCode ^ createdAt.hashCode ^ version.hashCode ^ isDeleted.hashCode;
   }
 }
 

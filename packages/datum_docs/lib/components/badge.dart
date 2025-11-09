@@ -31,7 +31,13 @@ class Badge extends CustomComponentBase {
         fontSize: 0.75.rem,
         fontWeight: FontWeight.w600,
         letterSpacing: 0.025.em,
-        raw: {'line-height' : '1', 'white-space' : 'nowrap', 'transition' : 'all 0.2s ease-in-out', 'box-shadow' : '0 1px 2px hsl(var(--foreground) / 0.1)', 'border' : '1px solid transparent'},
+        raw: {
+          'line-height': '1',
+          'white-space': 'nowrap',
+          'transition': 'all 0.2s ease-in-out',
+          'box-shadow': '0 1px 2px hsl(var(--foreground) / 0.1)',
+          'border': '1px solid transparent',
+        },
       ),
       css('&:hover').styles(
         raw: {
@@ -50,28 +56,28 @@ class Badge extends CustomComponentBase {
         border: Border(width: 1.px, color: Color('hsl(142 76% 36% / 0.2)')),
         color: Color('hsl(142 76% 36%)'),
         backgroundColor: Color('hsl(142 76% 36% / 0.1)'),
-        raw: {'box-shadow' : '0 1px 2px hsl(142 76% 36% / 0.1)'},
+        raw: {'box-shadow': '0 1px 2px hsl(142 76% 36% / 0.1)'},
       ),
       // Warning variant
       css('&.badge-warning').styles(
         border: Border(width: 1.px, color: Color('hsl(38 92% 50% / 0.2)')),
         color: Color('hsl(38 92% 50%)'),
         backgroundColor: Color('hsl(38 92% 50% / 0.1)'),
-        raw: {'box-shadow' : '0 1px 2px hsl(38 92% 50% / 0.1)'},
+        raw: {'box-shadow': '0 1px 2px hsl(38 92% 50% / 0.1)'},
       ),
       // Error variant
       css('&.badge-error').styles(
         border: Border(width: 1.px, color: Color('hsl(0 84% 60% / 0.2)')),
         color: Color('hsl(0 84% 60%)'),
         backgroundColor: Color('hsl(0 84% 60% / 0.1)'),
-        raw: {'box-shadow' : '0 1px 2px hsl(0 84% 60% / 0.1)'},
+        raw: {'box-shadow': '0 1px 2px hsl(0 84% 60% / 0.1)'},
       ),
       // Info variant
       css('&.badge-info').styles(
         border: Border(width: 1.px, color: Color('hsl(199 89% 48% / 0.2)')),
         color: Color('hsl(199 89% 48%)'),
         backgroundColor: Color('hsl(199 89% 48% / 0.1)'),
-        raw: {'box-shadow' : '0 1px 2px hsl(199 89% 48% / 0.1)'},
+        raw: {'box-shadow': '0 1px 2px hsl(199 89% 48% / 0.1)'},
       ),
     ]),
   ];

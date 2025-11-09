@@ -11,7 +11,8 @@ class AnimatedCountdownWidget extends StatefulWidget {
   });
 
   @override
-  State<AnimatedCountdownWidget> createState() => _AnimatedCountdownWidgetState();
+  State<AnimatedCountdownWidget> createState() =>
+      _AnimatedCountdownWidgetState();
 }
 
 class _AnimatedCountdownWidgetState extends State<AnimatedCountdownWidget>
@@ -129,10 +130,13 @@ class _AnimatedCountdownWidgetState extends State<AnimatedCountdownWidget>
           scale: _scaleAnimation.value,
           child: Text(
             _formatDuration(widget.duration!),
-            style: (widget.style ?? Theme.of(context).textTheme.bodyMedium)?.copyWith(
+            style: (widget.style ?? Theme.of(context).textTheme.bodyMedium)
+                ?.copyWith(
               color: _colorAnimation.value,
               fontWeight: FontWeight.w600,
-              fontFeatures: [const FontFeature.tabularFigures()], // Monospace numbers
+              fontFeatures: [
+                const FontFeature.tabularFigures()
+              ], // Monospace numbers
             ),
           ),
         );

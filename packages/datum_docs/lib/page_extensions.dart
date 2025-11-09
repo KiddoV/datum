@@ -152,10 +152,12 @@ class LastModifiedExtension extends PageExtension {
             final modified = await file.lastModified();
             final formattedDate = _formatDate(modified);
 
-            page.apply(data: {
-              'lastModified': formattedDate,
-              'lastModifiedIso': modified.toIso8601String(),
-            });
+            page.apply(
+              data: {
+                'lastModified': formattedDate,
+                'lastModifiedIso': modified.toIso8601String(),
+              },
+            );
           }
         }
       }
@@ -256,13 +258,14 @@ class BreadcrumbExtension extends PageExtension {
     }
     // For pages with "Guide" or other patterns, we could add more logic here
 
-    page.apply(data: {
-      'breadcrumbs': breadcrumbs,
-    });
+    page.apply(
+      data: {
+        'breadcrumbs': breadcrumbs,
+      },
+    );
 
     return nodes;
   }
-
 }
 
 /// Extension that generates previous/next page navigation.
@@ -283,9 +286,11 @@ class PageNavigationExtension extends PageExtension {
     // You could implement logic here to find previous and next pages
     // based on the site structure, perhaps by maintaining a list of all pages
 
-    page.apply(data: {
-      'navigation': navigation,
-    });
+    page.apply(
+      data: {
+        'navigation': navigation,
+      },
+    );
 
     return nodes;
   }

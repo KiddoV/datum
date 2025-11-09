@@ -32,7 +32,7 @@ class Card extends CustomComponentBase {
           'position': 'relative',
           'transition': 'all 0.3s ease-in-out',
           'box-shadow': '0 1px 3px hsl(var(--foreground) / 0.1), 0 1px 2px hsl(var(--foreground) / 0.06)',
-          'background': 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.95) 100%)'
+          'background': 'linear-gradient(135deg, hsl(var(--card)) 0%, hsl(var(--card) / 0.95) 100%)',
         },
       ),
       css('&:hover').styles(
@@ -62,7 +62,7 @@ class Card extends CustomComponentBase {
           'background': 'linear-gradient(135deg, hsl(var(--foreground)), hsl(var(--foreground) / 0.9))',
           '-webkit-background-clip': 'text',
           '-webkit-text-fill-color': 'transparent',
-          'background-clip': 'text'
+          'background-clip': 'text',
         },
       ),
       css('& > .card-content').styles(
@@ -81,10 +81,7 @@ class Card extends CustomComponentBase {
         border: Border(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.5.rem),
         backgroundColor: Color('hsl(var(--muted))'),
-        raw: {
-          'overflow': 'auto',
-          'box-shadow': 'inset 0 1px 3px hsl(var(--foreground) / 0.1)'
-        },
+        raw: {'overflow': 'auto', 'box-shadow': 'inset 0 1px 3px hsl(var(--foreground) / 0.1)'},
       ),
       css('& > .card-content code').styles(
         padding: Padding.symmetric(horizontal: 0.375.rem, vertical: 0.125.rem),

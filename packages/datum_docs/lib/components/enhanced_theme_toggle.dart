@@ -192,7 +192,12 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
       styles: !kIsWeb ? Styles(visibility: Visibility.hidden) : null,
       [
         div(
-          classes: 'theme-dropdown ${_isDropdownOpen ? 'open' : ''} ${ThemeMode.auto == _currentMode ? 'auto' : ThemeMode.dark == _currentMode ? 'dark' : 'light'}',
+          classes:
+              'theme-dropdown ${_isDropdownOpen ? 'open' : ''} ${ThemeMode.auto == _currentMode
+                  ? 'auto'
+                  : ThemeMode.dark == _currentMode
+                  ? 'dark'
+                  : 'light'}',
           [
             // Current selection display
             div(
@@ -209,7 +214,8 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
             // Dropdown options (only shown when open)
             if (_isDropdownOpen) ...[
               // Backdrop blur
-              div(classes: 'dropdown-backdrop',
+              div(
+                classes: 'dropdown-backdrop',
                 events: events(
                   onClick: () => _closeDropdown(),
                 ),
@@ -289,11 +295,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
     ]),
     css('.theme-dropdown', [
       css('&').styles(
-        raw: {
-          'position': 'relative',
-          'display': 'inline-block',
-          'min-width': '120px'
-        },
+        raw: {'position': 'relative', 'display': 'inline-block', 'min-width': '120px'},
       ),
     ]),
     css('.dropdown-trigger', [
@@ -310,7 +312,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
         fontSize: 0.875.rem,
         fontWeight: FontWeight.w500,
         backgroundColor: Color('hsl(var(--background))'),
-        raw: {'box-shadow' : '0 1px 3px hsl(var(--foreground) / 0.1)', 'gap' : '8px'},
+        raw: {'box-shadow': '0 1px 3px hsl(var(--foreground) / 0.1)', 'gap': '8px'},
       ),
       css('&:hover').styles(
         backgroundColor: Color('hsl(var(--accent) / 0.05)'),
@@ -329,7 +331,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
           'right': '0',
           'bottom': '0',
           'z-index': '999',
-          'background-color': 'rgba(0, 0, 0, 0.1)'
+          'background-color': 'rgba(0, 0, 0, 0.1)',
         },
       ),
     ]),
@@ -347,7 +349,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
           'z-index': '1000',
           'margin-top': '4px',
           'box-shadow': '0 4px 12px hsl(var(--foreground) / 0.15)',
-          'gap': '2px'
+          'gap': '2px',
         },
       ),
     ]),
@@ -363,7 +365,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
         fontSize: 0.875.rem,
         fontWeight: FontWeight.w500,
         backgroundColor: Colors.transparent,
-        raw: {'gap' : '8px'},
+        raw: {'gap': '8px'},
       ),
       css('&:hover').styles(
         color: Color('hsl(var(--foreground))'),

@@ -252,15 +252,15 @@ class Datum {
     required this.config,
     required this.connectivityChecker,
     DatumLogger? logger,
-  }) : logger = logger ?? DatumLogger(enabled: config.enableLogging),
-       performanceMonitor = PerformanceMonitor(
-         const PerformanceConfig.monitorAll(
-           enabled: true,
-           trackMemory: true,
-           trackOperationTimings: true,
-           detectRegressions: true,
-         ),
-       );
+  })  : logger = logger ?? DatumLogger(enabled: config.enableLogging),
+        performanceMonitor = PerformanceMonitor(
+          const PerformanceConfig.monitorAll(
+            enabled: true,
+            trackMemory: true,
+            trackOperationTimings: true,
+            detectRegressions: true,
+          ),
+        );
 
   /// Initializes the central Datum engine as a singleton.
   static Future<DatumEither<Object, Datum>> initialize({
@@ -697,9 +697,7 @@ class Datum {
 
     // Calculate average sync duration from recent timings
     final syncTimings = performanceMonitor.getRecentTimings('global_sync', limit: 10);
-    final avgSyncDuration = syncTimings.isNotEmpty
-        ? syncTimings.map((t) => t.duration).reduce((a, b) => a + b) ~/ syncTimings.length
-        : null;
+    final avgSyncDuration = syncTimings.isNotEmpty ? syncTimings.map((t) => t.duration).reduce((a, b) => a + b) ~/ syncTimings.length : null;
 
     // Find peak memory usage from recent timings
     MemoryUsage? peakMemory;

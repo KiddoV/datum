@@ -57,7 +57,7 @@ class ComparisonTable extends CustomComponentBase {
         textAlign: TextAlign.left,
         fontSize: 0.875.rem,
         fontWeight: FontWeight.w600,
-        raw: {'text-transform' : 'uppercase', 'letter-spacing' : '0.05em'},
+        raw: {'text-transform': 'uppercase', 'letter-spacing': '0.05em'},
       ),
       css('& td').styles(
         padding: Padding.symmetric(vertical: 1.rem, horizontal: 1.25.rem),
@@ -166,7 +166,11 @@ class _TableHeaderComponent extends StatelessComponent {
         tr(columns.map((col) => th([text(col.trim())])).toList()),
       ]);
     }
-    return thead([tr([th([child ?? text('')])])]);
+    return thead([
+      tr([
+        th([child ?? text('')]),
+      ]),
+    ]);
   }
 }
 
@@ -182,7 +186,9 @@ class _TableRowComponent extends StatelessComponent {
       final columns = textChild.text.split('|');
       return tr(columns.map((col) => td([_parseCellContent(col.trim())])).toList());
     }
-    return tr([td([child ?? text('')])]);
+    return tr([
+      td([child ?? text('')]),
+    ]);
   }
 
   Component _parseCellContent(String content) {

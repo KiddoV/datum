@@ -108,7 +108,8 @@ class CustomDatumLogger implements DatumLogger {
   }
 
   @override
-  void debug(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void debug(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     if (enabled) talker.debug(message);
   }
 
@@ -118,17 +119,20 @@ class CustomDatumLogger implements DatumLogger {
   }
 
   @override
-  void info(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void info(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     if (enabled) talker.info(message);
   }
 
   @override
-  void warn(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void warn(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     if (enabled) talker.warning(message);
   }
 
   @override
-  void trace(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void trace(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     if (enabled) talker.debug('TRACE: $message');
   }
 
@@ -146,7 +150,8 @@ class CustomDatumLogger implements DatumLogger {
       colors: colors ?? this.colors,
       minimumLevel: minimumLevel ?? this.minimumLevel,
       samplers: samplers ?? this.samplers,
-      enablePerformanceLogging: enablePerformanceLogging ?? this.enablePerformanceLogging,
+      enablePerformanceLogging:
+          enablePerformanceLogging ?? this.enablePerformanceLogging,
       performanceThreshold: performanceThreshold ?? this.performanceThreshold,
     );
   }
