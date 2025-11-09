@@ -39,6 +39,8 @@ if (result.isSuccess) {
 **Global Operations:**
 - `Datum.manager<T>()`: Get manager for entity type
 - `Datum.instance.synchronize(userId)`: Sync all entities
+- `Datum.instance.startAutoSync(userId)`: Start auto-sync across all managers
+- `Datum.instance.getRemoteSyncMetadata<T>(userId)`: Get remote sync metadata
 - `Datum.instance.allHealths`: Monitor all entity health
 - `Datum.instance.metrics`: Global metrics stream
 
@@ -205,13 +207,117 @@ Abstract class for implementing schema migrations.
 
 Executes migrations in order, handling errors and rollbacks.
 
+#### ErrorBoundary
+
+Provides error handling and recovery strategies for operations that might fail.
+
+**Strategies:**
+- `isolate`: Logs errors but allows operation to continue with fallback values
+- `retry`: Automatically retries failed operations up to a maximum number of attempts
+- `fallback`: Uses fallback values or operations when errors occur
+- `escalate`: Re-throws errors for external handling
+
+**Built-in Boundaries:**
+```dart
+// Sync operation isolation
+final boundary = ErrorBoundaries.syncIsolation<Task>();
+
+// Adapter operation retries
+final boundary = ErrorBoundaries.adapterRetry(maxRetries: 3);
+
+// Read operations with fallbacks
+final boundary = ErrorBoundaries.readWithFallback(fallbackValue: []);
+
+// Observer error isolation
+final boundary = ErrorBoundaries.observerIsolation();
+```
+
+**Usage:**
+```dart
+final result = await boundary.execute(() async {
+  // Operation that might fail
+  return await riskyOperation();
+});
+```
+
+#### PerformanceMonitor
+
+Monitors operation performance and detects regressions.
+
+**Features:**
+- Automatic baseline calculation from operation timings
+- Regression detection with configurable thresholds
+- Memory usage tracking (optional)
+- Performance event streaming
+
+**Usage:**
+```dart
+// Time an async operation
+final result = await performanceMonitor.timeAsync('sync_operation', () async {
+  return await performSync();
+});
+
+// Time a sync operation
+final result = performanceMonitor.timeSync('query_operation', () {
+  return performQuery();
+});
+
+// Listen for performance events
+performanceMonitor.events.listen((event) {
+  if (event is PerformanceRegressionEvent) {
+    print('Performance regression detected: ${event.operationName}');
+  }
+});
+```
+
+### DatumEither
+
+A sealed class for handling success and failure results in a type-safe manner.
+
+**Key Methods:**
+- `fold<T>(onFailure, onSuccess)`: Transforms the Either into a single value
+- `onSuccess(Function(R r) callback)`: Executes callback if successful
+- `onFailure(Function(L l, StackTrace? s) callback)`: Executes callback if failed
+- `getSuccess()`: Returns success value or throws StateError
+- `getError()`: Returns tuple of error value and stack trace
+- `successOrNull`: Returns success value or null
+- `errorOrNull`: Returns error value or null
+- `isSuccess()`: Returns true if this is a Success
+- `isFailure()`: Returns true if this is a Failure
+
+**Usage:**
+```dart
+// Initialization result handling
+final result = await Datum.initialize(config: config, /* ... */);
+
+result.fold(
+  onFailure: (error, stackTrace) {
+    print('Initialization failed: $error');
+    // Handle error
+  },
+  onSuccess: (success) {
+    print('Initialization successful');
+    // Continue with app
+  },
+);
+
+// Or using convenience methods
+if (result.isSuccess()) {
+  final successValue = result.getSuccess();
+  // Use success value
+} else {
+  final (error, stackTrace) = result.getError();
+  // Handle error
+}
+```
+
 ### Models
 
 The Models sub-module defines the data structures and entities used throughout Datum.
 
 #### DatumEntityInterface
 
-Base class for all entities managed by Datum.
+Interface for all entities managed by Datum. Provides flexible entity implementation through either inheritance or mixins.
 
 **Required Properties:**
 - `id`: Unique identifier
@@ -225,6 +331,121 @@ Base class for all entities managed by Datum.
 - `toDatumMap({MapTarget target})`: Serializes entity
 - `diff(DatumEntityInterface oldVersion)`: Computes changes
 - `copyWith({...})`: Creates modified copy
+
+**Implementation Options:**
+
+**Using DatumEntityMixin (Recommended):**
+```dart
+class Task with DatumEntityMixin {
+  final String id;
+  final String userId;
+  final DateTime createdAt;
+  final DateTime modifiedAt;
+  final int version;
+  final bool isDeleted;
+  final String title;
+  final String description;
+
+  Task({
+    required this.id,
+    required this.userId,
+    required this.createdAt,
+    required this.modifiedAt,
+    required this.version,
+    required this.isDeleted,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Task copyWith({
+    String? id,
+    String? userId,
+    DateTime? createdAt,
+    DateTime? modifiedAt,
+    int? version,
+    bool? isDeleted,
+    String? title,
+    String? description,
+  }) {
+    return Task(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      createdAt: createdAt ?? this.createdAt,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      version: version ?? this.version,
+      isDeleted: isDeleted ?? this.isDeleted,
+      title: title ?? this.title,
+      description: description ?? this.description,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
+    return {
+      'id': id,
+      'userId': userId,
+      'createdAt': createdAt.toIso8601String(),
+      'modifiedAt': modifiedAt.toIso8601String(),
+      'version': version,
+      'isDeleted': isDeleted,
+      'title': title,
+      'description': description,
+    };
+  }
+}
+```
+
+**Using DatumEntityBase (Legacy):**
+```dart
+class Task extends DatumEntityBase {
+  final String title;
+  final String description;
+
+  Task({
+    required super.id,
+    required super.userId,
+    required super.createdAt,
+    required super.modifiedAt,
+    required super.version,
+    required super.isDeleted,
+    required this.title,
+    required this.description,
+  });
+
+  @override
+  Task copyWith({
+    String? id,
+    String? userId,
+    DateTime? createdAt,
+    DateTime? modifiedAt,
+    int? version,
+    bool? isDeleted,
+    String? title,
+    String? description,
+  }) {
+    return Task(
+      id: id ?? this.id,
+      userId: userId ?? this.userId,
+      createdAt: createdAt ?? this.createdAt,
+      modifiedAt: modifiedAt ?? this.modifiedAt,
+      version: version ?? this.version,
+      isDeleted: isDeleted ?? this.isDeleted,
+      title: title ?? this.title,
+      description: description ?? this.description,
+    );
+  }
+
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
+    return {
+      ...super.toDatumMap(target: target),
+      'title': title,
+      'description': description,
+    };
+  }
+}
+```
 
 #### RelationalDatumEntity
 
@@ -332,6 +553,97 @@ Handles concurrent synchronization requests.
 **SequentialRequestStrategy**: Queues requests, processes one at a time.
 
 **ConcurrentRequestStrategy**: Allows multiple concurrent syncs.
+
+#### DatumSyncScope
+
+Defines the scope of a synchronization operation, allowing for partial or filtered syncs.
+
+**Key Properties:**
+- `query`: A `DatumQuery` used to filter data fetched from the remote source
+
+**Usage:**
+```dart
+// Sync only active tasks
+final scope = DatumSyncScope(
+  query: DatumQueryBuilder<Task>()
+    .where('isCompleted', equals, false)
+    .build(),
+);
+
+final result = await Datum.manager<Task>().synchronize(
+  'user123',
+  scope: scope,
+);
+```
+
+#### DatumSyncOptions<T>
+
+Configuration options for synchronization operations.
+
+**Key Properties:**
+- `forceFullSync`: When `true`, forces a complete sync regardless of metadata comparison results
+- `resolveConflicts`: Whether conflicts should be resolved during sync (default: `true`)
+- `includeDeletes`: Whether delete operations should be included in sync (default: `true`)
+- `direction`: Sync direction (push-then-pull, pull-then-push, push-only, pull-only)
+- `timeout`: Maximum time allowed for sync operations
+
+**Usage:**
+```dart
+// Force a full sync bypassing metadata comparison
+final result = await Datum.manager<Task>().synchronize(
+  'user123',
+  options: DatumSyncOptions<Task>(
+    forceFullSync: true,
+    resolveConflicts: true,
+  ),
+);
+```
+
+#### Sync Optimization Features
+
+Datum includes several optimization features to improve sync performance and reduce unnecessary network requests.
+
+##### Metadata Comparison
+
+Datum compares local and remote metadata before performing sync operations to avoid unnecessary data transfer:
+
+```dart
+// Automatic metadata comparison (enabled by default)
+// Sync is skipped if:
+// 1. Local and remote data hashes match
+// 2. Entity counts are identical
+// 3. No pending local operations exist
+
+final result = await Datum.manager<Task>().synchronize('user123');
+// May return DatumSyncResult.skipped if no changes detected
+```
+
+**Metadata Fields Compared:**
+- Data hash values
+- Entity counts per type
+- Pending local operation count
+
+##### Force Full Sync
+
+Override metadata comparison when a complete sync is required:
+
+```dart
+final result = await Datum.manager<Task>().synchronize(
+  'user123',
+  options: DatumSyncOptions<Task>(forceFullSync: true),
+);
+```
+
+##### Batch Processing
+
+Large datasets are processed in configurable batches to optimize memory usage:
+
+```dart
+final config = DatumConfig(
+  remoteSyncBatchSize: 100,    // Process remote items in batches
+  remoteStreamBatchSize: 50,   // Stream items for memory efficiency
+);
+```
 
 #### Sync Results and Statistics
 

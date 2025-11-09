@@ -30,6 +30,10 @@ final config = DatumConfig(
   // Sync behavior
   defaultSyncDirection: SyncDirection.pushThenPull,
   syncTimeout: Duration(seconds: 30),
+  defaultSyncOptions: DatumSyncOptions(
+    forceFullSync: false,
+    resolveConflicts: true,
+  ),
 
   // Schema management
   schemaVersion: 1,
@@ -49,8 +53,36 @@ final config = DatumConfig(
   syncRequestStrategy: SequentialRequestStrategy(),
   remoteEventDebounceTime: Duration(milliseconds: 100),
   changeCacheDuration: Duration(seconds: 30),
+
+  // Performance tuning for sync operations
+  remoteSyncBatchSize: 100,
+  remoteStreamBatchSize: 50,
+  progressEventFrequency: 50,
 );
 ```
+
+### Default Sync Options
+
+Configure default synchronization behavior that applies to all sync operations:
+
+```dart
+final config = DatumConfig(
+  defaultSyncOptions: DatumSyncOptions(
+    forceFullSync: false,        // Force full sync bypassing metadata comparison
+    resolveConflicts: true,      // Whether to resolve conflicts during sync
+    includeDeletes: true,        // Include delete operations in sync
+    direction: SyncDirection.pushThenPull,  // Sync direction
+    timeout: Duration(seconds: 30),         // Sync operation timeout
+  ),
+);
+```
+
+**Key Options:**
+- **`forceFullSync`**: When `true`, forces a complete sync regardless of metadata comparison results
+- **`resolveConflicts`**: Whether conflicts should be resolved during sync (default: `true`)
+- **`includeDeletes`**: Whether delete operations should be included in sync (default: `true`)
+- **`direction`**: The sync direction (push-then-pull, pull-then-push, etc.)
+- **`timeout`**: Maximum time allowed for sync operations
 
 ### Sync Direction Options
 
@@ -271,6 +303,23 @@ final config = DatumConfig(
   syncTimeout: Duration(minutes: 2), // 2 minute timeout
 );
 ```
+
+### Batch Processing
+
+Configure batch sizes for memory-efficient sync operations:
+
+```dart
+final config = DatumConfig(
+  remoteSyncBatchSize: 100,    // Process 100 remote items per batch
+  remoteStreamBatchSize: 50,   // Stream 50 items at a time
+  progressEventFrequency: 50,  // Emit progress events every 50 items
+);
+```
+
+**Batch Processing Options:**
+- **`remoteSyncBatchSize`**: Number of remote items processed together (default: 100)
+- **`remoteStreamBatchSize`**: Number of items streamed at once for memory efficiency (default: 50)
+- **`progressEventFrequency`**: How often progress events are emitted during sync (default: 50)
 
 ## Initialization Configuration
 

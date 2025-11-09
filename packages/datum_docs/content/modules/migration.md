@@ -275,6 +275,23 @@ class CriticalMigration extends Migration {
 3. **Memory management**: Be mindful of memory usage with large datasets
 4. **Timeout handling**: Implement timeouts for long-running migrations
 
+## Schema Versioning
+
+Datum uses incremental schema versioning to track database schema evolution. Each migration increments the schema version by one.
+
+### Built-in Migrations
+
+**V0toV1Migration**: Adds enhanced sync metadata fields
+- `conflictCount`: Number of conflicts encountered
+- `devices`: Device tracking information
+- `lastSuccessfulSyncTime`: Timestamp of last successful sync
+- `syncStatus`: Current synchronization status
+- `syncVersion`: Sync protocol version
+- `serverTimestamp`: Server-side timestamp
+- `errorMessage`: Last sync error message
+- `retryCount`: Number of sync retries
+- `syncDuration`: Duration of last sync operation
+
 ## Migration Examples
 
 ### Adding a New Field

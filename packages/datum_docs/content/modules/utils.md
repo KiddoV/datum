@@ -34,23 +34,79 @@ class MyConnectivityChecker implements DatumConnectivityChecker {
 
 ### DatumLogger
 
-Simple logging utility for Datum's internal operations and debugging.
+Enhanced logging utility for Datum's internal operations with structured logging, performance monitoring, and sampling capabilities.
 
 **Configuration:**
 - `enabled`: Whether logging is active (default: true)
 - `colors`: Whether to use colored output (default: true)
+- `minimumLevel`: Minimum log level to output (default: LogLevel.info)
+- `samplers`: Map of category-specific sampling strategies
+- `enablePerformanceLogging`: Whether to log performance metrics (default: false)
+- `performanceThreshold`: Minimum duration to log performance (default: 100ms)
 
-**Methods:**
-- `info(String message)`: Logs informational messages
-- `debug(String message)`: Logs debug information
-- `error(String message, [StackTrace? stackTrace])`: Logs errors with optional stack traces
-- `warn(String message)`: Logs warning messages
+**Log Levels:**
+- `trace`: Most detailed level, typically disabled in production
+- `debug`: Detailed debugging information
+- `info`: General information about system operation
+- `warn`: Warning about potentially harmful situations
+- `error`: Error conditions that don't stop the application
+- `fatal`: Severe error conditions that may stop the application
 
-**Usage:**
+**Structured Logging:**
 ```dart
 final logger = DatumLogger();
+
+// Basic logging
 logger.info('Operation completed successfully');
 logger.error('Failed to sync data', stackTrace);
+
+// Structured logging with metadata
+logger.log(LogEntry(
+  timestamp: DateTime.now(),
+  level: LogLevel.info,
+  message: 'User login',
+  category: 'auth',
+  metadata: {'userId': '123', 'method': 'email'},
+));
+
+// Performance logging
+logger.logPerformance(
+  operation: 'sync_user_data',
+  duration: Duration(milliseconds: 250),
+  metadata: {'userId': '123', 'items': 50},
+);
+
+// Sync-specific logging
+logger.logSync(
+  level: LogLevel.info,
+  message: 'Sync completed',
+  userId: '123',
+  itemCount: 25,
+  metadata: {'conflicts': 2},
+);
+```
+
+**Sampling Strategies:**
+```dart
+// Rate limiting sampler
+final rateLimiter = RateLimitingSampler(
+  window: Duration(minutes: 1),
+  maxLogsPerWindow: 10,
+);
+
+// Count-based sampler (log every Nth occurrence)
+final countSampler = CountBasedSampler(sampleRate: 100);
+
+// Configure logger with samplers
+final logger = DatumLogger(
+  minimumLevel: LogLevel.debug,
+  samplers: {
+    'performance': rateLimiter,  // Limit performance logs
+    'sync': countSampler,        // Sample sync logs
+  },
+  enablePerformanceLogging: true,
+  performanceThreshold: Duration(milliseconds: 50),
+);
 ```
 
 ### DurationFormatter
