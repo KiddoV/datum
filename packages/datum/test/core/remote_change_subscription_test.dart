@@ -128,22 +128,22 @@ void main() {
         expect(manager.isSubscribedToRemoteChanges, isTrue);
       });
 
-      test('deprecated pause() method still works', () async {
+      test('unsubscribeFromRemoteChanges works', () async {
         // Initially subscribed
         expect(manager.isSubscribedToRemoteChanges, isTrue);
 
-        // Use deprecated method
+        // Unsubscribe from remote changes
         await manager.unsubscribeFromRemoteChanges();
 
         expect(manager.isSubscribedToRemoteChanges, isFalse);
       });
 
-      test('deprecated resume() method still works', () async {
+      test('resubscribeToRemoteChanges works', () async {
         // Start unsubscribed
         await manager.unsubscribeFromRemoteChanges();
         expect(manager.isSubscribedToRemoteChanges, isFalse);
 
-        // Use deprecated method
+        // Resubscribe to remote changes
         await manager.resubscribeToRemoteChanges();
 
         expect(manager.isSubscribedToRemoteChanges, isTrue);
@@ -245,12 +245,12 @@ void main() {
         expect(manager2.isSubscribedToRemoteChanges, isTrue);
       });
 
-      test('deprecated pause() method on Datum still works', () async {
+      test('unsubscribeAllFromRemoteChanges works', () async {
         // Initially all managers should be subscribed
         expect(manager1.isSubscribedToRemoteChanges, isTrue);
         expect(manager2.isSubscribedToRemoteChanges, isTrue);
 
-        // Use deprecated method
+        // Unsubscribe all from remote changes
         await Datum.instance.unsubscribeAllFromRemoteChanges();
 
         // All managers should be unsubscribed
@@ -258,13 +258,13 @@ void main() {
         expect(manager2.isSubscribedToRemoteChanges, isFalse);
       });
 
-      test('deprecated resume() method on Datum still works', () async {
+      test('resubscribeAllToRemoteChanges works', () async {
         // Start by unsubscribing all
         await Datum.instance.unsubscribeAllFromRemoteChanges();
         expect(manager1.isSubscribedToRemoteChanges, isFalse);
         expect(manager2.isSubscribedToRemoteChanges, isFalse);
 
-        // Use deprecated method
+        // Resubscribe all to remote changes
         await Datum.instance.resubscribeAllToRemoteChanges();
 
         // All managers should be subscribed again
