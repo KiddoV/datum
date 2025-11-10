@@ -1738,7 +1738,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
           // Convert options to the correct type if needed.
           // This handles cases where options might be passed with a different generic type from Datum.
-          final typedOptions = mergedOptions != null
+          var typedOptions = mergedOptions != null
               ? DatumSyncOptions<T>(
                   includeDeletes: mergedOptions.includeDeletes,
                   resolveConflicts: mergedOptions.resolveConflicts,
@@ -1750,9 +1750,24 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
                 )
               : null;
 
-          // If the direction is pushOnly and there are no pending operations,
-          // we can skip the sync entirely for this manager.
-          if (typedOptions?.direction == SyncDirection.pushOnly && await getPendingCount(userId) == 0) {
+          // Allow custom sync direction resolution via callback
+          final pendingCount = await getPendingCount(userId);
+          final currentDirection = typedOptions?.direction ?? config.defaultSyncDirection;
+
+          if (config.syncDirectionResolver != null) {
+            final resolvedDirection = config.syncDirectionResolver!(pendingCount, currentDirection);
+            if (resolvedDirection != null && resolvedDirection != currentDirection) {
+              _logger.debug('Custom sync direction resolver changed direction from $currentDirection to $resolvedDirection for user $userId');
+              final optimizedOptions = typedOptions?.copyWith(direction: resolvedDirection) ?? DatumSyncOptions<T>(direction: resolvedDirection);
+              typedOptions = optimizedOptions;
+            }
+          }
+
+          // Check if sync should be skipped based on final direction and pending operations
+          final finalDirection = typedOptions?.direction ?? config.defaultSyncDirection;
+          if (finalDirection == SyncDirection.pushOnly && pendingCount == 0) {
+            // If the direction is pushOnly and there are no pending operations,
+            // we can skip the sync entirely for this manager.
             _logger.info('Push-only sync for user $userId skipped: no pending operations.');
             return DatumSyncResult.skipped(userId, 0);
           }

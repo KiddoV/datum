@@ -16,6 +16,16 @@ import '../core/models/datum_entity.dart';
 /// A handler for migration errors.
 typedef MigrationErrorHandler = Future<void> Function(Object error, StackTrace stackTrace);
 
+/// A callback that allows customizing the sync direction based on pending operations.
+///
+/// This callback is invoked before each sync operation to determine the optimal
+/// sync direction. It receives the current pending operation count and the
+/// default sync direction, and can return a custom direction.
+///
+/// Returns the sync direction to use for the operation. If null is returned,
+/// the default direction will be used.
+typedef SyncDirectionResolver = SyncDirection? Function(int pendingCount, SyncDirection defaultDirection);
+
 /// Defines the direction of a synchronization operation.
 /// Defines the order of operations during a synchronization cycle.
 enum SyncDirection {
@@ -132,6 +142,15 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// Sampling strategies for high-frequency log operations.
   final Map<String, LogSampler> logSamplers;
 
+  /// A callback that allows customizing the sync direction based on pending operations.
+  ///
+  /// This callback is invoked before each sync operation to determine the optimal
+  /// sync direction. It receives the current pending operation count and the
+  /// default sync direction, and can return a custom direction.
+  ///
+  /// If null, the default sync direction logic will be used.
+  final SyncDirectionResolver? syncDirectionResolver;
+
   const DatumConfig({
     this.autoSyncInterval = const Duration(minutes: 15),
     this.autoStartSync = false,
@@ -163,6 +182,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     this.enablePerformanceLogging = false,
     this.performanceLogThreshold = const Duration(milliseconds: 100),
     this.logSamplers = const {},
+    this.syncDirectionResolver,
   });
 
   /// A default configuration with sensible production values.
@@ -198,6 +218,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     bool? enablePerformanceLogging,
     Duration? performanceLogThreshold,
     Map<String, LogSampler>? logSamplers,
+    SyncDirectionResolver? syncDirectionResolver,
   }) {
     return DatumConfig<E>(
       autoSyncInterval: autoSyncInterval ?? this.autoSyncInterval,
@@ -229,6 +250,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       enablePerformanceLogging: enablePerformanceLogging ?? this.enablePerformanceLogging,
       performanceLogThreshold: performanceLogThreshold ?? this.performanceLogThreshold,
       logSamplers: logSamplers ?? this.logSamplers,
+      syncDirectionResolver: syncDirectionResolver ?? this.syncDirectionResolver,
     );
   }
 
@@ -266,6 +288,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       enablePerformanceLogging,
       performanceLogThreshold,
       logSamplers,
+      syncDirectionResolver,
     ];
   }
 }

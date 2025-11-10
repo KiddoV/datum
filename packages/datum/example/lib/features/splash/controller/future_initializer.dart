@@ -72,6 +72,15 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     onMigrationError: (error, stackTrace) async {
       talker.error(error, stackTrace);
     },
+    // Custom sync direction resolver: when no local changes, prioritize remote changes for faster sync
+    syncDirectionResolver: (pendingCount, defaultDirection) {
+      if (pendingCount == 0) {
+        // No local changes - prioritize pulling remote changes first for faster sync
+        return SyncDirection.pullThenPush;
+      }
+      // Has local changes - use default behavior (pushThenPull)
+      return null; // null means use default direction
+    },
   );
   final datum = await Datum.initialize(
     config: config,
@@ -120,8 +129,14 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       ///
       TalkerRiverpodObserver(
         talker: talker,
-        settings: const TalkerRiverpodLoggerSettings(
+        settings: TalkerRiverpodLoggerSettings(
           printProviderDisposed: true,
+          providerFilter: (provider) {
+            if (provider.name == "countdownProvider") {
+              return false;
+            }
+            return true;
+          },
         ),
       ),
     ],

@@ -42,6 +42,7 @@ void main() {
       expect(config.autoSyncInterval, const Duration(minutes: 15));
       expect(config.errorRecoveryStrategy.maxRetries, 3);
       expect(config.schemaVersion, 0);
+      expect(config.syncDirectionResolver, isNull);
     });
 
     test('copyWith creates a new instance with updated values', () {
@@ -144,6 +145,173 @@ void main() {
         const config1 = DatumConfig(syncExecutionStrategy: SequentialStrategy());
         const config2 = DatumConfig(syncExecutionStrategy: ParallelStrategy());
         expect(config1, isNot(equals(config2)));
+      });
+    });
+
+    group('syncDirectionResolver', () {
+      test('defaults to null', () {
+        const config = DatumConfig<TestEntity>();
+        expect(config.syncDirectionResolver, isNull);
+      });
+
+      test('can be set via constructor', () {
+        SyncDirection? resolver(int pendingCount, SyncDirection defaultDirection) {
+          return SyncDirection.pullOnly;
+        }
+
+        final config = DatumConfig<TestEntity>(
+          syncDirectionResolver: resolver,
+        );
+
+        expect(config.syncDirectionResolver, isNotNull);
+        final result = config.syncDirectionResolver!(5, SyncDirection.pushThenPull);
+        expect(result, SyncDirection.pullOnly);
+      });
+
+      test('can return null to use default direction', () {
+        SyncDirection? resolver(int pendingCount, SyncDirection defaultDirection) {
+          return null; // Use default
+        }
+
+        final config = DatumConfig<TestEntity>(
+          syncDirectionResolver: resolver,
+        );
+
+        final result = config.syncDirectionResolver!(5, SyncDirection.pushThenPull);
+        expect(result, isNull);
+      });
+
+      test('receives correct parameters', () {
+        int capturedPendingCount = -1;
+        SyncDirection capturedDefaultDirection = SyncDirection.pushOnly;
+
+        SyncDirection? resolver(int pendingCount, SyncDirection defaultDirection) {
+          capturedPendingCount = pendingCount;
+          capturedDefaultDirection = defaultDirection;
+          return SyncDirection.pullOnly;
+        }
+
+        final config = DatumConfig<TestEntity>(
+          syncDirectionResolver: resolver,
+        );
+
+        config.syncDirectionResolver!(42, SyncDirection.pullThenPush);
+
+        expect(capturedPendingCount, 42);
+        expect(capturedDefaultDirection, SyncDirection.pullThenPush);
+      });
+
+      test('can implement fast sync logic for no pending changes', () {
+        // This mimics the example app logic
+        SyncDirection? resolver(int pendingCount, SyncDirection defaultDirection) {
+          if (pendingCount == 0) {
+            return SyncDirection.pullThenPush; // Prioritize remote changes
+          }
+          return null; // Use default
+        }
+
+        final config = DatumConfig<TestEntity>(
+          syncDirectionResolver: resolver,
+        );
+
+        // Test with no pending changes
+        final resultNoPending = config.syncDirectionResolver!(0, SyncDirection.pushThenPull);
+        expect(resultNoPending, SyncDirection.pullThenPush);
+
+        // Test with pending changes
+        final resultWithPending = config.syncDirectionResolver!(5, SyncDirection.pushThenPull);
+        expect(resultWithPending, isNull);
+      });
+
+      test('can implement different strategies based on pending count', () {
+        SyncDirection? resolver(int pendingCount, SyncDirection defaultDirection) {
+          if (pendingCount == 0) {
+            return SyncDirection.pullOnly; // Only pull when no local changes
+          } else if (pendingCount < 10) {
+            return SyncDirection.pushThenPull; // Normal sync for few changes
+          } else {
+            return SyncDirection.pullThenPush; // Pull first for many changes
+          }
+        }
+
+        final config = DatumConfig<TestEntity>(
+          syncDirectionResolver: resolver,
+        );
+
+        expect(config.syncDirectionResolver!(0, SyncDirection.pushThenPull), SyncDirection.pullOnly);
+        expect(config.syncDirectionResolver!(5, SyncDirection.pushThenPull), SyncDirection.pushThenPull);
+        expect(config.syncDirectionResolver!(15, SyncDirection.pushThenPull), SyncDirection.pullThenPush);
+      });
+
+      test('copyWith preserves syncDirectionResolver when not specified', () {
+        SyncDirection? originalResolver(int pendingCount, SyncDirection defaultDirection) {
+          return SyncDirection.pullOnly;
+        }
+
+        final originalConfig = DatumConfig<TestEntity>(
+          syncDirectionResolver: originalResolver,
+        );
+
+        final copiedConfig = originalConfig.copyWith();
+
+        expect(copiedConfig.syncDirectionResolver, isNotNull);
+        final result = copiedConfig.syncDirectionResolver!(1, SyncDirection.pushThenPull);
+        expect(result, SyncDirection.pullOnly);
+      });
+
+      test('copyWith can update syncDirectionResolver', () {
+        final originalConfig = DatumConfig<TestEntity>(
+          syncDirectionResolver: (pendingCount, defaultDirection) => SyncDirection.pullOnly,
+        );
+
+        SyncDirection? newResolver(int pendingCount, SyncDirection defaultDirection) {
+          return SyncDirection.pushOnly;
+        }
+
+        final updatedConfig = originalConfig.copyWith(
+          syncDirectionResolver: newResolver,
+        );
+
+        expect(updatedConfig.syncDirectionResolver, isNotNull);
+        final result = updatedConfig.syncDirectionResolver!(1, SyncDirection.pushThenPull);
+        expect(result, SyncDirection.pushOnly);
+      });
+
+      test('copyWith preserves syncDirectionResolver when null is passed (standard copyWith behavior)', () {
+        final originalResolver = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
+        final originalConfig = DatumConfig<TestEntity>(
+          syncDirectionResolver: originalResolver,
+        );
+
+        // When null is passed to copyWith for a nullable field, it typically preserves the original value
+        // This is standard copyWith behavior - to explicitly set to null, you'd need a different API
+        final updatedConfig = originalConfig.copyWith(
+          syncDirectionResolver: null,
+        );
+
+        // The original resolver should be preserved since null ?? originalResolver returns originalResolver
+        expect(updatedConfig.syncDirectionResolver, isNotNull);
+        final result = updatedConfig.syncDirectionResolver!(1, SyncDirection.pushThenPull);
+        expect(result, SyncDirection.pullOnly);
+      });
+
+      test('equality considers syncDirectionResolver', () {
+        final resolver1 = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
+        final resolver2 = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
+        final resolver3 = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pushOnly;
+
+        final config1 = DatumConfig<TestEntity>(syncDirectionResolver: resolver1);
+        final config2 = DatumConfig<TestEntity>(syncDirectionResolver: resolver2);
+        final config3 = DatumConfig<TestEntity>(syncDirectionResolver: resolver3);
+        final config4 = DatumConfig<TestEntity>(syncDirectionResolver: null);
+        final config5 = DatumConfig<TestEntity>(syncDirectionResolver: null);
+
+        // Note: Function equality in Dart compares by reference, not by behavior
+        // So configs with different function instances are not equal
+        expect(config1, isNot(equals(config2))); // Different function instances
+        expect(config1, isNot(equals(config3))); // Different functions
+        expect(config4, equals(config5)); // Both null
+        expect(config1, isNot(equals(config4))); // One null, one not
       });
     });
 
