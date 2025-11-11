@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/source/core/manager/datum_sync_request_strategy.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -78,29 +79,31 @@ void main() {
       });
 
       test('queues multiple actions sequentially', () async {
-        final executionOrder = <int>[];
+        fakeAsync((async) async {
+          final executionOrder = <int>[];
 
-        final futures = <Future<String>>[];
+          final futures = <Future<String>>[];
 
-        // Start 3 concurrent requests
-        for (var i = 0; i < 3; i++) {
-          final future = strategy.execute(
-            () async {
-              executionOrder.add(i);
-              await Future.delayed(const Duration(milliseconds: 10));
-              return 'result_$i';
-            },
-            isSyncInProgress: () => false,
-            onSkipped: () => 'skipped',
-          );
-          futures.add(future);
-        }
+          // Start 3 concurrent requests
+          for (var i = 0; i < 3; i++) {
+            final future = strategy.execute(
+              () async {
+                executionOrder.add(i);
+                async.elapse(const Duration(milliseconds: 10));
+                return 'result_$i';
+              },
+              isSyncInProgress: () => false,
+              onSkipped: () => 'skipped',
+            );
+            futures.add(future);
+          }
 
-        final results = await Future.wait(futures);
+          final results = await Future.wait(futures);
 
-        // Should execute in order
-        expect(executionOrder, [0, 1, 2]);
-        expect(results, ['result_0', 'result_1', 'result_2']);
+          // Should execute in order
+          expect(executionOrder, [0, 1, 2]);
+          expect(results, ['result_0', 'result_1', 'result_2']);
+        });
       });
 
       test('handles exceptions by propagating them', () async {

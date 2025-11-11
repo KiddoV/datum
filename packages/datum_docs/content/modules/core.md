@@ -245,35 +245,7 @@ final result = await boundary.execute(() async {
 });
 ```
 
-#### PerformanceMonitor
 
-Monitors operation performance and detects regressions.
-
-**Features:**
-- Automatic baseline calculation from operation timings
-- Regression detection with configurable thresholds
-- Memory usage tracking (optional)
-- Performance event streaming
-
-**Usage:**
-```dart
-// Time an async operation
-final result = await performanceMonitor.timeAsync('sync_operation', () async {
-  return await performSync();
-});
-
-// Time a sync operation
-final result = performanceMonitor.timeSync('query_operation', () {
-  return performQuery();
-});
-
-// Listen for performance events
-performanceMonitor.events.listen((event) {
-  if (event is PerformanceRegressionEvent) {
-    print('Performance regression detected: ${event.operationName}');
-  }
-});
-```
 
 ### DatumEither
 

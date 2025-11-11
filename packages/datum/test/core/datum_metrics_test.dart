@@ -1,7 +1,7 @@
 import 'dart:async';
 
 import 'package:datum/datum.dart';
-import 'package:datum/source/core/models/performance_metrics.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:meta/meta.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
@@ -63,63 +63,67 @@ void runMetricsTest(
     required MockLocalAdapter<TestEntity> localAdapter,
     required MockRemoteAdapter<TestEntity> remoteAdapter,
     required MockConnectivityChecker connectivityChecker,
+    required FakeAsync async,
   }) testBody,
 ) {
   test(description, () async {
-    // ARRANGE
-    final localAdapter = MockLocalAdapter<TestEntity>();
-    final remoteAdapter = MockRemoteAdapter<TestEntity>();
-    final mockConnectivityChecker = MockConnectivityChecker();
+    fakeAsync((async) async {
+      // ARRANGE
+      final localAdapter = MockLocalAdapter<TestEntity>();
+      final remoteAdapter = MockRemoteAdapter<TestEntity>();
+      final mockConnectivityChecker = MockConnectivityChecker();
 
-    // Common stubs
-    when(() => localAdapter.dispose()).thenAnswer((_) async {});
-    when(() => remoteAdapter.dispose()).thenAnswer((_) async {});
-    when(() => localAdapter.readByIds(any(), userId: any(named: 'userId'))).thenAnswer((_) async => {});
-    when(() => localAdapter.initialize()).thenAnswer((_) async {});
-    when(() => remoteAdapter.initialize()).thenAnswer((_) async {});
-    when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 0);
-    when(() => localAdapter.changeStream()).thenAnswer((_) => const Stream.empty());
-    when(() => remoteAdapter.changeStream).thenAnswer((_) => const Stream.empty());
-    when(() => localAdapter.getPendingOperations(any())).thenAnswer((_) async => []);
-    when(() => remoteAdapter.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
-    when(() => localAdapter.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
-    when(() => localAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
-    when(() => remoteAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
-    when(() => localAdapter.getLastSyncResult(any())).thenAnswer((_) async => null);
-    when(() => localAdapter.saveLastSyncResult(any(), any())).thenAnswer((_) async {});
-    when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
-    when(() => localAdapter.getAllUserIds()).thenAnswer((_) => Future.value([]));
-    when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
-    when(() => mockConnectivityChecker.isConnected).thenAnswer((_) async => Future.value(true));
+      // Common stubs
+      when(() => localAdapter.dispose()).thenAnswer((_) async {});
+      when(() => remoteAdapter.dispose()).thenAnswer((_) async {});
+      when(() => localAdapter.readByIds(any(), userId: any(named: 'userId'))).thenAnswer((_) async => {});
+      when(() => localAdapter.initialize()).thenAnswer((_) async {});
+      when(() => remoteAdapter.initialize()).thenAnswer((_) async {});
+      when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 0);
+      when(() => localAdapter.changeStream()).thenAnswer((_) => const Stream.empty());
+      when(() => remoteAdapter.changeStream).thenAnswer((_) => const Stream.empty());
+      when(() => localAdapter.getPendingOperations(any())).thenAnswer((_) async => []);
+      when(() => remoteAdapter.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
+      when(() => localAdapter.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
+      when(() => localAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
+      when(() => localAdapter.getLastSyncResult(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.saveLastSyncResult(any(), any())).thenAnswer((_) async {});
+      when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.getAllUserIds()).thenAnswer((_) => Future.value([]));
+      when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
+      when(() => mockConnectivityChecker.isConnected).thenAnswer((_) async => Future.value(true));
 
-    const config = DatumConfig(schemaVersion: 0, autoStartSync: false); // Disable auto-sync for predictable tests
-    final datumEither = await Datum.initialize(
-      config: config,
-      connectivityChecker: mockConnectivityChecker,
-      registrations: [
-        DatumRegistration<TestEntity>(
+      const config = DatumConfig(schemaVersion: 0, autoStartSync: false); // Disable auto-sync for predictable tests
+      final datumEither = await Datum.initialize(
+        config: config,
+        connectivityChecker: mockConnectivityChecker,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+
+      final datum = datumEither.successOrNull;
+      if (datum == null) fail('Datum initialization failed');
+
+      try {
+        await testBody(
+          datum,
           localAdapter: localAdapter,
           remoteAdapter: remoteAdapter,
-        ),
-      ],
-    );
-
-    final datum = datumEither.successOrNull;
-    if (datum == null) fail('Datum initialization failed');
-
-    try {
-      await testBody(
-        datum,
-        localAdapter: localAdapter,
-        remoteAdapter: remoteAdapter,
-        connectivityChecker: mockConnectivityChecker,
-      );
-      // Add a small delay to ensure all async operations complete
-      await Future.delayed(const Duration(milliseconds: 100));
-    } finally {
-      await datum.dispose();
-      Datum.resetForTesting();
-    }
+          connectivityChecker: mockConnectivityChecker,
+          async: async,
+        );
+        // Advance time to ensure all async operations complete
+        async.elapse(const Duration(milliseconds: 100));
+      } finally {
+        await datum.dispose();
+        Datum.resetForTesting();
+      }
+    });
   });
 }
 
@@ -185,7 +189,7 @@ void main() {
 
   runMetricsTest(
     'totalSyncOperations increments on sync start',
-    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
+    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker, required async}) async {
       expect(datum.currentMetrics.totalSyncOperations, 0);
 
       await datum.synchronize('user-metrics');
@@ -200,7 +204,7 @@ void main() {
 
   runMetricsTest(
     'successfulSyncs increments on successful completion',
-    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
+    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker, required async}) async {
       expect(datum.currentMetrics.successfulSyncs, 0);
       await datum.synchronize('user-metrics');
       await waitForMetric(datum, (m) => m.successfulSyncs == 1);
@@ -210,7 +214,7 @@ void main() {
 
   runMetricsTest(
     'failedSyncs increments on sync error',
-    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
+    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker, required async}) async {
       when(() => remoteAdapter.readAll(userId: any(named: 'userId'))).thenThrow(Exception('Remote fetch failed'));
       expect(datum.currentMetrics.failedSyncs, 0);
 
@@ -223,7 +227,7 @@ void main() {
 
   runMetricsTest(
     'activeUsers tracks unique user IDs',
-    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
+    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker, required async}) async {
       expect(datum.currentMetrics.activeUsers, isEmpty);
 
       await datum.synchronize('user-1');
@@ -235,8 +239,8 @@ void main() {
       expect(datum.currentMetrics.activeUsers, {'user-1', 'user-2'});
 
       await datum.synchronize('user-1');
-      // Give it a moment for any potential metric updates to propagate
-      await Future.delayed(const Duration(milliseconds: 50));
+      // Advance time for any potential metric updates to propagate
+      async.elapse(const Duration(milliseconds: 50));
       // No new user, so set should remain the same
       expect(datum.currentMetrics.activeUsers, {'user-1', 'user-2'});
     },
@@ -244,7 +248,7 @@ void main() {
 
   runMetricsTest(
     'userSwitchCount increments on user switch event',
-    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
+    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker, required async}) async {
       expect(datum.currentMetrics.userSwitchCount, 0);
 
       // First, synchronize with one user to establish the "last active user".
@@ -262,7 +266,7 @@ void main() {
 
   runMetricsTest(
     'conflictsDetected and conflictsResolvedAutomatically are updated on conflict',
-    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
+    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker, required async}) async {
       final localEntity = baseEntity.copyWith(name: 'Local Change', version: 2);
       final remoteEntity = baseEntity.copyWith(name: 'Remote Change', version: 3);
 
@@ -283,7 +287,7 @@ void main() {
 
   runMetricsTest(
     'metrics stream emits new snapshots on change',
-    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker}) async {
+    (datum, {required localAdapter, required remoteAdapter, required connectivityChecker, required async}) async {
       final metricsReceived = <DatumMetrics>[];
       final subscription = datum.metrics.listen(metricsReceived.add);
 
@@ -293,7 +297,7 @@ void main() {
       await waitForMetric(datum, (m) => m.successfulSyncs == 1);
 
       // Give a moment for all metrics to be emitted
-      await Future.delayed(const Duration(milliseconds: 100));
+      async.elapse(const Duration(milliseconds: 100));
       await subscription.cancel();
 
       // Verify we received the expected sequence
@@ -327,92 +331,6 @@ void main() {
     expect(result, contains('Pulled: 2.00 KB'));
   });
 
-  test('toString includes performance information when baselines exist', () {
-    final baseline = PerformanceBaseline(
-      operationName: 'test_op',
-      averageDuration: const Duration(milliseconds: 100),
-      stdDevDuration: const Duration(milliseconds: 10),
-      averageMemoryDelta: 1024,
-      stdDevMemoryDelta: 100,
-      sampleCount: 10,
-      lastUpdated: DateTime.now(),
-    );
-
-    final metrics = DatumMetrics(
-      performanceBaselines: {'test_op': baseline},
-      performanceRegressionsDetected: 2,
-    );
-
-    final result = metrics.toString();
-    expect(result, contains('Regressions: 2'));
-    expect(result, contains('Baselines: 1'));
-  });
-
-  test('toString includes memory information when available', () {
-    const memoryUsage = MemoryUsage(
-      heapUsage: 1024 * 1024, // 1 MB
-      peakHeapUsage: 2 * 1024 * 1024, // 2 MB
-      externalUsage: 512 * 1024, // 512 KB
-      heapSize: 3 * 1024 * 1024, // 3 MB
-      rss: 4 * 1024 * 1024, // 4 MB
-    );
-
-    const metrics = DatumMetrics(
-      currentMemoryUsage: memoryUsage,
-    );
-
-    final result = metrics.toString();
-    expect(result, contains('Memory: 1.00 MB'));
-  });
-
-  test('toString includes average sync duration when available', () {
-    const metrics = DatumMetrics(
-      averageSyncDuration: Duration(milliseconds: 250),
-    );
-
-    final result = metrics.toString();
-    expect(result, contains('Avg Sync: 250ms'));
-  });
-
-  test('toString combines all performance information', () {
-    final baseline = PerformanceBaseline(
-      operationName: 'sync_op',
-      averageDuration: const Duration(milliseconds: 100),
-      stdDevDuration: const Duration(milliseconds: 10),
-      averageMemoryDelta: 1024,
-      stdDevMemoryDelta: 100,
-      sampleCount: 10,
-      lastUpdated: DateTime.now(),
-    );
-
-    const memoryUsage = MemoryUsage(
-      heapUsage: 2 * 1024 * 1024, // 2 MB
-      peakHeapUsage: 3 * 1024 * 1024, // 3 MB
-      externalUsage: 1024 * 1024, // 1 MB
-      heapSize: 4 * 1024 * 1024, // 4 MB
-      rss: 5 * 1024 * 1024, // 5 MB
-    );
-
-    final metrics = DatumMetrics(
-      totalSyncOperations: 10,
-      successfulSyncs: 8,
-      failedSyncs: 2,
-      performanceBaselines: {'sync_op': baseline},
-      performanceRegressionsDetected: 1,
-      currentMemoryUsage: memoryUsage,
-      averageSyncDuration: const Duration(milliseconds: 150),
-    );
-
-    final result = metrics.toString();
-    expect(result, contains('Syncs: 10'));
-    expect(result, contains('✅: 8'));
-    expect(result, contains('❌: 2'));
-    expect(result, contains('Regressions: 1'));
-    expect(result, contains('Baselines: 1'));
-    expect(result, contains('Memory: 2.00 MB'));
-    expect(result, contains('Avg Sync: 150ms'));
-  });
-
   test('toString excludes performance info when not available', () {
     const metrics = DatumMetrics(
       totalSyncOperations: 3,
@@ -424,9 +342,5 @@ void main() {
     expect(result, contains('Syncs: 3'));
     expect(result, contains('✅: 3'));
     expect(result, contains('❌: 0'));
-    expect(result, isNot(contains('Regressions:')));
-    expect(result, isNot(contains('Baselines:')));
-    expect(result, isNot(contains('Memory:')));
-    expect(result, isNot(contains('Avg Sync:')));
   });
 }

@@ -1,4 +1,5 @@
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/models/cold_start_strategy.dart';
 
 import 'package:example/const/secrets.dart';
 import 'package:example/custom_connectivity_checker.dart';
@@ -59,7 +60,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     changeCacheDuration: Duration(milliseconds: 0),
     remoteEventDebounceTime: Duration(milliseconds: 0),
     autoSyncInterval: Duration(
-      seconds: 30,
+      minutes: 30,
     ),
     syncRequestStrategy: SequentialRequestStrategy(),
     syncExecutionStrategy: IsolateStrategy(
@@ -72,17 +73,15 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     onMigrationError: (error, stackTrace) async {
       talker.error(error, stackTrace);
     },
-    // Custom sync direction resolver: when no local changes, prioritize remote changes for faster sync
-    syncDirectionResolver: (pendingCount, defaultDirection) {
-      if (pendingCount == 0) {
-        // No local changes - prioritize pulling remote changes first for faster sync
-        return SyncDirection.pullThenPush;
-      }
-      // Has local changes - use default behavior (pushThenPull)
-      return null; // null means use default direction
-    },
-    defaultSyncOptions: DatumSyncOptions(
-      query: const DatumQuery(), // No filters - sync all data
+    // Configure cold start sync for the example app
+    coldStartConfig: const ColdStartConfig(
+      strategy: ColdStartStrategy.adaptive,
+      syncThreshold:
+          Duration(hours: 2), // Sync if more than 2 hours since last cold start
+      maxDuration:
+          Duration(seconds: 30), // Allow up to 30 seconds for cold start sync
+      initialDelay:
+          Duration(milliseconds: 500), // Wait 500ms after app start before sync
     ),
   );
   final datum = await Datum.initialize(

@@ -1,4 +1,3 @@
-import 'package:datum/source/core/models/performance_metrics.dart';
 import 'package:equatable/equatable.dart';
 import 'package:meta/meta.dart';
 
@@ -32,21 +31,6 @@ class DatumMetrics extends Equatable {
   /// The total cumulative number of bytes pulled from the remote across all users.
   final int totalBytesPulled;
 
-  /// Performance baselines for monitored operations.
-  final Map<String, PerformanceBaseline> performanceBaselines;
-
-  /// Number of performance regressions detected.
-  final int performanceRegressionsDetected;
-
-  /// Current memory usage snapshot.
-  final MemoryUsage? currentMemoryUsage;
-
-  /// Average sync operation duration.
-  final Duration? averageSyncDuration;
-
-  /// Peak memory usage during sync operations.
-  final MemoryUsage? peakMemoryUsage;
-
   /// Creates a [DatumMetrics] snapshot.
   const DatumMetrics({
     this.totalSyncOperations = 0,
@@ -58,11 +42,6 @@ class DatumMetrics extends Equatable {
     this.activeUsers = const {},
     this.totalBytesPushed = 0,
     this.totalBytesPulled = 0,
-    this.performanceBaselines = const {},
-    this.performanceRegressionsDetected = 0,
-    this.currentMemoryUsage,
-    this.averageSyncDuration,
-    this.peakMemoryUsage,
   });
 
   /// Creates a copy of this metrics object with updated values.
@@ -76,11 +55,6 @@ class DatumMetrics extends Equatable {
     Set<String>? activeUsers,
     int? totalBytesPushed,
     int? totalBytesPulled,
-    Map<String, PerformanceBaseline>? performanceBaselines,
-    int? performanceRegressionsDetected,
-    MemoryUsage? currentMemoryUsage,
-    Duration? averageSyncDuration,
-    MemoryUsage? peakMemoryUsage,
   }) {
     return DatumMetrics(
       totalSyncOperations: totalSyncOperations ?? this.totalSyncOperations,
@@ -92,11 +66,6 @@ class DatumMetrics extends Equatable {
       activeUsers: activeUsers ?? this.activeUsers,
       totalBytesPushed: totalBytesPushed ?? this.totalBytesPushed,
       totalBytesPulled: totalBytesPulled ?? this.totalBytesPulled,
-      performanceBaselines: performanceBaselines ?? this.performanceBaselines,
-      performanceRegressionsDetected: performanceRegressionsDetected ?? this.performanceRegressionsDetected,
-      currentMemoryUsage: currentMemoryUsage ?? this.currentMemoryUsage,
-      averageSyncDuration: averageSyncDuration ?? this.averageSyncDuration,
-      peakMemoryUsage: peakMemoryUsage ?? this.peakMemoryUsage,
     );
   }
 
@@ -111,16 +80,11 @@ class DatumMetrics extends Equatable {
         activeUsers,
         totalBytesPushed,
         totalBytesPulled,
-        performanceBaselines,
-        performanceRegressionsDetected,
-        currentMemoryUsage,
-        averageSyncDuration,
-        peakMemoryUsage,
       ];
 
   @override
   String toString() {
-    final baseInfo = 'DatumMetrics('
+    return 'DatumMetrics('
         'Syncs: $totalSyncOperations, '
         '✅: $successfulSyncs, '
         '❌: $failedSyncs, '
@@ -129,14 +93,6 @@ class DatumMetrics extends Equatable {
         'Users: ${activeUsers.length}, '
         'Switches: $userSwitchCount, '
         'Pushed: ${(totalBytesPushed / 1024).toStringAsFixed(2)} KB, '
-        'Pulled: ${(totalBytesPulled / 1024).toStringAsFixed(2)} KB';
-
-    final perfInfo = performanceBaselines.isNotEmpty || performanceRegressionsDetected > 0 ? ', Regressions: $performanceRegressionsDetected, Baselines: ${performanceBaselines.length}' : '';
-
-    final memInfo = currentMemoryUsage != null ? ', Memory: ${(currentMemoryUsage!.heapUsage / 1024 / 1024).toStringAsFixed(2)} MB' : '';
-
-    final durationInfo = averageSyncDuration != null ? ', Avg Sync: ${averageSyncDuration!.inMilliseconds}ms' : '';
-
-    return '$baseInfo$perfInfo$memInfo$durationInfo)';
+        'Pulled: ${(totalBytesPulled / 1024).toStringAsFixed(2)} KB)';
   }
 }

@@ -9,6 +9,7 @@ import 'package:example/features/simple_datum/controller/simple_datum_provider.d
 import 'package:example/features/simple_datum/view/task.dart';
 import 'package:example/features/simple_datum/view/task_list.dart';
 import 'package:example/features/simple_datum/view/sync_info_widget.dart';
+import 'package:example/features/simple_datum/view/cold_start_status_widget.dart';
 import 'package:example/shared/helper/global_helper.dart';
 import 'package:example/shared/riverpod_ext/asynvalue_easy_when.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -583,7 +584,10 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
           child: Wrap(
             alignment: WrapAlignment.end,
             spacing: 8,
-            children: [SyncInfoWidget()],
+            children: [
+              ColdStartStatusWidget(),
+              SyncInfoWidget(),
+            ],
           ),
         ),
         Expanded(

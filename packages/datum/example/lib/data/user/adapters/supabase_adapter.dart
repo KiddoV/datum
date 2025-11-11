@@ -1,10 +1,98 @@
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:datum/datum.dart';
 import 'package:example/bootstrap.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:recase/recase.dart';
+
+/// Manages retry logic for Supabase realtime subscriptions
+class _SubscriptionRetryManager {
+  Timer? _retryTimer;
+  int _retryCount = 0;
+  bool _isRetrying = false;
+  DateTime? _lastRetryTime;
+  int _consecutiveFailures = 0;
+
+  static const int maxRetries = 5;
+  static const Duration baseRetryDelay = Duration(seconds: 1);
+
+  bool get isRetrying => _isRetrying;
+  bool get hasFailures => _retryCount > 0 || _consecutiveFailures > 0;
+
+  void scheduleRetry(
+      String tableName, bool isAuthenticated, VoidCallback retryCallback) {
+    if (_isRetrying || !isAuthenticated) {
+      talker.debug(
+          "Skipping retry: already retrying or not authenticated for table: $tableName");
+      return;
+    }
+
+    _trackFailure();
+
+    if (_retryCount >= maxRetries) {
+      talker.error(
+          "Max retry attempts reached for table: $tableName. Giving up.");
+      return;
+    }
+
+    _isRetrying = true;
+    _retryCount++;
+
+    final delay = _calculateDelay();
+    talker.warning(
+        "Scheduling retry attempt $_retryCount for table: $tableName in ${delay.inSeconds} seconds");
+
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () {
+      if (!isAuthenticated) {
+        talker.debug(
+            "Skipping retry: user not authenticated for table: $tableName");
+        _isRetrying = false;
+        return;
+      }
+
+      talker.info(
+          "Retrying subscription for table: $tableName (attempt $_retryCount)");
+      _isRetrying = false;
+      retryCallback();
+    });
+  }
+
+  void _trackFailure() {
+    final now = DateTime.now();
+    if (_lastRetryTime != null &&
+        now.difference(_lastRetryTime!).inSeconds < 30) {
+      _consecutiveFailures++;
+    } else {
+      _consecutiveFailures = 1;
+    }
+    _lastRetryTime = now;
+  }
+
+  Duration _calculateDelay() {
+    var delaySeconds =
+        (baseRetryDelay.inSeconds * (1 << (_retryCount - 1))).clamp(1, 30);
+    if (_consecutiveFailures >= 3) {
+      delaySeconds = (delaySeconds * 5).clamp(30, 300);
+    }
+    return Duration(seconds: delaySeconds);
+  }
+
+  void reset() {
+    _retryCount = 0;
+    _isRetrying = false;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _consecutiveFailures = 0;
+    _lastRetryTime = null;
+  }
+
+  void dispose() {
+    _retryTimer?.cancel();
+  }
+}
 
 class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     extends RemoteAdapter<T> {
@@ -15,17 +103,16 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
   SupabaseRemoteAdapter({
     required this.tableName,
     required this.fromMap,
-    // This is for testing purposes only.
     SupabaseClient? clientOverride,
   }) : _clientOverride = clientOverride;
 
+  // Core components
   RealtimeChannel? _channel;
   StreamController<DatumChangeDetail<T>>? _streamController;
-
-  // Store related entity channels for cleanup
   final Map<String, RealtimeChannel> _relatedChannels = {};
+  final _SubscriptionRetryManager _retryManager = _SubscriptionRetryManager();
 
-  // Authentication state monitoring
+  // Authentication
   StreamSubscription<AuthState>? _authSubscription;
   bool _isAuthenticated = false;
   final StreamController<bool> _authStateController =
@@ -180,95 +267,171 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   void _subscribeToChanges() {
     talker.info("Subscribing to Supabase changes for table: $tableName");
-    _channel = _client
-        .channel(
-          'public:$tableName',
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: tableName,
-          callback: (payload) {
-            talker.info('Received Supabase change: ${payload.eventType}');
-            talker.debug('Payload: $payload');
 
-            DatumOperationType? type;
-            Map<String, dynamic>? record;
+    // Check authentication state before subscribing
+    final currentUser = _client.auth.currentUser;
+    final hasSession = _client.auth.currentSession != null;
+    talker.debug(
+        "Subscription attempt - Authenticated: $_isAuthenticated, Current user: ${currentUser?.id}, Has session: $hasSession");
 
-            switch (payload.eventType) {
-              case PostgresChangeEvent.insert:
-                type = DatumOperationType.create;
-                record = payload.newRecord;
-                talker.debug('Insert event detected.');
-                break;
-              case PostgresChangeEvent.update:
-                type = DatumOperationType.update;
-                record = payload.newRecord;
-                talker.debug('Update event detected.');
-                break;
-              case PostgresChangeEvent.delete:
-                type = DatumOperationType.delete;
-                record = payload.oldRecord;
-                talker.debug('Delete event detected.');
-                break;
-              case PostgresChangeEvent.all:
-                talker.debug('Received "all" event type, ignoring.');
-                break;
-            }
+    if (!_isAuthenticated) {
+      talker.warning(
+          "Attempting to subscribe to table '$tableName' while not authenticated. Delaying subscription until authenticated.");
+      // Don't attempt subscription if not authenticated - let auth monitoring handle it
+      return;
+    }
 
-            if (type != null && record != null) {
-              talker
-                  .debug('Processing change of type $type for record: $record');
-              final item = fromMap(_toCamelCase(record));
-              // When a delete event comes from Supabase, the oldRecord might only
-              // contain the ID. If the userId is missing, we assume the change
-              // belongs to the currently authenticated user.
-              final userId = item.userId.isNotEmpty
-                  ? item.userId
-                  : _client.auth.currentUser?.id;
-              if (userId == null) {
-                talker.warning(
-                    'Could not determine userId for change, dropping event.');
-                return;
-              }
-              _streamController?.add(
-                DatumChangeDetail<T>(
-                  type: type,
-                  entityId: item.id,
-                  userId: userId,
-                  timestamp: item.modifiedAt,
-                  data: item,
-                ),
-              );
+    try {
+      talker.debug("Creating realtime channel for table: $tableName");
+      _channel = _client
+          .channel(
+            'public:$tableName',
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: tableName,
+            callback: (payload) {
               talker.info(
-                  'Successfully processed and streamed change for ${item.id}');
-            } else {
-              talker.warning(
-                  'Change event received but not processed (type or record was null).');
-            }
-          },
-        )..subscribe();
+                  'Received Supabase change: ${payload.eventType} for table: $tableName');
+              talker.debug('Payload: $payload');
+
+              DatumOperationType? type;
+              Map<String, dynamic>? record;
+
+              switch (payload.eventType) {
+                case PostgresChangeEvent.insert:
+                  type = DatumOperationType.create;
+                  record = payload.newRecord;
+                  talker.debug('Insert event detected for table: $tableName');
+                  break;
+                case PostgresChangeEvent.update:
+                  type = DatumOperationType.update;
+                  record = payload.newRecord;
+                  talker.debug('Update event detected for table: $tableName');
+                  break;
+                case PostgresChangeEvent.delete:
+                  type = DatumOperationType.delete;
+                  record = payload.oldRecord;
+                  talker.debug('Delete event detected for table: $tableName');
+                  break;
+                case PostgresChangeEvent.all:
+                  talker.debug(
+                      'Received "all" event type for table: $tableName, ignoring.');
+                  break;
+              }
+
+              if (type != null && record != null) {
+                talker.debug(
+                    'Processing change of type $type for record: $record in table: $tableName');
+                final item = fromMap(_toCamelCase(record));
+                // When a delete event comes from Supabase, the oldRecord might only
+                // contain the ID. If the userId is missing, we assume the change
+                // belongs to the currently authenticated user.
+                final userId = item.userId.isNotEmpty
+                    ? item.userId
+                    : _client.auth.currentUser?.id;
+                if (userId == null) {
+                  talker.warning(
+                      'Could not determine userId for change in table: $tableName, dropping event.');
+                  return;
+                }
+                _streamController?.add(
+                  DatumChangeDetail<T>(
+                    type: type,
+                    entityId: item.id,
+                    userId: userId,
+                    timestamp: item.modifiedAt,
+                    data: item,
+                  ),
+                );
+                talker.info(
+                    'Successfully processed and streamed change for ${item.id} in table: $tableName');
+              } else {
+                talker.warning(
+                    'Change event received for table: $tableName but not processed (type or record was null).');
+              }
+            },
+          );
+
+      talker.debug("Subscribing to channel for table: $tableName");
+      _channel?.subscribe(
+        (status, error) {
+          talker.info(
+              "Channel subscription status for table '$tableName': $status");
+          if (error != null) {
+            talker.error(
+                "Channel subscription error for table '$tableName': $error");
+            _handleSubscriptionError();
+          } else if (status == RealtimeSubscribeStatus.subscribed) {
+            talker.info(
+                "Successfully subscribed to changes for table: $tableName");
+            _onSubscriptionRestored();
+          } else if (status == RealtimeSubscribeStatus.closed) {
+            talker.warning("Channel closed for table: $tableName");
+            _handleSubscriptionError();
+          } else if (status == RealtimeSubscribeStatus.timedOut) {
+            talker
+                .error("Channel subscription timed out for table: $tableName");
+            _handleSubscriptionError();
+          } else if (status == RealtimeSubscribeStatus.channelError) {
+            talker.error("Channel error occurred for table: $tableName");
+            _handleSubscriptionError();
+          }
+        },
+      );
+
+      talker.debug("Channel subscription initiated for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error("Failed to subscribe to changes for table '$tableName': $e",
+          stackTrace);
+      _channel = null;
+    }
   }
 
   @override
   Future<void> unsubscribeFromChanges() async {
+    talker.debug("Unsubscribing from changes for table: $tableName");
+
     if (_channel != null) {
+      talker.debug("Removing main channel for table: $tableName");
       await _client.removeChannel(_channel!);
       _channel = null;
+      talker
+          .info("Successfully unsubscribed from changes for table: $tableName");
+    } else {
+      talker.debug("No active channel to unsubscribe for table: $tableName");
     }
 
     // Unsubscribe from all related entity channels
-    for (final channel in _relatedChannels.values) {
-      await _client.removeChannel(channel);
+    if (_relatedChannels.isNotEmpty) {
+      talker.debug(
+          "Cleaning up ${_relatedChannels.length} related channels for table: $tableName");
+      for (final entry in _relatedChannels.entries) {
+        await _client.removeChannel(entry.value);
+        talker.debug("Removed related channel: ${entry.key}");
+      }
+      _relatedChannels.clear();
     }
-    _relatedChannels.clear();
   }
 
   @override
   Future<void> resubscribeToChanges() async {
-    talker.debug("Called Resub");
-    unsubscribeFromChanges();
-    _subscribeToChanges();
+    talker.info("Resubscribing to changes for table: $tableName");
+    talker.debug(
+        "Current channel state: ${_channel != null ? 'active' : 'null'}");
+
+    try {
+      await unsubscribeFromChanges();
+      talker.debug(
+          "Successfully unsubscribed, now subscribing again for table: $tableName");
+      _subscribeToChanges();
+      talker.info("Resubscription process completed for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error(
+          "Failed to resubscribe to changes for table '$tableName': $e",
+          stackTrace);
+    }
   }
 
   Future<void> clearSyncMetadata(String userId) async {
@@ -289,6 +452,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
         if (!isAuthenticated) {
           talker.info("User logged out, stopping sync for $tableName adapter");
           // Stop syncing when user logs out
+          _retryManager.reset();
           unsubscribeFromChanges();
         } else {
           talker.info("User logged in, resuming sync for $tableName adapter");
@@ -326,8 +490,55 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     }
   }
 
+  // Subscription management
+  void _handleSubscriptionError() {
+    _retryManager.scheduleRetry(
+        tableName, _isAuthenticated, _subscribeToChanges);
+  }
+
+  void _onSubscriptionRestored() {
+    final hadFailures = _retryManager.hasFailures;
+    _retryManager.reset();
+
+    if (hadFailures) {
+      talker.info(
+          "Subscription restored for table: $tableName after failures. Triggering full sync to catch missed updates.");
+      _triggerFullSyncAfterRestoration();
+    } else {
+      talker.debug(
+          "Subscription restored for table: $tableName (no failures detected)");
+    }
+  }
+
+  void _triggerFullSyncAfterRestoration() async {
+    try {
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null) {
+        talker.debug(
+            "No authenticated user found, skipping restoration sync for table: $tableName");
+        return;
+      }
+
+      await Datum.manager<T>().synchronize(
+        currentUser.id,
+        options: DatumSyncOptions<T>(
+          forceFullSync: true,
+          direction: SyncDirection.pullOnly,
+        ),
+      );
+
+      talker.info(
+          "Successfully completed restoration sync for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error(
+          "Failed to perform restoration sync for table: $tableName: $e",
+          stackTrace);
+    }
+  }
+
   @override
   Future<void> dispose() async {
+    _retryManager.dispose();
     await unsubscribeFromChanges();
     await _streamController?.close();
     await _stopAuthMonitoring();
@@ -337,13 +548,40 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<void> initialize() async {
-    if (_channel == null) {
-      await unsubscribeFromChanges();
-      _subscribeToChanges();
-    }
+    talker.info("Initializing SupabaseRemoteAdapter for table: $tableName");
+    talker.debug(
+        "Current channel state: ${_channel != null ? 'exists' : 'null'}");
 
-    // Start monitoring authentication state
-    startAuthMonitoring();
+    try {
+      // Start monitoring authentication state FIRST
+      talker.debug("Starting authentication monitoring for table: $tableName");
+      startAuthMonitoring();
+
+      // Wait a brief moment for auth state to stabilize
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Only attempt subscription if authenticated
+      if (_isAuthenticated && _channel == null) {
+        talker.debug(
+            "User is authenticated, ensuring clean state and subscribing for table: $tableName");
+        await unsubscribeFromChanges();
+        _subscribeToChanges();
+      } else if (!_isAuthenticated) {
+        talker.debug(
+            "User not authenticated during initialization, subscription will be handled by auth monitoring for table: $tableName");
+      } else {
+        talker.debug(
+            "Channel already exists for table: $tableName, skipping subscription during initialization");
+      }
+
+      talker.info(
+          "Successfully initialized SupabaseRemoteAdapter for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error(
+          "Failed to initialize SupabaseRemoteAdapter for table '$tableName': $e",
+          stackTrace);
+      rethrow;
+    }
 
     // The Supabase client is initialized globally, so no specific
     // initialization is needed for this adapter instance.

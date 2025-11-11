@@ -9,6 +9,7 @@
 - **Auto-sync**: Enhanced auto-sync functionality with better scheduling and management
 - **Configuration**: Added default sync options and remote metadata access
 - **Logging**: Advanced logging features with performance monitoring and sampling
+- **Cold Start Manager**: Major architectural improvements to cold start synchronization including per-user state isolation, configurable retry logic with exponential backoff, pluggable persistence interface, enhanced error handling and recovery, and comprehensive testing. Replaced static state with instance-level per-user state management to prevent race conditions and enable proper multi-user support. Added retry policies, error recovery mechanisms, and extensible persistence layer for custom storage solutions.
 - **Cascading Delete**: Major enhancements to cascading delete functionality including dry-run mode, progress callbacks, cancellation support, timeout protection, and improved error handling. Added comprehensive dry-run capabilities for safely previewing deletion operations before execution. Enhanced cascading delete integration tests with 48 total test cases covering complex relationship scenarios, mixin usage patterns, restrict violations, and edge cases.
 
 ## ♻️ Refactors

@@ -9,6 +9,8 @@ import 'package:uuid/uuid.dart';
 import '../cascade_delete.dart';
 import '../engine/error_boundary.dart';
 
+import 'cold_start_manager.dart';
+
 // Internal class representing a step in the cascade delete plan.
 class _CascadeDeleteStep {
   final DatumEntityInterface entity;
@@ -97,6 +99,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   late final QueueManager<T> _queueManager;
   late final IsolateHelper _isolateHelper;
   late final DatumConflictDetector<T> _conflictDetector;
+  late final ColdStartManager _coldStartManager;
   DatumSyncEngine<T>? _syncEngine;
 
   /// Gets the sync engine, initializing it lazily if needed.
@@ -128,6 +131,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
   /// Exposes the queue manager for central orchestration.
   QueueManager<T> get queueManager => _queueManager;
+
+  /// Exposes the cold start manager for testing purposes.
+  ColdStartManager get coldStartManager => _coldStartManager;
+
+
 
   /// Public event streams
   Stream<DatumSyncEvent<T>> get eventStream => _eventController.stream;
@@ -221,6 +229,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
     _conflictDetector = DatumConflictDetector<T>();
     _isolateHelper = const IsolateHelper();
+    _coldStartManager = ColdStartManager(config.coldStartConfig);
     _queueManager = QueueManager<T>(
       localAdapter: localAdapter,
       logger: _logger,
@@ -284,36 +293,35 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     if (!config.autoStartSync) return;
 
     _logger.debug('Auto-start sync enabled, discovering users');
-    if (config.initialUserId != null) {
-      final userId = config.initialUserId!;
+    final userIds = config.initialUserId != null
+      ? [config.initialUserId!]
+      : await localAdapter.getAllUserIds();
+
+    for (final userId in userIds) {
       if (userId.isNotEmpty) {
-        _logger.info('Auto-sync starting for initial user: $userId');
-        // Perform an initial sync, but don't block initialization if it fails.
-        unawaited(
-          synchronize(userId).catchError(
-            (_) => DatumSyncResult<T>.skipped(userId, 0),
-          ),
+        // Check if cold start sync is needed
+        final coldStartPerformed = await _coldStartManager.handleColdStartIfNeeded(
+          userId,
+          (options) => synchronize(userId, options: options),
         );
+
+        if (!coldStartPerformed) {
+          _logger.info('Auto-sync starting for user: $userId');
+          // Perform regular initial sync if cold start wasn't triggered
+          unawaited(
+            synchronize(userId).catchError(
+              (_) => DatumSyncResult<T>.skipped(userId, 0),
+            ),
+          );
+        }
+
         startAutoSync(userId);
       }
-    } else {
-      final userIds = await localAdapter.getAllUserIds();
-      _logger.info(
-        'Auto-sync starting for ${userIds.length} discovered users.',
-      );
-
-      // Sequentially perform an initial sync for all discovered users.
-      for (final userId in userIds) {
-        if (userId.isNotEmpty) {}
-      }
-      // Now, start the periodic timers for all users.
-      for (final userId in userIds) {
-        if (userId.isNotEmpty) startAutoSync(userId);
-      }
-      _logger.info(
-        'Periodic auto-sync timers started for ${userIds.length} discovered users.',
-      );
     }
+
+    _logger.info(
+      'Auto-sync setup completed for ${userIds.length} users.',
+    );
   }
 
   void _subscribeToChangeStreams() {

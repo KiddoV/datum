@@ -306,45 +306,9 @@ class PerformanceMonitor {
 }
 ```
 
-### Automated Performance Testing
+**Note:** The PerformanceMonitor system has been removed from Datum as it was unreliable for production use. Consider using external performance monitoring tools instead.
 
-```dart
-class PerformanceTest {
-  static Future<void> runSyncPerformanceTest(
-    DatumManager manager,
-    String userId,
-    int entityCount,
-  ) async {
-    // Create test data
-    final testEntities = List.generate(
-      entityCount,
-      (i) => Task(
-        id: 'perf-test-$i',
-        userId: userId,
-        title: 'Performance Test Task $i',
-        createdAt: DateTime.now(),
-        modifiedAt: DateTime.now(),
-      ),
-    );
 
-    // Measure save performance
-    final saveStopwatch = Stopwatch()..start();
-    await manager.saveMany(items: testEntities, userId: userId);
-    saveStopwatch.stop();
-
-    // Measure sync performance
-    final syncStopwatch = Stopwatch()..start();
-    await manager.synchronize(userId);
-    syncStopwatch.stop();
-
-    print('Performance Test Results:');
-    print('Entities: $entityCount');
-    print('Save Time: ${saveStopwatch.elapsed.inSeconds}s');
-    print('Sync Time: ${syncStopwatch.elapsed.inSeconds}s');
-    print('Avg per entity: ${(syncStopwatch.elapsed.inMilliseconds / entityCount).round()}ms');
-  }
-}
-```
 
 ## Best Practices
 

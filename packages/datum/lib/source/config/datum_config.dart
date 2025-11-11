@@ -10,6 +10,7 @@ import 'package:datum/source/core/resolver/conflict_resolution.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
 import 'package:datum/source/core/manager/datum_sync_request_strategy.dart';
 import 'package:datum/source/core/models/datum_sync_options.dart';
+import 'package:datum/source/core/models/cold_start_strategy.dart';
 
 import '../core/models/datum_entity.dart';
 
@@ -151,6 +152,10 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// If null, the default sync direction logic will be used.
   final SyncDirectionResolver? syncDirectionResolver;
 
+  /// Configuration for cold start synchronization behavior.
+  /// Determines how the system handles sync when the app is fully closed and reopened.
+  final ColdStartConfig coldStartConfig;
+
   const DatumConfig({
     this.autoSyncInterval = const Duration(minutes: 15),
     this.autoStartSync = false,
@@ -183,6 +188,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     this.performanceLogThreshold = const Duration(milliseconds: 100),
     this.logSamplers = const {},
     this.syncDirectionResolver,
+    this.coldStartConfig = const ColdStartConfig(),
   });
 
   /// A default configuration with sensible production values.
@@ -219,6 +225,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     Duration? performanceLogThreshold,
     Map<String, LogSampler>? logSamplers,
     SyncDirectionResolver? syncDirectionResolver,
+    ColdStartConfig? coldStartConfig,
   }) {
     return DatumConfig<E>(
       autoSyncInterval: autoSyncInterval ?? this.autoSyncInterval,
@@ -251,6 +258,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       performanceLogThreshold: performanceLogThreshold ?? this.performanceLogThreshold,
       logSamplers: logSamplers ?? this.logSamplers,
       syncDirectionResolver: syncDirectionResolver ?? this.syncDirectionResolver,
+      coldStartConfig: coldStartConfig ?? this.coldStartConfig,
     );
   }
 
@@ -289,6 +297,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       performanceLogThreshold,
       logSamplers,
       syncDirectionResolver,
+      coldStartConfig,
     ];
   }
 }

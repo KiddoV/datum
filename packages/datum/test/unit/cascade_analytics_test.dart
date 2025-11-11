@@ -1,4 +1,6 @@
+import 'package:clock/clock.dart';
 import 'package:datum/source/core/cascade_delete.dart';
+import 'package:fake_async/fake_async.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -105,38 +107,39 @@ void main() {
 
   group('CascadeAnalyticsBuilder', () {
     test('should build analytics correctly', () {
-      final builder = CascadeAnalyticsBuilder();
-      final startTime = DateTime.now();
+      fakeAsync((async) async {
+        final builder = CascadeAnalyticsBuilder();
+        final startTime = clock.now();
 
-      builder.startOperation(dryRun: true);
-      builder.recordQueryExecuted();
-      builder.recordQueryExecuted();
-      builder.recordRelationshipTraversed();
-      builder.recordEntityProcessed(String);
-      builder.recordEntityProcessed(int);
-      builder.recordEntityDeleted(String);
-      builder.recordRestrictViolation();
-      builder.recordSetNullOperation();
-      builder.recordError();
+        builder.startOperation(dryRun: true);
+        builder.recordQueryExecuted();
+        builder.recordQueryExecuted();
+        builder.recordRelationshipTraversed();
+        builder.recordEntityProcessed(String);
+        builder.recordEntityProcessed(int);
+        builder.recordEntityDeleted(String);
+        builder.recordRestrictViolation();
+        builder.recordSetNullOperation();
+        builder.recordError();
 
-      // Simulate some time passing
-      Future.delayed(const Duration(milliseconds: 10), () {
+        // Simulate some time passing
+        async.elapse(const Duration(milliseconds: 10));
         builder.completeOperation();
+
+        final analytics = builder.build();
+
+        expect(analytics.queriesExecuted, 2);
+        expect(analytics.relationshipsTraversed, 1);
+        expect(analytics.entitiesProcessedByType[String], 1);
+        expect(analytics.entitiesProcessedByType[int], 1);
+        expect(analytics.entitiesDeletedByType[String], 1);
+        expect(analytics.restrictViolations, 1);
+        expect(analytics.setNullOperations, 1);
+        expect(analytics.errorsEncountered, 1);
+        expect(analytics.wasDryRun, true);
+        expect(analytics.startedAt.isAfter(startTime.subtract(const Duration(seconds: 1))), true);
+        expect(analytics.completedAt.isAfter(analytics.startedAt), true);
       });
-
-      final analytics = builder.build();
-
-      expect(analytics.queriesExecuted, 2);
-      expect(analytics.relationshipsTraversed, 1);
-      expect(analytics.entitiesProcessedByType[String], 1);
-      expect(analytics.entitiesProcessedByType[int], 1);
-      expect(analytics.entitiesDeletedByType[String], 1);
-      expect(analytics.restrictViolations, 1);
-      expect(analytics.setNullOperations, 1);
-      expect(analytics.errorsEncountered, 1);
-      expect(analytics.wasDryRun, true);
-      expect(analytics.startedAt.isAfter(startTime.subtract(const Duration(seconds: 1))), true);
-      expect(analytics.completedAt.isAfter(analytics.startedAt), true);
     });
 
     test('should handle operations without explicit start/complete', () {
