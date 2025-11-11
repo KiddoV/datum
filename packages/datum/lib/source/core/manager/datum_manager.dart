@@ -1747,6 +1747,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
                   timeout: mergedOptions.timeout,
                   direction: mergedOptions.direction,
                   conflictResolver: mergedOptions.conflictResolver is DatumConflictResolver<T> ? mergedOptions.conflictResolver as DatumConflictResolver<T> : null,
+                  query: mergedOptions.query,
                 )
               : null;
 
@@ -1763,6 +1764,12 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
             }
           }
 
+          // If no scope is provided but options contain a query, create a scope from the query
+          DatumSyncScope? effectiveScope = scope;
+          if (effectiveScope == null && typedOptions?.query != null && typedOptions!.query != const DatumQuery()) {
+            effectiveScope = DatumSyncScope(query: typedOptions.query);
+          }
+
           // Check if sync should be skipped based on final direction and pending operations
           final finalDirection = typedOptions?.direction ?? config.defaultSyncDirection;
           if (finalDirection == SyncDirection.pushOnly && pendingCount == 0) {
@@ -1775,7 +1782,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
           final (result, events) = await _syncEngineInstance.synchronize(
             userId,
             options: typedOptions,
-            scope: scope,
+            scope: effectiveScope,
           );
           _processSyncEvents(events);
           // Persist the result of the sync operation.
@@ -2272,6 +2279,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       timeout: provided.timeout ?? defaults.timeout,
       direction: provided.direction ?? defaults.direction,
       conflictResolver: provided.conflictResolver ?? defaults.conflictResolver,
+      query: provided.query,
     );
   }
 

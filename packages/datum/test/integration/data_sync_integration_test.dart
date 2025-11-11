@@ -809,6 +809,222 @@ void main() {
         },
       );
     });
+
+    test('passes query from DatumSyncOptions to manager synchronize', () async {
+      // 1. ARRANGE
+      const customQuery = DatumQuery(filters: [Filter('status', FilterOperator.equals, 'active')]);
+
+      // Test that the manager's synchronize method accepts options with query
+      const optionsWithQuery = DatumSyncOptions<TestEntity>(
+        query: customQuery,
+      );
+
+      // Stub the remote adapter to accept the query parameter
+      when(
+        () => remoteAdapter.readAll(
+          userId: 'user1',
+          scope: any(named: 'scope'),
+        ),
+      ).thenAnswer((invocation) async {
+        // Verify that the scope contains our custom query
+        final scope = invocation.namedArguments[#scope] as DatumSyncScope?;
+        expect(scope?.query, customQuery);
+        return [];
+      });
+
+      // 2. ACT
+      // Call synchronize with options containing the query
+      await manager.synchronize(
+        'user1',
+        options: optionsWithQuery,
+      );
+
+      // 3. ASSERT
+      // The verification happens in the stub above - if the query doesn't match, the test will fail
+      verify(
+        () => remoteAdapter.readAll(
+          userId: 'user1',
+          scope: any(named: 'scope'),
+        ),
+      ).called(1);
+    });
+
+    test('DatumSyncOptions with query can be created and used', () async {
+      // 1. ARRANGE
+      const customQuery = DatumQuery(filters: [Filter('status', FilterOperator.equals, 'active')]);
+
+      // Test that DatumSyncOptions can be created with a query
+      const optionsWithQuery = DatumSyncOptions<TestEntity>(
+        query: customQuery,
+        direction: SyncDirection.pullOnly, // Use pullOnly to avoid push operations
+      );
+
+      // Stub the remote adapter to return some data that matches the query
+      final remoteItem = TestEntity.create('remote-e1', 'user1', 'Remote Item');
+      // Mock the remote adapter to return data when called with any scope
+      when(
+        () => remoteAdapter.readAll(
+          userId: any(named: 'userId'),
+          scope: any(named: 'scope'),
+        ),
+      ).thenAnswer((invocation) async {
+        // For this test, just return the item regardless of scope
+        // In a real implementation, the adapter would apply the query from scope
+        return [remoteItem];
+      });
+
+      when(() => localAdapter.create(any())).thenAnswer((_) async {});
+
+      // 2. ACT
+      // Call synchronize with options containing the query
+      final result = await manager.synchronize(
+        'user1',
+        options: optionsWithQuery,
+      );
+
+      // 3. ASSERT
+      // Verify that the sync completed and the query was accepted
+      // Note: syncedCount is 0 for pull operations as per design (only push operations count)
+      expect(result.syncedCount, 0);
+      verify(
+        () => remoteAdapter.readAll(
+          userId: 'user1',
+          scope: any(named: 'scope'),
+        ),
+      ).called(1);
+      // Verify that localAdapter.create was called to store the remote item
+      verify(() => localAdapter.create(any())).called(1);
+    });
+
+    test('partial sync using query filters entities during pull synchronization', () async {
+      // 1. ARRANGE
+      // Create a query that only pulls active entities
+      const activeOnlyQuery = DatumQuery(filters: [Filter('name', FilterOperator.equals, 'Active Entity')]);
+
+      const optionsWithQuery = DatumSyncOptions<TestEntity>(
+        query: activeOnlyQuery,
+        direction: SyncDirection.pullOnly, // Only pull to test filtering
+      );
+
+      // Stub remote adapter to return entities that should be filtered
+      final remoteEntities = [
+        TestEntity.create('remote-active', 'user1', 'Active Entity'),
+        TestEntity.create('remote-inactive', 'user1', 'Inactive Entity'),
+        TestEntity.create('remote-active-2', 'user1', 'Active Entity'),
+      ];
+
+      // Mock the remote adapter to simulate filtering based on query
+      // In a real implementation, the adapter would apply the query from scope
+      when(
+        () => remoteAdapter.readAll(
+          userId: 'user1',
+          scope: any(named: 'scope'),
+        ),
+      ).thenAnswer((invocation) async {
+        final scope = invocation.namedArguments[#scope] as DatumSyncScope?;
+        if (scope?.query != null) {
+          // Simulate filtering: only return entities with name "Active Entity"
+          return remoteEntities.where((e) => e.name == 'Active Entity').toList();
+        }
+        return remoteEntities; // Return all if no query
+      });
+
+      // Stub local adapter to create pulled entities
+      final createdEntities = <TestEntity>[];
+      when(() => localAdapter.create(any())).thenAnswer((invocation) async {
+        createdEntities.add(invocation.positionalArguments.first as TestEntity);
+      });
+
+      // 2. ACT
+      // Call synchronize with query filter for pull operation
+      final result = await manager.synchronize(
+        'user1',
+        options: optionsWithQuery,
+      );
+
+      // 3. ASSERT
+      // Verify that only entities matching the query were pulled and created locally
+      expect(result.syncedCount, 0); // Pull operations don't increment syncedCount
+      expect(createdEntities.length, 2); // Only active entities should be created
+
+      // Check that only active entities were created
+      final createdNames = createdEntities.map((e) => e.name).toSet();
+      expect(createdNames, contains('Active Entity'));
+      expect(createdNames, isNot(contains('Inactive Entity')));
+
+      // Verify the scope was passed with the query
+      verify(
+        () => remoteAdapter.readAll(
+          userId: 'user1',
+          scope: any(named: 'scope'),
+        ),
+      ).called(1);
+    });
+
+    test('partial sync with complex query filters during pull operation', () async {
+      // 1. ARRANGE
+      // Create a query that filters entities with names containing "Important"
+      const importantQuery = DatumQuery(filters: [
+        Filter('name', FilterOperator.contains, 'Important')
+      ]);
+
+      const optionsWithQuery = DatumSyncOptions<TestEntity>(
+        query: importantQuery,
+        direction: SyncDirection.pullOnly,
+      );
+
+      // Stub remote adapter to return various entities
+      final remoteEntities = [
+        TestEntity.create('remote-1', 'user1', 'Important Task 1'),
+        TestEntity.create('remote-2', 'user1', 'Regular Task'),
+        TestEntity.create('remote-3', 'user1', 'Important Task 2'),
+        TestEntity.create('remote-4', 'user1', 'Another Regular Task'),
+      ];
+
+      // Mock the remote adapter to simulate filtering
+      when(
+        () => remoteAdapter.readAll(
+          userId: 'user1',
+          scope: any(named: 'scope'),
+        ),
+      ).thenAnswer((invocation) async {
+        final scope = invocation.namedArguments[#scope] as DatumSyncScope?;
+        if (scope?.query != null) {
+          // Simulate filtering: only return entities with "Important" in name
+          return remoteEntities.where((e) => e.name.contains('Important')).toList();
+        }
+        return remoteEntities;
+      });
+
+      // Stub local adapter to create pulled entities
+      final createdEntities = <TestEntity>[];
+      when(() => localAdapter.create(any())).thenAnswer((invocation) async {
+        createdEntities.add(invocation.positionalArguments.first as TestEntity);
+      });
+
+      // 2. ACT
+      final result = await manager.synchronize(
+        'user1',
+        options: optionsWithQuery,
+      );
+
+      // 3. ASSERT
+      // Verify that only entities matching the complex query were pulled
+      expect(result.syncedCount, 0); // Pull operations don't increment syncedCount
+      expect(createdEntities.length, 2); // Only important entities should be created
+
+      // Check that only important entities were created
+      for (final entity in createdEntities) {
+        expect(entity.name, contains('Important'));
+      }
+
+      // Verify specific entities were created
+      final createdIds = createdEntities.map((e) => e.id).toSet();
+      expect(createdIds, contains('remote-1'));
+      expect(createdIds, contains('remote-3'));
+      expect(createdIds, isNot(contains('remote-2')));
+      expect(createdIds, isNot(contains('remote-4')));
+    });
   });
 }
 

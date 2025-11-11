@@ -118,6 +118,30 @@ void main() {
     registerFallbackValue(FakeRemoteAdapterPost());
     registerFallbackValue(FakeLocalAdapterPost());
 
+    // Register fallback for DatumSyncMetadata
+    registerFallbackValue(
+      const DatumSyncMetadata(
+        userId: 'fallback',
+        lastSyncTime: null,
+        dataHash: null,
+        deviceId: null,
+        devices: null,
+        entityCounts: {},
+      ),
+    );
+
+    // Register fallback for DatumSyncResult
+    registerFallbackValue(
+      const DatumSyncResult<TestEntity>(
+        userId: 'fallback',
+        syncedCount: 0,
+        failedCount: 0,
+        conflictsResolved: 0,
+        pendingOperations: [],
+        duration: Duration.zero,
+      ),
+    );
+
     // Register fallback values for mixin entities
     registerFallbackValue(
       _NonRelationalMixinEntity(
@@ -210,13 +234,20 @@ void main() {
       when(() => localAdapter.watchRelated<Post>(any(), any(), any())).thenAnswer((_) => Stream.value(<Post>[]));
       when(() => localAdapter.query(any(), userId: any(named: 'userId'))).thenAnswer((_) async => []);
       when(() => remoteAdapter.query(any(), userId: any(named: 'userId'))).thenAnswer((_) async => []);
+      when(() => remoteAdapter.readAll(userId: any(named: 'userId'), scope: any(named: 'scope'))).thenAnswer((_) async => []);
       when(() => localAdapter.getPendingOperations(any())).thenAnswer((_) async => []);
       when(() => localAdapter.getStorageSize(userId: any(named: 'userId'))).thenAnswer((_) async => 0);
       when(() => localAdapter.watchStorageSize(userId: any(named: 'userId'))).thenAnswer((_) => Stream.value(0));
+      when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
       when(() => localAdapter.getLastSyncResult(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.saveLastSyncResult(any(), any())).thenAnswer((_) async {});
+      when(() => localAdapter.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
       when(() => localAdapter.checkHealth()).thenAnswer((_) async => AdapterHealthStatus.healthy);
       // Ensure remote adapters also return a non-null health status.
       when(() => remoteAdapter.checkHealth()).thenAnswer((_) async => AdapterHealthStatus.healthy);
+      when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => localAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
 
       // Defensive stubs for remote fetchRelated to avoid null Future returns.
       when(() => remoteAdapter.fetchRelated<Post>(any(), any(), any())).thenAnswer((_) async => <Post>[]);
@@ -527,6 +558,50 @@ void main() {
         throwsA(isA<StateError>()),
       );
     });
+
+    test('Datum.manager.synchronize supports partial sync with query', () async {
+      // Arrange: Create sync options with a query for partial sync
+      const activeOnlyQuery = DatumQuery(filters: [Filter('status', FilterOperator.equals, 'active')]);
+      const optionsWithQuery = DatumSyncOptions<TestEntity>(
+        query: activeOnlyQuery,
+        direction: SyncDirection.pullOnly, // Only pull to test filtering
+      );
+
+      // Act: Call the manager's synchronize method with query options
+      final result = await Datum.manager<TestEntity>().synchronize(
+        'user1',
+        options: optionsWithQuery,
+      );
+
+      // Assert: Verify the result
+      expect(result, isA<DatumSyncResult<TestEntity>>());
+      expect(result.syncedCount, 0); // Pull operations don't increment syncedCount
+    });
+
+    test('Datum.manager.synchronize supports partial sync with complex query', () async {
+      // Arrange: Create sync options with a complex query for partial sync
+      const complexQuery = DatumQuery(filters: [
+        Filter('status', FilterOperator.equals, 'active'),
+        Filter('priority', FilterOperator.greaterThan, 5),
+        Filter('createdAt', FilterOperator.greaterThan, '2023-01-01T00:00:00.000Z'),
+      ]);
+      const optionsWithComplexQuery = DatumSyncOptions<TestEntity>(
+        query: complexQuery,
+        direction: SyncDirection.pullOnly, // Only pull to test filtering
+      );
+
+      // Act: Call the manager's synchronize method with complex query options
+      final result = await Datum.manager<TestEntity>().synchronize(
+        'user1',
+        options: optionsWithComplexQuery,
+      );
+
+      // Assert: Verify the result
+      expect(result, isA<DatumSyncResult<TestEntity>>());
+      expect(result.syncedCount, 0); // Pull operations don't increment syncedCount
+    });
+
+
   });
 
   group('Datum.isInitialized', () {
@@ -692,6 +767,114 @@ void main() {
       expect(result.isSuccess(), isTrue);
       // The test exercises the _logInitializationHeader method indirectly
       // by enabling logging during initialization
+    });
+
+    test('initialization with defaultSyncOptions containing DatumQuery works correctly', () async {
+      // Arrange: Create a config with default sync options that include a query for partial syncing
+      const partialSyncQuery = DatumQuery(filters: [
+        Filter('completed', FilterOperator.equals, false),
+      ]);
+      const defaultSyncOptions = DatumSyncOptions<TestEntity>(
+        query: partialSyncQuery,
+        direction: SyncDirection.pullOnly,
+      );
+      const configWithDefaultSyncOptions = DatumConfig<TestEntity>(
+        enableLogging: false,
+        defaultSyncOptions: defaultSyncOptions,
+      );
+
+      // Act: Initialize Datum with the config containing default sync options
+      final result = await Datum.initialize(
+        config: configWithDefaultSyncOptions,
+        connectivityChecker: mockConnectivity,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+
+      // Assert: Initialization should succeed
+      expect(result.isSuccess(), isTrue);
+      expect(Datum.isInitialized, isTrue);
+
+      // Verify that the default sync options are properly set
+      // We can't directly access the manager's config, but we can verify initialization worked
+      expect(Datum.instance, isNotNull);
+    });
+
+    test('initialization with complex defaultSyncOptions for partial syncing works', () async {
+      // Arrange: Create complex default sync options with multiple filters
+      const complexQuery = DatumQuery(
+        filters: [
+          Filter('completed', FilterOperator.equals, false),
+          Filter('value', FilterOperator.greaterThan, 5),
+        ],
+        logicalOperator: LogicalOperator.and,
+      );
+      final complexDefaultSyncOptions = DatumSyncOptions<TestEntity>(
+        query: complexQuery,
+        direction: SyncDirection.pullOnly,
+        conflictResolver: LastWriteWinsResolver(),
+      );
+      final configWithComplexDefaults = DatumConfig<TestEntity>(
+        enableLogging: false,
+        defaultSyncOptions: complexDefaultSyncOptions,
+        autoSyncInterval: const Duration(minutes: 30),
+        syncTimeout: const Duration(minutes: 3),
+      );
+
+      // Act: Initialize with complex configuration
+      final result = await Datum.initialize(
+        config: configWithComplexDefaults,
+        connectivityChecker: mockConnectivity,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+
+      // Assert: Complex initialization should succeed
+      expect(result.isSuccess(), isTrue);
+      expect(Datum.isInitialized, isTrue);
+
+      // Verify the instance is properly configured
+      expect(Datum.instance, isNotNull);
+    });
+
+    test('initialization with defaultSyncOptions for bidirectional sync works', () async {
+      // Arrange: Default sync options for bidirectional sync with query
+      const bidirectionalQuery = DatumQuery(filters: [
+        Filter('value', FilterOperator.lessThanOrEqual, 10),
+      ]);
+      const bidirectionalSyncOptions = DatumSyncOptions<TestEntity>(
+        query: bidirectionalQuery,
+        direction: SyncDirection.pushThenPull, // Full bidirectional sync
+      );
+      const configWithBidirectionalSync = DatumConfig<TestEntity>(
+        enableLogging: false,
+        defaultSyncOptions: bidirectionalSyncOptions,
+        defaultSyncDirection: SyncDirection.pushThenPull,
+      );
+
+      // Act: Initialize with bidirectional sync configuration
+      final result = await Datum.initialize(
+        config: configWithBidirectionalSync,
+        connectivityChecker: mockConnectivity,
+        registrations: [
+          DatumRegistration<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+          ),
+        ],
+      );
+
+      // Assert: Bidirectional sync initialization should succeed
+      expect(result.isSuccess(), isTrue);
+      expect(Datum.isInitialized, isTrue);
     });
   });
 

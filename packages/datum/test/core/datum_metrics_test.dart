@@ -90,7 +90,7 @@ void runMetricsTest(
     when(() => localAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
     when(() => localAdapter.getAllUserIds()).thenAnswer((_) => Future.value([]));
     when(() => remoteAdapter.getSyncMetadata(any())).thenAnswer((_) => Future.value(null as DatumSyncMetadata?));
-    when(() => mockConnectivityChecker.isConnected).thenAnswer((_) async => true);
+    when(() => mockConnectivityChecker.isConnected).thenAnswer((_) async => Future.value(true));
 
     const config = DatumConfig(schemaVersion: 0, autoStartSync: false); // Disable auto-sync for predictable tests
     final datumEither = await Datum.initialize(

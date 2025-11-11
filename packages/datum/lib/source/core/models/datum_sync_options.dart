@@ -1,4 +1,5 @@
 import 'package:datum/source/config/datum_config.dart';
+import 'package:datum/source/core/query/datum_query.dart';
 import 'package:datum/source/core/resolver/conflict_resolution.dart';
 import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:meta/meta.dart';
@@ -27,6 +28,10 @@ class DatumSyncOptions<T extends DatumEntityInterface> {
   /// A conflict resolver to override the default for this sync only.
   final DatumConflictResolver<T>? conflictResolver;
 
+  /// A query used to filter the data fetched from the remote source.
+  /// The interpretation of this query is up to the `RemoteAdapter` implementation.
+  final DatumQuery query;
+
   /// Creates sync options to customize a manual sync cycle.
   const DatumSyncOptions({
     this.includeDeletes = true,
@@ -36,6 +41,7 @@ class DatumSyncOptions<T extends DatumEntityInterface> {
     this.timeout,
     this.direction,
     this.conflictResolver,
+    this.query = const DatumQuery(),
   });
 
   /// Creates a new instance with the specified values, allowing for a change
@@ -48,6 +54,7 @@ class DatumSyncOptions<T extends DatumEntityInterface> {
     Duration? timeout,
     SyncDirection? direction,
     DatumConflictResolver<T>? conflictResolver,
+    DatumQuery? query,
   }) {
     return DatumSyncOptions<T>(
       includeDeletes: includeDeletes ?? this.includeDeletes,
@@ -57,6 +64,7 @@ class DatumSyncOptions<T extends DatumEntityInterface> {
       timeout: timeout ?? this.timeout,
       direction: direction ?? this.direction,
       conflictResolver: conflictResolver ?? this.conflictResolver,
+      query: query ?? this.query,
     );
   }
 
@@ -71,7 +79,8 @@ class DatumSyncOptions<T extends DatumEntityInterface> {
         other.overrideBatchSize == overrideBatchSize &&
         other.timeout == timeout &&
         other.direction == direction &&
-        other.conflictResolver == conflictResolver;
+        other.conflictResolver == conflictResolver &&
+        other.query == query;
   }
 
   @override
@@ -84,6 +93,7 @@ class DatumSyncOptions<T extends DatumEntityInterface> {
       timeout,
       direction,
       conflictResolver,
+      query,
     );
   }
 }

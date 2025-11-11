@@ -81,6 +81,9 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       // Has local changes - use default behavior (pushThenPull)
       return null; // null means use default direction
     },
+    defaultSyncOptions: DatumSyncOptions(
+      query: const DatumQuery(), // No filters - sync all data
+    ),
   );
   final datum = await Datum.initialize(
     config: config,

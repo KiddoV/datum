@@ -278,7 +278,7 @@ void main() {
       });
 
       test('copyWith preserves syncDirectionResolver when null is passed (standard copyWith behavior)', () {
-        final originalResolver = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
+        SyncDirection originalResolver(int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
         final originalConfig = DatumConfig<TestEntity>(
           syncDirectionResolver: originalResolver,
         );
@@ -296,15 +296,15 @@ void main() {
       });
 
       test('equality considers syncDirectionResolver', () {
-        final resolver1 = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
-        final resolver2 = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
-        final resolver3 = (int pendingCount, SyncDirection defaultDirection) => SyncDirection.pushOnly;
+        SyncDirection resolver1(int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
+        SyncDirection resolver2(int pendingCount, SyncDirection defaultDirection) => SyncDirection.pullOnly;
+        SyncDirection resolver3(int pendingCount, SyncDirection defaultDirection) => SyncDirection.pushOnly;
 
         final config1 = DatumConfig<TestEntity>(syncDirectionResolver: resolver1);
         final config2 = DatumConfig<TestEntity>(syncDirectionResolver: resolver2);
         final config3 = DatumConfig<TestEntity>(syncDirectionResolver: resolver3);
-        final config4 = DatumConfig<TestEntity>(syncDirectionResolver: null);
-        final config5 = DatumConfig<TestEntity>(syncDirectionResolver: null);
+        const config4 = DatumConfig<TestEntity>(syncDirectionResolver: null);
+        const config5 = DatumConfig<TestEntity>(syncDirectionResolver: null);
 
         // Note: Function equality in Dart compares by reference, not by behavior
         // So configs with different function instances are not equal

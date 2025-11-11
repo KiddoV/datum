@@ -296,17 +296,14 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
     super.initState();
     _initializeLifecycleListener();
     _initializeSyncResultListener();
-    _initializeSyncStatusListener();
+
     _initializeAuthListener();
   }
 
   void _initializeLifecycleListener() {
     _appLifecycleListener = AppLifecycleListener(
-      onStateChange: (value) {
+      onStateChange: (value) async {
         talker.debug("State $value");
-        if (Datum.isInitialized) {
-          // Add your initialization logic here if needed
-        }
       },
     );
   }
@@ -319,14 +316,6 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
           _handleSyncResult(next);
         }
       },
-    );
-  }
-
-  void _initializeSyncStatusListener() {
-    // We'll set up the listener when we have a user
-    _syncStatusSubscription = ref.listenManual(
-      syncStatusProvider(''), // Placeholder, will be updated when user logs in
-      (previous, next) {},
     );
   }
 

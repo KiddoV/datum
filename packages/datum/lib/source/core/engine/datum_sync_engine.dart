@@ -444,7 +444,13 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
     DatumSyncScope? scope,
     List<DatumSyncEvent<T>> generatedEvents,
   ) async {
-    logger.info('Pulling remote changes for user $userId...');
+    if (scope != null) {
+      logger.info('Performing partial sync for user $userId with query: ${scope.query}');
+    } else if (options?.query != null && options!.query.filters.isNotEmpty) {
+      logger.info('Performing filtered sync for user $userId with query: ${options.query}');
+    } else {
+      logger.info('Pulling remote changes for user $userId...');
+    }
 
     int cumulativeBytesPulled = 0;
     int bytesPulled = 0;
