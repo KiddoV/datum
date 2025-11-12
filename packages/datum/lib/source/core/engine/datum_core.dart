@@ -1151,6 +1151,101 @@ class Datum {
     return mostRecentSync;
   }
 
+  /// Gets unified sync metadata across all entities for the specified user.
+  ///
+  /// This method aggregates sync metadata from all registered entity managers into a single,
+  /// comprehensive view. This provides a complete picture of the user's sync state across
+  /// all entity types, addressing the issue of fragmented per-entity metadata.
+  ///
+  /// The returned metadata includes:
+  /// - Global sync status and timestamps
+  /// - Entity-specific counts, hashes, and pending changes
+  /// - Device information and conflict tracking
+  ///
+  /// Example:
+  /// ```dart
+  /// final metadata = await Datum.instance.getUnifiedSyncMetadata('user123');
+  /// if (metadata != null) {
+  ///   print('Last sync: ${metadata.lastSyncTime}');
+  ///   print('Total pending changes: ${metadata.totalPendingChanges}');
+  ///   print('Entity counts: ${metadata.entityCounts}');
+  /// }
+  /// ```
+  Future<DatumSyncMetadata?> getUnifiedSyncMetadata(String userId) async {
+    if (_managers.isEmpty) return null;
+
+    // Get metadata from all managers
+    final allMetadata = <DatumSyncMetadata>[];
+    for (final manager in _managers.allManagers) {
+      try {
+        final metadata = await manager.localAdapter.getSyncMetadata(userId);
+        if (metadata != null) {
+          allMetadata.add(metadata);
+        }
+      } catch (e) {
+        logger.debug('Failed to get sync metadata from ${manager.runtimeType}: $e');
+      }
+    }
+
+    if (allMetadata.isEmpty) return null;
+
+    // Find the most recent metadata as the base
+    allMetadata.sort((a, b) {
+      final aTime = a.lastSyncTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+      final bTime = b.lastSyncTime ?? DateTime.fromMillisecondsSinceEpoch(0);
+      return bTime.compareTo(aTime);
+    });
+
+    final baseMetadata = allMetadata.first;
+
+    // Aggregate entity counts from all metadata
+    final aggregatedEntityCounts = <String, DatumEntitySyncDetails>{};
+    for (final metadata in allMetadata) {
+      if (metadata.entityCounts != null) {
+        aggregatedEntityCounts.addAll(metadata.entityCounts!);
+      }
+    }
+
+    // Aggregate device information
+    final allDevices = <String, DateTime>{};
+    for (final metadata in allMetadata) {
+      if (metadata.devices != null) {
+        allDevices.addAll(metadata.devices!);
+      }
+    }
+
+    // Determine overall sync status
+    final hasAnyFailed = allMetadata.any((m) => m.syncStatus == SyncStatus.failed);
+    final hasAnySyncing = allMetadata.any((m) => m.syncStatus == SyncStatus.syncing);
+    final hasAnyConflicts = allMetadata.any((m) => m.hasConflicts);
+    final hasAnyPending = allMetadata.any((m) => m.totalPendingChanges > 0);
+
+    SyncStatus overallStatus;
+    if (hasAnyFailed) {
+      overallStatus = SyncStatus.failed;
+    } else if (hasAnySyncing) {
+      overallStatus = SyncStatus.syncing;
+    } else if (hasAnyConflicts) {
+      overallStatus = SyncStatus.conflict;
+    } else if (hasAnyPending) {
+      overallStatus = SyncStatus.pending;
+    } else if (baseMetadata.isNeverSynced) {
+      overallStatus = SyncStatus.neverSynced;
+    } else {
+      overallStatus = SyncStatus.synced;
+    }
+
+    // Aggregate conflict count
+    final totalConflicts = allMetadata.fold<int>(0, (sum, m) => sum + m.conflictCount);
+
+    return baseMetadata.copyWith(
+      entityCounts: aggregatedEntityCounts.isNotEmpty ? aggregatedEntityCounts : null,
+      devices: allDevices.isNotEmpty ? allDevices : null,
+      syncStatus: overallStatus,
+      conflictCount: totalConflicts,
+    );
+  }
+
 
 
 
