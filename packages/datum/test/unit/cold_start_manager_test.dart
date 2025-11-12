@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:clock/clock.dart';
 import 'package:datum/source/core/manager/cold_start_manager.dart';
 import 'package:datum/source/core/models/cold_start_strategy.dart';
 import 'package:datum/source/core/models/datum_sync_result.dart';
@@ -113,7 +112,10 @@ void main() {
 
     test('should create defensive copy when saving', () async {
       const userId = 'user-123';
-      final originalState = {'mutable': [1, 2, 3], 'stringKey': 'original'};
+      final originalState = {
+        'mutable': [1, 2, 3],
+        'stringKey': 'original'
+      };
 
       await persistence.saveState(userId, originalState);
 
