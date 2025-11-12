@@ -65,10 +65,13 @@ class _SplashViewState extends ConsumerState<SplashView> {
         ref.listen(
           futureInitializerPod,
           (previous, next) {
+            talker.debug("Future initializer state changed: $next");
             if (next is AsyncData && next.value != null) {
               talker.info(
-                  "Initialization takes ${stopwatch.elapsedMilliseconds}");
+                  "Initialization takes ${stopwatch.elapsedMilliseconds} - calling onInitialized");
               widget.onInitialized(next.requireValue);
+            } else if (next is AsyncError) {
+              talker.error("Future initializer error: ${next.error}");
             }
           },
         );
@@ -77,7 +80,12 @@ class _SplashViewState extends ConsumerState<SplashView> {
             return const SizedBox.shrink();
           },
           loadingWidget: () => child!,
-          errorWidget: (error, stackTrace) => child!,
+          errorWidget: (error, stackTrace) {
+            talker.error("Initialization error: $error", stackTrace);
+            // Still proceed with initialization even if there are errors
+            widget.onInitialized(ProviderContainer());
+            return const SizedBox.shrink();
+          },
         );
       },
       child: const LoaderChild(),

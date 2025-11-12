@@ -30,14 +30,20 @@ Future<void> bootstrap(
   FutureOr<Widget> Function() builder, {
   required ProviderContainer parent,
 }) async {
+  talker.info("Bootstrap called - replacing app widget tree");
   FlutterError.onError = (details) {
     log(details.exceptionAsString(), stackTrace: details.stack);
   };
 
+  final child = await builder();
+  talker.info("Builder completed, calling runApp with new widget tree");
+
   runApp(
     UncontrolledProviderScope(
       container: parent,
-      child: await builder(),
+      child: child,
     ),
   );
+
+  talker.info("runApp completed - app should now show main interface");
 }

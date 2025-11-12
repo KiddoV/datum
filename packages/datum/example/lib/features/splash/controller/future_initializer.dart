@@ -7,11 +7,11 @@ import 'package:example/custom_datum_logger.dart';
 import 'package:example/data/task/adapters/hive_isolate_adapter.dart';
 import 'package:example/data/task/entity/task.dart';
 import 'package:example/data/user/adapters/supabase_adapter.dart';
+import 'package:example/data/paint/entity/paint_stroke.dart';
 import 'package:example/features/simple_datum/controller/simple_datum_provider.dart';
 import 'package:example/my_datum_observer.dart';
 import 'package:example/shared/riverpod_ext/riverpod_observer/riverpod_obs.dart';
 import 'package:example/shared/riverpod_ext/riverpod_observer/talker_riverpod_settings.dart';
-import 'package:example/sync/isolate_stratergy.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
 import 'package:example/i18n/strings.g.dart';
@@ -23,8 +23,6 @@ import 'package:example/core/local_storage/app_storage_pod.dart';
 import 'package:example/features/splash/controller/box_encryption_key_pod.dart';
 import 'package:example/init.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-
 
 final futureInitializerPod = FutureProvider<ProviderContainer>((
   ref,
@@ -74,25 +72,20 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       minutes: 30,
     ),
     syncRequestStrategy: SequentialRequestStrategy(),
-    syncExecutionStrategy: IsolateStrategy(
-      DatumSyncExecutionStrategy.parallel(),
-    ),
+    syncExecutionStrategy: DatumSyncExecutionStrategy.sequential(),
     schemaVersion: 0,
     migrations: [],
-    enablePerformanceLogging: true,
-    logLevel: LogLevel.trace,
+    enablePerformanceLogging: false,
+    logLevel: LogLevel.info,
     onMigrationError: (error, stackTrace) async {
       talker.error(error, stackTrace);
     },
-    // Configure cold start sync for the example app
+    // Cold start sync now runs in background - won't block app initialization
     coldStartConfig: const ColdStartConfig(
-      strategy: ColdStartStrategy.adaptive,
-      syncThreshold:
-          Duration(hours: 2), // Sync if more than 2 hours since last cold start
-      maxDuration:
-          Duration(seconds: 30), // Allow up to 30 seconds for cold start sync
-      initialDelay:
-          Duration(milliseconds: 500), // Wait 500ms after app start before sync
+      strategy: ColdStartStrategy.adaptive, // Runs in background
+      syncThreshold: Duration(hours: 2), // Sync if > 2 hours since last sync
+      maxDuration: Duration(seconds: 10), // 10 second background sync
+      initialDelay: Duration(milliseconds: 500), // Small delay after app start
     ),
   );
   final datum = await Datum.initialize(
@@ -112,6 +105,17 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
         remoteAdapter: SupabaseRemoteAdapter<Task>(
           fromMap: Task.fromMap,
           tableName: "tasks",
+        ),
+      ),
+      DatumRegistration<PaintStroke>(
+        localAdapter: IsolatedHiveLocalAdapter<PaintStroke>(
+          entityBoxName: "PaintStroke",
+          fromMap: (map) => PaintStroke.fromMap(map),
+          schemaVersion: 0,
+        ),
+        remoteAdapter: SupabaseRemoteAdapter<PaintStroke>(
+          fromMap: PaintStroke.fromMap,
+          tableName: "paint_strokes",
         ),
       ),
     ],

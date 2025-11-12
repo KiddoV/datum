@@ -59,6 +59,7 @@ class ColdStartManager {
         _retryBackoffMultiplier = retryBackoffMultiplier;
 
   /// Checks if this is a cold start and performs appropriate sync if needed.
+  /// Now runs sync in background to prevent blocking app initialization.
   Future<bool> handleColdStartIfNeeded(
     String userId,
     Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction,
@@ -86,20 +87,33 @@ class ColdStartManager {
       return false;
     }
 
-    _logger.info('Performing cold start sync for user: $userId using strategy: ${_config.strategy}');
+    _logger.info('Starting background cold start sync for user: $userId using strategy: ${_config.strategy}');
 
-    try {
-      await _performColdStartSync(userId, syncFunction);
-      _isColdStart[userId] = false;
-      _lastColdStartTime[userId] = DateTime.now();
-      _logger.info('Cold start sync completed successfully for user: $userId');
-      return true;
-    } catch (e, stack) {
-      _logger.error('Cold start sync failed for user: $userId', stack);
-      // On cold start sync failure, don't mark as completed
-      // Allow retry on next app launch
-      rethrow;
-    }
+    // Start cold start sync in background to prevent blocking app initialization
+    _startBackgroundColdStartSync(userId, syncFunction);
+
+    // Return immediately without waiting for sync to complete
+    return true;
+  }
+
+  /// Starts cold start sync in background without blocking the caller
+  void _startBackgroundColdStartSync(
+    String userId,
+    Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction,
+  ) {
+    // Use Future.microtask to run in background after current task completes
+    Future.microtask(() async {
+      try {
+        await _performColdStartSync(userId, syncFunction);
+        _isColdStart[userId] = false;
+        _lastColdStartTime[userId] = DateTime.now();
+        _logger.info('Background cold start sync completed successfully for user: $userId');
+      } catch (e, stack) {
+        _logger.error('Background cold start sync failed for user: $userId', stack);
+        // On cold start sync failure, don't mark as completed
+        // Allow retry on next app launch
+      }
+    });
   }
 
   /// Determines if cold start sync should be performed based on strategy and conditions.
@@ -164,12 +178,14 @@ class ColdStartManager {
     String userId,
     Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction,
   ) async {
-    _logger.debug('Starting cold start sync execution for user: $userId');
+    _logger.info('🔄 Starting cold start sync execution for user: $userId');
+    _logger.debug('Cold start config: strategy=${_config.strategy}, threshold=${_config.syncThreshold}, maxDuration=${_config.maxDuration}, initialDelay=${_config.initialDelay}');
 
     // Add initial delay to allow UI to load
     if (_config.initialDelay > Duration.zero) {
-      _logger.debug('Applying initial delay of ${_config.initialDelay} before cold start sync');
+      _logger.info('⏳ Applying initial delay of ${_config.initialDelay} before cold start sync');
       await Future.delayed(_config.initialDelay);
+      _logger.debug('✅ Initial delay completed');
     }
 
     final forceFullSync = _shouldForceFullSync();
@@ -178,16 +194,24 @@ class ColdStartManager {
       timeout: _config.maxDuration,
     );
 
-    _logger.info('Executing cold start sync with forceFullSync: $forceFullSync, timeout: ${_config.maxDuration}');
+    _logger.info('🚀 Executing cold start sync with forceFullSync: $forceFullSync, timeout: ${_config.maxDuration}');
+    _logger.debug('Sync options created: $options');
 
-    // Implement retry logic with exponential backoff
-    await _executeWithRetry(
-      () => syncFunction(options),
-      userId: userId,
-      operationName: 'cold start sync',
-    );
+    try {
+      // Implement retry logic with exponential backoff
+      _logger.debug('🔄 Calling sync function with retry logic');
+      final result = await _executeWithRetry(
+        () => syncFunction(options),
+        userId: userId,
+        operationName: 'cold start sync',
+      );
+      _logger.info('✅ Cold start sync execution completed successfully: $result');
+    } catch (e, stack) {
+      _logger.error('❌ Cold start sync execution failed: $e', stack);
+      rethrow;
+    }
 
-    _logger.debug('Cold start sync execution completed');
+    _logger.debug('🏁 Cold start sync execution completed');
   }
 
   /// Executes an operation with retry logic and exponential backoff.

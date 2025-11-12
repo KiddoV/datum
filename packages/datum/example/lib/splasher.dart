@@ -15,6 +15,7 @@ class Splasher extends StatelessWidget {
       home: SplashView(
         removeSpalshLoader: false,
         onInitialized: (container) {
+          talker.info("onInitialized callback called - calling bootstrap");
           bootstrap(
             () => DatumProviderWithLifecycle(child: const App()),
             parent: container,

@@ -142,21 +142,37 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<List<T>> readAll({String? userId, DatumSyncScope? scope}) async {
-    PostgrestFilterBuilder queryBuilder = _client.from(tableName).select();
+    talker.info("🔍 [Adapter] readAll called for table: $tableName, userId: $userId");
+    talker.debug("🔍 [Adapter] scope: $scope");
 
-    // Apply filters from the sync scope, if provided.
-    if (scope != null) {
-      for (final condition in scope.query.filters) {
-        queryBuilder = _applyFilter(queryBuilder, condition);
+    try {
+      PostgrestFilterBuilder queryBuilder = _client.from(tableName).select();
+      talker.debug("🔍 [Adapter] Created query builder for table: $tableName");
+
+      // Apply filters from the sync scope, if provided.
+      if (scope != null) {
+        talker.debug("🔍 [Adapter] Applying ${scope.query.filters.length} filters");
+        for (final condition in scope.query.filters) {
+          queryBuilder = _applyFilter(queryBuilder, condition);
+          talker.debug("🔍 [Adapter] Applied filter: $condition");
+        }
       }
-    }
 
-    final response = await queryBuilder;
-    talker.debug("response readAll $response");
-    if (response is List<Map<String, dynamic>>) {
-      return response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
-    } else {
-      return [];
+      talker.debug("🔍 [Adapter] Executing query for table: $tableName");
+      final response = await queryBuilder;
+      talker.info("✅ [Adapter] Query successful for table: $tableName, response type: ${response.runtimeType}");
+
+      if (response is List<Map<String, dynamic>>) {
+        final items = response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
+        talker.info("✅ [Adapter] Successfully parsed ${items.length} items from table: $tableName");
+        return items;
+      } else {
+        talker.warning("⚠️ [Adapter] Unexpected response type for table: $tableName - expected List<Map<String, dynamic>>, got ${response.runtimeType}");
+        return [];
+      }
+    } catch (e, stackTrace) {
+      talker.error("❌ [Adapter] readAll failed for table: $tableName - $e", stackTrace);
+      rethrow;
     }
   }
 
@@ -516,6 +532,13 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
       if (currentUser == null) {
         talker.debug(
             "No authenticated user found, skipping restoration sync for table: $tableName");
+        return;
+      }
+
+      // Check if Datum is initialized before attempting sync
+      if (!Datum.isInitialized) {
+        talker.debug(
+            "Datum not initialized yet, skipping restoration sync for table: $tableName");
         return;
       }
 

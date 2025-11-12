@@ -9,74 +9,108 @@
 // coverage:ignore-file
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
-import 'package:auto_route/auto_route.dart' as _i5;
+import 'package:auto_route/auto_route.dart' as _i7;
 import 'package:example/features/counter/view/counter_page.dart'
     deferred as _i1;
-import 'package:example/features/home/view/home_page.dart' as _i2;
-import 'package:example/features/login/view/login_page.dart' as _i3;
+import 'package:example/features/home/view/feature_selection_page.dart' as _i2;
+import 'package:example/features/home/view/home_page.dart' as _i3;
+import 'package:example/features/login/view/login_page.dart' as _i4;
+import 'package:example/features/paint/view/paint_page.dart' as _i5;
 import 'package:example/features/simple_datum/view/simple_datum_page.dart'
-    as _i4;
+    as _i6;
 
 /// generated route for
 /// [_i1.CounterPage]
-class CounterRoute extends _i5.PageRouteInfo<void> {
-  const CounterRoute({List<_i5.PageRouteInfo>? children})
+class CounterRoute extends _i7.PageRouteInfo<void> {
+  const CounterRoute({List<_i7.PageRouteInfo>? children})
       : super(CounterRoute.name, initialChildren: children);
 
   static const String name = 'CounterRoute';
 
-  static _i5.PageInfo page = _i5.PageInfo(
+  static _i7.PageInfo page = _i7.PageInfo(
     name,
     builder: (data) {
-      return _i5.DeferredWidget(_i1.loadLibrary, () => _i1.CounterPage());
+      return _i7.DeferredWidget(_i1.loadLibrary, () => _i1.CounterPage());
     },
   );
 }
 
 /// generated route for
-/// [_i2.HomePage]
-class HomeRoute extends _i5.PageRouteInfo<void> {
-  const HomeRoute({List<_i5.PageRouteInfo>? children})
+/// [_i2.FeatureSelectionPage]
+class FeatureSelectionRoute extends _i7.PageRouteInfo<void> {
+  const FeatureSelectionRoute({List<_i7.PageRouteInfo>? children})
+      : super(FeatureSelectionRoute.name, initialChildren: children);
+
+  static const String name = 'FeatureSelectionRoute';
+
+  static _i7.PageInfo page = _i7.PageInfo(
+    name,
+    builder: (data) {
+      return const _i2.FeatureSelectionPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i3.HomePage]
+class HomeRoute extends _i7.PageRouteInfo<void> {
+  const HomeRoute({List<_i7.PageRouteInfo>? children})
       : super(HomeRoute.name, initialChildren: children);
 
   static const String name = 'HomeRoute';
 
-  static _i5.PageInfo page = _i5.PageInfo(
+  static _i7.PageInfo page = _i7.PageInfo(
     name,
     builder: (data) {
-      return const _i2.HomePage();
+      return const _i3.HomePage();
     },
   );
 }
 
 /// generated route for
-/// [_i3.LoginPage]
-class LoginRoute extends _i5.PageRouteInfo<void> {
-  const LoginRoute({List<_i5.PageRouteInfo>? children})
+/// [_i4.LoginPage]
+class LoginRoute extends _i7.PageRouteInfo<void> {
+  const LoginRoute({List<_i7.PageRouteInfo>? children})
       : super(LoginRoute.name, initialChildren: children);
 
   static const String name = 'LoginRoute';
 
-  static _i5.PageInfo page = _i5.PageInfo(
+  static _i7.PageInfo page = _i7.PageInfo(
     name,
     builder: (data) {
-      return const _i3.LoginPage();
+      return const _i4.LoginPage();
     },
   );
 }
 
 /// generated route for
-/// [_i4.SimpleDatumPage]
-class SimpleDatumRoute extends _i5.PageRouteInfo<void> {
-  const SimpleDatumRoute({List<_i5.PageRouteInfo>? children})
+/// [_i5.PaintPage]
+class PaintRoute extends _i7.PageRouteInfo<void> {
+  const PaintRoute({List<_i7.PageRouteInfo>? children})
+      : super(PaintRoute.name, initialChildren: children);
+
+  static const String name = 'PaintRoute';
+
+  static _i7.PageInfo page = _i7.PageInfo(
+    name,
+    builder: (data) {
+      return const _i5.PaintPage();
+    },
+  );
+}
+
+/// generated route for
+/// [_i6.SimpleDatumPage]
+class SimpleDatumRoute extends _i7.PageRouteInfo<void> {
+  const SimpleDatumRoute({List<_i7.PageRouteInfo>? children})
       : super(SimpleDatumRoute.name, initialChildren: children);
 
   static const String name = 'SimpleDatumRoute';
 
-  static _i5.PageInfo page = _i5.PageInfo(
+  static _i7.PageInfo page = _i7.PageInfo(
     name,
     builder: (data) {
-      return const _i4.SimpleDatumPage();
+      return const _i6.SimpleDatumPage();
     },
   );
 }

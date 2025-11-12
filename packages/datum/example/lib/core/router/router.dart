@@ -23,8 +23,19 @@ class AppRouter extends RootStackRouter {
       path: '/home',
     ),
     AutoRoute(
+      page: FeatureSelectionRoute.page,
+      path: '/features',
+    ),
+    AutoRoute(
       page: SimpleDatumRoute.page,
       path: '/simple_datum',
+      guards: [
+        AuthGuard(),
+      ],
+    ),
+    AutoRoute(
+      page: PaintRoute.page,
+      path: '/paint',
       guards: [
         AuthGuard(),
       ],

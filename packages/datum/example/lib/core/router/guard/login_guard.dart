@@ -9,8 +9,8 @@ class LoginGuard extends AutoRouteGuard {
       // if user is not authenticated then we continue
       resolver.next(true);
     } else {
-      // we redirect the user to our dashboard page
-      router.replaceAll([SimpleDatumRoute()]);
+      // we redirect the user to our home page
+      router.replaceAll([HomeRoute()]);
     }
   }
 }
