@@ -318,6 +318,11 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
         }
       },
     );
+    // Initialize sync status subscription as a dummy listener
+    _syncStatusSubscription = ref.listenManual(
+      syncResultEventProvider, // Dummy provider, will be replaced
+      (previous, next) {},
+    );
   }
 
   void _updateSyncStatusListener(String userId) {
@@ -369,14 +374,25 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
               await remoteAdapter.clearSyncMetadata(userId);
             }
 
-            // Use eager syncing: pull latest data first, then allow changes
-            Datum.instance.synchronize(
+            // Handle cold start sync for the newly authenticated user
+            final coldStartPerformed = await Datum.instance.handleColdStartIfNeeded<Task>(
               userId,
-              options: const DatumSyncOptions(
-                direction: SyncDirection.pullThenPush,
-                forceFullSync: true, // Ensure we get all remote data
-              ),
+              (options) => Datum.manager<Task>().synchronize(userId, options: options),
             );
+
+            if (!coldStartPerformed) {
+              // If cold start wasn't performed, do regular initial sync
+              Datum.instance.synchronize(
+                userId,
+                options: const DatumSyncOptions(
+                  direction: SyncDirection.pullThenPush,
+                  forceFullSync: true, // Ensure we get all remote data
+                ),
+              );
+            }
+
+            // Start auto-sync for the authenticated user
+            Datum.instance.startAutoSync(userId);
           }
         }
       },

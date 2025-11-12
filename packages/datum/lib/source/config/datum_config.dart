@@ -63,8 +63,10 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   final UserSwitchStrategy defaultUserSwitchStrategy;
 
   /// The user ID to target for the initial auto-sync if [autoStartSync] is
-  /// true. If null, DatumManager will discover all users with local data.
-  final String? initialUserId;
+  /// true. A function that returns a Future<String?> to get the current user ID.
+  /// If the function returns null, DatumManager will discover all users with local data.
+  /// If null, DatumManager will discover all users with local data.
+  final Future<String?> Function()? initialUserId;
 
   /// Whether to enable detailed logging from the Datum engine.
   final bool enableLogging;
@@ -203,7 +205,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     Duration? syncTimeout,
     DatumConflictResolver<E>? defaultConflictResolver,
     UserSwitchStrategy? defaultUserSwitchStrategy,
-    String? initialUserId,
+    Future<String?> Function()? initialUserId,
     bool? enableLogging,
     SyncDirection? defaultSyncDirection,
     int? schemaVersion,

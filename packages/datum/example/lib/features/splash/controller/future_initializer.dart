@@ -24,6 +24,8 @@ import 'package:example/features/splash/controller/box_encryption_key_pod.dart';
 import 'package:example/init.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+
+
 final futureInitializerPod = FutureProvider<ProviderContainer>((
   ref,
 ) async {
@@ -55,8 +57,17 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
   );
   final config = DatumConfig(
     enableLogging: true,
-    autoStartSync: true,
-    initialUserId: Supabase.instance.client.auth.currentUser?.id,
+    autoStartSync: true, // Enable auto-start sync with reactive user ID
+    initialUserId: () async {
+      // Reactive initialUserId - get current user when needed
+      try {
+        final currentUser = Supabase.instance.client.auth.currentUser;
+        return currentUser?.id;
+      } catch (e) {
+        talker.warning('Could not get current user for initialUserId: $e');
+        return null;
+      }
+    }, // Reactive function to get current user ID
     changeCacheDuration: Duration(milliseconds: 0),
     remoteEventDebounceTime: Duration(milliseconds: 0),
     autoSyncInterval: Duration(
@@ -99,8 +110,8 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
           schemaVersion: 0,
         ),
         remoteAdapter: SupabaseRemoteAdapter<Task>(
-          tableName: 'tasks',
           fromMap: Task.fromMap,
+          tableName: "tasks",
         ),
       ),
     ],

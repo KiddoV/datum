@@ -103,6 +103,66 @@ void main() {
       expect(updated.restrictViolations, 0);
       expect(updated.totalDuration, original.totalDuration);
     });
+
+    test('should provide readable string representation', () {
+      final analytics = CascadeAnalytics(
+        totalDuration: const Duration(seconds: 5),
+        queriesExecuted: 10,
+        relationshipsTraversed: 5,
+        entitiesProcessedByType: {String: 3, int: 2},
+        entitiesDeletedByType: {String: 2, int: 1},
+        restrictViolations: 1,
+        setNullOperations: 0,
+        errorsEncountered: 0,
+        wasDryRun: false,
+        startedAt: DateTime(2023, 1, 1, 12, 0, 0),
+        completedAt: DateTime(2023, 1, 1, 12, 0, 5),
+      );
+
+      final string = analytics.toString();
+
+      expect(string, startsWith('CascadeAnalytics('));
+      expect(string, endsWith(')'));
+      expect(string, contains('totalDuration: 0:00:05.000000'));
+      expect(string, contains('queriesExecuted: 10'));
+      expect(string, contains('relationshipsTraversed: 5'));
+      expect(string, contains('totalEntitiesProcessed: 5'));
+      expect(string, contains('totalEntitiesDeleted: 3'));
+      expect(string, contains('restrictViolations: 1'));
+      expect(string, contains('setNullOperations: 0'));
+      expect(string, contains('errorsEncountered: 0'));
+      expect(string, contains('successRate: 60.0%'));
+      expect(string, contains('wasDryRun: false'));
+    });
+
+    test('should handle empty analytics in toString', () {
+      final analytics = CascadeAnalytics(
+        totalDuration: Duration.zero,
+        queriesExecuted: 0,
+        relationshipsTraversed: 0,
+        entitiesProcessedByType: {},
+        entitiesDeletedByType: {},
+        restrictViolations: 0,
+        setNullOperations: 0,
+        errorsEncountered: 0,
+        wasDryRun: true,
+        startedAt: DateTime(2023, 1, 1, 12, 0, 0),
+        completedAt: DateTime(2023, 1, 1, 12, 0, 0),
+      );
+
+      final string = analytics.toString();
+
+      expect(string, contains('totalDuration: 0:00:00.000000'));
+      expect(string, contains('queriesExecuted: 0'));
+      expect(string, contains('relationshipsTraversed: 0'));
+      expect(string, contains('totalEntitiesProcessed: 0'));
+      expect(string, contains('totalEntitiesDeleted: 0'));
+      expect(string, contains('restrictViolations: 0'));
+      expect(string, contains('setNullOperations: 0'));
+      expect(string, contains('errorsEncountered: 0'));
+      expect(string, contains('successRate: 100.0%'));
+      expect(string, contains('wasDryRun: true'));
+    });
   });
 
   group('CascadeAnalyticsBuilder', () {

@@ -293,8 +293,20 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     if (!config.autoStartSync) return;
 
     _logger.debug('Auto-start sync enabled, discovering users');
-    final userIds = config.initialUserId != null
-      ? [config.initialUserId!]
+
+    // Evaluate initialUserId - it's always a function that returns Future<String?>
+    String? evaluatedInitialUserId;
+    if (config.initialUserId != null) {
+      try {
+        evaluatedInitialUserId = await config.initialUserId!();
+      } catch (e) {
+        _logger.warn('Failed to evaluate initialUserId function: $e');
+        evaluatedInitialUserId = null;
+      }
+    }
+
+    final userIds = evaluatedInitialUserId != null
+      ? [evaluatedInitialUserId!]
       : await localAdapter.getAllUserIds();
 
     for (final userId in userIds) {
