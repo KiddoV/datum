@@ -125,10 +125,20 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<void> delete(String id, {String? userId}) async {
-    await _client.from(tableName).delete().eq(
-          'id',
-          id,
+    try {
+      await _client.from(tableName).delete().eq(
+            'id',
+            id,
+          );
+    } on PostgrestException catch (e) {
+      // PGRST116: "Cannot coerce the result to a single JSON object" - means no rows were affected
+      if (e.code == 'PGRST116') {
+        throw EntityNotFoundException(
+          message: 'Entity with id $id not found in table $tableName',
         );
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -240,20 +250,30 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     required Map<String, dynamic> delta,
     String? userId,
   }) async {
-    final snakeCaseDelta = _toSnakeCase(delta);
-    final response = await _client
-        .from(tableName)
-        .update(snakeCaseDelta)
-        .eq('id', id)
-        .select()
-        .maybeSingle();
-    if (response == null) {
-      throw EntityNotFoundException(
-        message:
-            'Failed to patch item: record not found or RLS policy prevented selection.',
-      );
+    try {
+      final snakeCaseDelta = _toSnakeCase(delta);
+      final response = await _client
+          .from(tableName)
+          .update(snakeCaseDelta)
+          .eq('id', id)
+          .select()
+          .maybeSingle();
+      if (response == null) {
+        throw EntityNotFoundException(
+          message:
+              'Failed to patch item: record not found or RLS policy prevented selection.',
+        );
+      }
+      return fromMap(_toCamelCase(response));
+    } on PostgrestException catch (e) {
+      // PGRST116: "Cannot coerce the result to a single JSON object" - means no rows were affected
+      if (e.code == 'PGRST116') {
+        throw EntityNotFoundException(
+          message: 'Entity with id $id not found in table $tableName during patch operation',
+        );
+      }
+      rethrow;
     }
-    return fromMap(_toCamelCase(response));
   }
 
   @override

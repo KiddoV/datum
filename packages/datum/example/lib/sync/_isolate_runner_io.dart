@@ -4,6 +4,8 @@ import 'dart:isolate';
 import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
+import 'package:datum/source/utils/datum_logger.dart';
+import 'package:example/isolate_logger.dart';
 
 /// Spawns an isolate to run the sync process. This is for non-web platforms.
 Future<void> spawnIsolate<T extends DatumEntityInterface>(
@@ -12,6 +14,7 @@ Future<void> spawnIsolate<T extends DatumEntityInterface>(
   bool Function() isCancelled,
   void Function(int completed, int total) onProgress,
   DatumSyncExecutionStrategy wrappedStrategy,
+  DatumLogger logger,
 ) {
   final completer = Completer<void>();
   final mainReceivePort = ReceivePort();
@@ -20,6 +23,7 @@ Future<void> spawnIsolate<T extends DatumEntityInterface>(
     mainToIsolateSendPort: mainReceivePort.sendPort,
     operations: operations,
     wrappedStrategy: wrappedStrategy,
+    logger: logger,
   );
 
   unawaited(
@@ -75,11 +79,13 @@ class _IsolateInitMessage<T extends DatumEntityInterface> {
     required this.mainToIsolateSendPort,
     required this.operations,
     required this.wrappedStrategy,
+    required this.logger,
   });
 
   final SendPort mainToIsolateSendPort;
   final List<DatumSyncOperation<T>> operations;
   final DatumSyncExecutionStrategy wrappedStrategy;
+  final DatumLogger logger;
 }
 
 class _ProcessOperationRequest {
@@ -114,8 +120,17 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
   final mainSendPort = initMessage.mainToIsolateSendPort;
   final operations = initMessage.operations;
 
+  // Create a worker logger for this isolate
+  final workerLogger = initMessage.logger is IsolateLogger
+      ? (initMessage.logger as IsolateLogger).createWorkerLogger()
+      : IsolateLogger(initMessage.logger).createWorkerLogger();
+
+  // Only log at info level for isolate start to reduce overhead
+  workerLogger.info('Starting isolate sync execution with ${operations.length} operations');
+
   Future<void> requestProcessing(
       DatumSyncOperation<DatumEntityInterface> operation) async {
+    // Remove per-operation debug logging to reduce cross-isolate communication overhead
     final responsePort = ReceivePort();
     mainSendPort.send(
       _ProcessOperationRequest(operation.id, responsePort.sendPort),
@@ -124,11 +139,18 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
     responsePort.close();
 
     if (result is _IsolateError) {
+      // Only log errors, not every operation
+      workerLogger.warn('Operation ${operation.id} failed in isolate: ${result.error}');
       return Future.error(result.error, result.stackTrace);
     }
+    // Remove success logging for each operation
   }
 
   void reportProgress(int completed, int total) {
+    // Reduce progress logging frequency - only log every 10 operations or at completion
+    if (completed % 10 == 0 || completed == total) {
+      workerLogger.debug('Isolate progress: $completed/$total operations completed');
+    }
     mainSendPort.send(_ProgressUpdate(completed, total));
   }
 
@@ -141,8 +163,14 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
         isCancelled,
         reportProgress,
       )
-      .then((_) => mainSendPort.send(_SyncComplete()))
+      .then((_) {
+        workerLogger.info('Isolate sync execution completed successfully');
+        mainSendPort.send(_SyncComplete());
+      })
       .catchError(
-        (Object e, StackTrace s) => mainSendPort.send(_SyncError(e, s)),
+        (Object e, StackTrace s) {
+          workerLogger.error('Isolate sync execution failed: $e');
+          mainSendPort.send(_SyncError(e, s));
+        },
       );
 }

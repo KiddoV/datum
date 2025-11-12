@@ -367,7 +367,7 @@ void main() {
     );
 
     test(
-      'logs an error when a delete operation fails with EntityNotFoundException',
+      'logs a warning when a delete operation encounters EntityNotFoundException but succeeds',
       () async {
         // Arrange
         const exception = EntityNotFoundException(
@@ -387,20 +387,19 @@ void main() {
           () => remoteAdapter.delete('e1', userId: 'user-1'),
         ).thenThrow(exception);
 
-        // Act & Assert
-        // The synchronize call should re-throw the exception, wrapped in a SyncException.
-        await expectLater(
-          syncEngine.synchronize('user-1'),
-          throwsA(
-            isA<SyncExceptionWithEvents>().having(
-              (e) => e.originalError,
-              'originalError',
-              exception,
-            ),
-          ),
-        );
+        // Act
+        final (result, _) = await syncEngine.synchronize('user-1');
 
-        // Verify that the specific error was logged.
+        // Assert: The sync should succeed because delete of non-existent entity is considered successful
+        expect(result.failedCount, 0);
+        expect(result.syncedCount, 1);
+
+        // Verify that the warning was logged (not an error, since it's successful)
+        verify(
+          () => logger.warn('Entity e1 not found on remote during delete - considering operation successful'),
+        ).called(1);
+
+        // Verify that the operation was logged as failed but the sync succeeded
         verify(
           () => logger.error('Operation op1 failed: $exception', any()),
         ).called(1);

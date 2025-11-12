@@ -33,12 +33,14 @@ abstract class DatumSyncExecutionStrategy {
   /// - [processOperation]: A function that processes a single operation.
   /// - [isCancelled]: A function to check if the sync has been cancelled.
   /// - [onProgress]: A callback to report progress.
+  /// - [logger]: Optional logger for cross-isolate logging.
   Future<void> execute<T extends DatumEntityInterface>(
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,
-    void Function(int completed, int total) onProgress,
-  );
+    void Function(int completed, int total) onProgress, {
+    DatumLogger? logger,
+  });
 }
 
 /// Processes pending operations one by one.
@@ -52,8 +54,9 @@ class SequentialStrategy implements DatumSyncExecutionStrategy {
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,
-    void Function(int completed, int total) onProgress,
-  ) async {
+    void Function(int completed, int total) onProgress, {
+    DatumLogger? logger,
+  }) async {
     var completedOps = 0;
     final totalOps = operations.length;
     // Iterate over a copy to prevent concurrent modification errors.
@@ -93,8 +96,9 @@ class ParallelStrategy implements DatumSyncExecutionStrategy {
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,
-    void Function(int completed, int total) onProgress,
-  ) async {
+    void Function(int completed, int total) onProgress, {
+    DatumLogger? logger,
+  }) async {
     final totalOps = operations.length;
     final errors = <Object>[];
 

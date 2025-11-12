@@ -150,10 +150,13 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// A stream of the manager's current health status.
   Stream<DatumHealth> get health => _statusSubject.stream.map((s) => s.health);
 
+  /// A stream of the manager's sync status snapshots.
+  Stream<DatumSyncStatusSnapshot> get statusStream => _statusSubject.stream;
+
   /// The most recent snapshot of the manager's sync status.
   DatumSyncStatusSnapshot get currentStatus => _statusSubject.value;
 
-  /// A stream that emits the [DateTime] of the next scheduled auto-sync.
+  /// The most recent snapshot of the manager's sync status.
   ///
   /// Emits `null` if no auto-sync is scheduled.
   Stream<DateTime?> get watchNextSyncTime => _nextSyncTimeSubject.stream;
@@ -313,8 +316,8 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       if (userId.isNotEmpty) {
         // Check if cold start sync is needed
         unawaited(_coldStartManager.handleColdStartIfNeeded(
-          evaluatedInitialUserId,
-          (options) => synchronize(evaluatedInitialUserId ?? '', options: options),
+          userId,
+          (options) => synchronize(userId, options: options),
           entityType: T.toString(),
         ));
 

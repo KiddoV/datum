@@ -61,7 +61,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with GlobalHelper {
               // Don't throw here - we don't want to crash the app if initial sync fails
             }
           }
-          await ref.read(autorouterProvider).replaceAll([SimpleDatumRoute()]);
+          await ref.read(autorouterProvider).replaceAll([FeatureSelectionRoute()]);
         }
       } on AuthException catch (e, s) {
         talker.error(e, s);

@@ -104,6 +104,7 @@ void main() {
               pendingOperations: [],
             );
           },
+          synchronous: true, // Use synchronous mode for testing
         );
 
         expect(result, isTrue);
@@ -188,6 +189,7 @@ void main() {
               pendingOperations: [],
             );
           },
+          synchronous: true, // Use synchronous mode for testing
         );
 
         expect(result, isTrue);
@@ -237,6 +239,7 @@ void main() {
               pendingOperations: [],
             );
           },
+          synchronous: true, // Use synchronous mode for testing
         );
 
         expect(result, isTrue);
@@ -279,6 +282,7 @@ void main() {
               pendingOperations: [],
             );
           },
+          synchronous: true, // Use synchronous mode for testing
         );
 
         expect(result, isTrue);
@@ -322,6 +326,7 @@ void main() {
               pendingOperations: [],
             );
           },
+          synchronous: true, // Use synchronous mode for testing
         );
 
         expect(result, isTrue);
@@ -406,6 +411,7 @@ void main() {
               pendingOperations: [],
             );
           },
+          synchronous: true, // Use synchronous mode for testing
         );
 
         expect(syncOptions.length, 1);
@@ -519,6 +525,9 @@ void main() {
         localAdapter.addLocalItem('user1', TestEntity.create('test-id', 'user1', 'test'));
 
         await testManager.initialize();
+
+        // Wait for cold start sync to complete (it runs asynchronously)
+        await Future.delayed(const Duration(seconds: 3));
 
         // Should have performed cold start sync during initialization
         expect(testManager.coldStartManager.isColdStartForUser('user1'), isFalse);

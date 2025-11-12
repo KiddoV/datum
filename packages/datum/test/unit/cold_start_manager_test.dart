@@ -536,7 +536,7 @@ void main() {
         expect(loadedState['performanceMetrics']['averageSyncTime'], equals(1250));
       });
 
-      test('_executeWithRetry should succeed on first attempt', () async {
+      test('_executeWithRetry should succeed on first attempt (synchronous)', () async {
         const userId = 'user-1';
         var callCount = 0;
 
@@ -549,12 +549,48 @@ void main() {
           pendingOperations: [],
         );
 
-        final result = await manager.handleColdStartIfNeeded(userId, (options) async {
-          callCount++;
-          return successResult;
-        });
+        final result = await manager.handleColdStartIfNeeded(
+          userId,
+          (options) async {
+            callCount++;
+            return successResult;
+          },
+          synchronous: true,
+        );
 
         expect(result, isTrue);
+        expect(callCount, 1);
+      });
+
+      test('_executeWithRetry should succeed on first attempt (asynchronous)', () async {
+        const userId = 'user-1';
+        var callCount = 0;
+
+        const successResult = DatumSyncResult<TestDatumEntity>(
+          userId: userId,
+          duration: Duration(seconds: 1),
+          syncedCount: 5,
+          failedCount: 0,
+          conflictsResolved: 0,
+          pendingOperations: [],
+        );
+
+        final result = await manager.handleColdStartIfNeeded(
+          userId,
+          (options) async {
+            callCount++;
+            return successResult;
+          },
+          synchronous: false, // Default behavior
+        );
+
+        // Should return true immediately without waiting for sync completion
+        expect(result, isTrue);
+        // Call count should be 0 since sync happens asynchronously
+        expect(callCount, 0);
+
+        // Wait for async operation to complete (includes 2 second initial delay)
+        await Future.delayed(const Duration(seconds: 3));
         expect(callCount, 1);
       });
 
@@ -629,21 +665,48 @@ void main() {
         });
       });
 
-      test('_executeWithRetry should not retry non-retryable errors', () async {
+      test('_executeWithRetry should not retry non-retryable errors (synchronous)', () async {
         const userId = 'user-1';
         var callCount = 0;
 
         // Should throw exception for non-retryable error
         try {
-          await manager.handleColdStartIfNeeded(userId, (options) async {
-            callCount++;
-            throw ArgumentError('Invalid argument'); // Non-retryable error
-          });
+          await manager.handleColdStartIfNeeded(
+            userId,
+            (options) async {
+              callCount++;
+              throw ArgumentError('Invalid argument'); // Non-retryable error
+            },
+            synchronous: true,
+          );
           fail('Expected exception to be thrown');
         } catch (e) {
           expect(e, isA<ArgumentError>());
           expect(callCount, 1); // Should not retry
         }
+      });
+
+      test('_executeWithRetry should not retry non-retryable errors (asynchronous)', () async {
+        const userId = 'user-1';
+        var callCount = 0;
+
+        // For asynchronous mode, exceptions are handled internally and not rethrown
+        final result = await manager.handleColdStartIfNeeded(
+          userId,
+          (options) async {
+            callCount++;
+            throw ArgumentError('Invalid argument'); // Non-retryable error
+          },
+          synchronous: false, // Default behavior
+        );
+
+        // Should return true (sync initiated) but not wait for completion
+        expect(result, isTrue);
+        expect(callCount, 0); // Sync happens asynchronously
+
+        // Wait for async operation to complete and verify it was called once
+        await Future.delayed(const Duration(seconds: 3));
+        expect(callCount, 1); // Should not retry
       });
 
       test('_executeWithRetry should implement exponential backoff', () {
@@ -691,16 +754,20 @@ void main() {
         });
       });
 
-      test('_executeWithRetry should handle StateError as non-retryable', () async {
+      test('_executeWithRetry should handle StateError as non-retryable (synchronous)', () async {
         const userId = 'user-1';
         var callCount = 0;
 
         // Should throw exception for non-retryable error
         try {
-          await manager.handleColdStartIfNeeded(userId, (options) async {
-            callCount++;
-            throw StateError('Invalid state'); // Non-retryable error
-          });
+          await manager.handleColdStartIfNeeded(
+            userId,
+            (options) async {
+              callCount++;
+              throw StateError('Invalid state'); // Non-retryable error
+            },
+            synchronous: true,
+          );
           fail('Expected exception to be thrown');
         } catch (e) {
           expect(e, isA<StateError>());
@@ -708,21 +775,218 @@ void main() {
         }
       });
 
-      test('_executeWithRetry should handle UnsupportedError as non-retryable', () async {
+      test('_executeWithRetry should handle StateError as non-retryable (asynchronous)', () {
+        fakeAsync((async) async {
+          const userId = 'user-1';
+          var callCount = 0;
+
+          // For asynchronous mode, exceptions are handled internally and not rethrown
+          final result = await manager.handleColdStartIfNeeded(
+            userId,
+            (options) async {
+              callCount++;
+              throw StateError('Invalid state'); // Non-retryable error
+            },
+            synchronous: false, // Default behavior
+          );
+
+          // Should return true (sync initiated) but not wait for completion
+          expect(result, isTrue);
+          expect(callCount, 0); // Sync happens asynchronously
+
+          // Advance time to allow async operation to complete
+          async.elapse(const Duration(seconds: 3));
+          expect(callCount, 1); // Should not retry
+        });
+      });
+
+      test('_executeWithRetry should handle UnsupportedError as non-retryable (synchronous)', () async {
         const userId = 'user-1';
         var callCount = 0;
 
         // Should throw exception for non-retryable error
         try {
-          await manager.handleColdStartIfNeeded(userId, (options) async {
-            callCount++;
-            throw UnsupportedError('Not supported'); // Non-retryable error
-          });
+          await manager.handleColdStartIfNeeded(
+            userId,
+            (options) async {
+              callCount++;
+              throw UnsupportedError('Not supported'); // Non-retryable error
+            },
+            synchronous: true,
+          );
           fail('Expected exception to be thrown');
         } catch (e) {
           expect(e, isA<UnsupportedError>());
           expect(callCount, 1); // Should not retry
         }
+      });
+
+      test('_executeWithRetry should handle UnsupportedError as non-retryable (asynchronous)', () {
+        fakeAsync((async) async {
+          const userId = 'user-1';
+          var callCount = 0;
+
+          // For asynchronous mode, exceptions are handled internally and not rethrown
+          final result = await manager.handleColdStartIfNeeded(
+            userId,
+            (options) async {
+              callCount++;
+              throw UnsupportedError('Not supported'); // Non-retryable error
+            },
+            synchronous: false, // Default behavior
+          );
+
+          // Should return true (sync initiated) but not wait for completion
+          expect(result, isTrue);
+          expect(callCount, 0); // Sync happens asynchronously
+
+          // Advance time to allow async operation to complete
+          async.elapse(const Duration(seconds: 3));
+          expect(callCount, 1); // Should not retry
+        });
+      });
+
+      test('should log debug message when skipping cold start for non-cold-start user', () async {
+        const userId = 'user-1';
+
+        // First, perform a cold start to make isColdStart false
+        const successResult = DatumSyncResult<TestDatumEntity>(
+          userId: userId,
+          duration: Duration(seconds: 1),
+          syncedCount: 5,
+          failedCount: 0,
+          conflictsResolved: 0,
+          pendingOperations: [],
+        );
+
+        // Perform initial cold start
+        final firstResult = await manager.handleColdStartIfNeeded(
+          userId,
+          (_) async => successResult,
+          synchronous: true,
+        );
+
+        expect(firstResult, isTrue);
+        expect(manager.isColdStartForUser(userId), isFalse);
+
+        // Now call again - this should log the debug message and return false
+        final secondResult = await manager.handleColdStartIfNeeded(
+          userId,
+          (_) async => successResult,
+          synchronous: true,
+        );
+
+        expect(secondResult, isFalse); // Should return false since it's not a cold start
+        expect(manager.isColdStartForUser(userId), isFalse); // Should remain false
+      });
+
+      test('should log debug message when skipping cold start for null user', () async {
+        // Call with null userId - should log debug message and return false
+        final result = await manager.handleColdStartIfNeeded(
+          null,
+          (_) async => const DatumSyncResult<TestDatumEntity>(
+            userId: 'dummy',
+            duration: Duration(seconds: 1),
+            syncedCount: 0,
+            failedCount: 0,
+            conflictsResolved: 0,
+            pendingOperations: [],
+          ),
+          synchronous: true,
+        );
+
+        expect(result, isFalse);
+      });
+
+      test('should log debug message when skipping cold start for empty user', () async {
+        // Call with empty userId - should log debug message and return false
+        final result = await manager.handleColdStartIfNeeded(
+          '',
+          (_) async => const DatumSyncResult<TestDatumEntity>(
+            userId: 'dummy',
+            duration: Duration(seconds: 1),
+            syncedCount: 0,
+            failedCount: 0,
+            conflictsResolved: 0,
+            pendingOperations: [],
+          ),
+          synchronous: true,
+        );
+
+        expect(result, isFalse);
+      });
+
+      test('should log retry message when operation fails and retries', () {
+        fakeAsync((async) async {
+          const userId = 'user-1';
+          var callCount = 0;
+
+          // Create manager with low retry count and short delays for testing
+          const retryConfig = ColdStartConfig(
+            strategy: ColdStartStrategy.adaptive,
+            syncThreshold: Duration(hours: 24),
+            initialDelay: Duration.zero, // No delay for faster tests
+            maxDuration: Duration(minutes: 5),
+          );
+          final retryManager = ColdStartManager(
+            retryConfig,
+            maxRetries: 1, // Only 1 retry to keep test simple
+            initialRetryDelay: const Duration(milliseconds: 1),
+            retryBackoffMultiplier: 1.0,
+          );
+
+          // Should fail twice (initial + 1 retry), then succeed
+          final result = await retryManager.handleColdStartIfNeeded(userId, (options) async {
+            callCount++;
+            if (callCount <= 2) {
+              throw Exception('Temporary failure');
+            }
+            return const DatumSyncResult<TestDatumEntity>(
+              userId: userId,
+              duration: Duration(seconds: 1),
+              syncedCount: 5,
+              failedCount: 0,
+              conflictsResolved: 0,
+              pendingOperations: [],
+            );
+          });
+
+          expect(result, isTrue);
+          expect(callCount, 3); // Initial attempt + 2 retries (maxRetries + 1)
+        });
+      });
+
+      test('should log final error message when all retries are exhausted', () {
+        fakeAsync((async) async {
+          const userId = 'user-1';
+          var callCount = 0;
+
+          // Create manager with low retry count and short delays for testing
+          const retryConfig = ColdStartConfig(
+            strategy: ColdStartStrategy.adaptive,
+            syncThreshold: Duration(hours: 24),
+            initialDelay: Duration.zero, // No delay for faster tests
+            maxDuration: Duration(minutes: 5),
+          );
+          final retryManager = ColdStartManager(
+            retryConfig,
+            maxRetries: 1, // Only 1 retry to keep test simple
+            initialRetryDelay: const Duration(milliseconds: 1),
+            retryBackoffMultiplier: 1.0,
+          );
+
+          // Should fail on all attempts
+          try {
+            await retryManager.handleColdStartIfNeeded(userId, (options) async {
+              callCount++;
+              throw Exception('Persistent failure');
+            });
+            fail('Expected exception to be thrown');
+          } catch (e) {
+            expect(e, isA<Exception>());
+            expect(callCount, 2); // Initial attempt + 1 retry
+          }
+        });
       });
     });
   });

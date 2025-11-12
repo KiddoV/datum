@@ -1,23 +1,22 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'dart:convert';
 import 'dart:math';
-import 'dart:ui';
 
 import 'package:datum/datum.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import 'paint_canvas.dart';
+import 'paint_stroke.dart';
 
-//-- Create paint_strokes table - COMPATIBLE WITH SUPABASE
+//-- Create paint_canvases table - COMPATIBLE WITH SUPABASE
 /*
 -- Step 1: Create the table
-CREATE TABLE public.paint_strokes (
+CREATE TABLE public.paint_canvases (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    points JSONB NOT NULL,
-    color BIGINT NOT NULL,
-    stroke_width REAL NOT NULL,
-    "order" INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    thumbnail_stroke_data JSONB,
+    stroke_count INTEGER DEFAULT 0,
     is_deleted BOOLEAN DEFAULT FALSE,
     version INTEGER DEFAULT 1,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -25,41 +24,34 @@ CREATE TABLE public.paint_strokes (
 );
 
 -- Step 2: Enable Row Level Security
-ALTER TABLE public.paint_strokes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.paint_canvases ENABLE ROW LEVEL SECURITY;
 
 -- Step 3: Create RLS policy
-CREATE POLICY "Users can only access their own paint strokes" ON public.paint_strokes
+CREATE POLICY "Users can only access their own paint canvases" ON public.paint_canvases
     FOR ALL USING (auth.uid()::text = user_id);
 
 -- Step 4: Create indexes
-CREATE INDEX idx_paint_strokes_user_id ON public.paint_strokes(user_id);
-CREATE INDEX idx_paint_strokes_modified_at ON public.paint_strokes(modified_at);
-CREATE INDEX idx_paint_strokes_order ON public.paint_strokes("order");
+CREATE INDEX idx_paint_canvases_user_id ON public.paint_canvases(user_id);
+CREATE INDEX idx_paint_canvases_modified_at ON public.paint_canvases(modified_at);
 
 -- Step 5: Enable realtime
-ALTER PUBLICATION supabase_realtime ADD TABLE public.paint_strokes;
-
--- Step 6: Test the table (optional - run after creating)
--- INSERT INTO public.paint_strokes (id, user_id, points, color, stroke_width, "order")
--- VALUES ('test-123', 'user-456', '[{"x": 100, "y": 200}, {"x": 150, "y": 250}]', 4294198070, 5.0, 1);
+ALTER PUBLICATION supabase_realtime ADD TABLE public.paint_canvases;
 */
 
-class PaintStroke extends RelationalDatumEntity {
+class PaintCanvas extends RelationalDatumEntity {
   @override
   final String id;
 
   @override
   final String userId;
 
-  final List<Offset> points;
+  final String title;
 
-  final Color color;
+  final String? description;
 
-  final double strokeWidth;
+  final List<Map<String, dynamic>>? thumbnailStrokeData;
 
-  final int order;
-
-  final String canvasId;
+  final int strokeCount;
 
   @override
   final DateTime createdAt;
@@ -73,28 +65,26 @@ class PaintStroke extends RelationalDatumEntity {
   @override
   final int version;
 
-  const PaintStroke({
+  const PaintCanvas({
     required this.id,
     required this.userId,
-    required this.points,
-    required this.color,
-    required this.strokeWidth,
-    required this.order,
-    required this.canvasId,
+    required this.title,
+    this.description,
+    this.thumbnailStrokeData,
+    this.strokeCount = 0,
     required this.createdAt,
     required this.modifiedAt,
     this.isDeleted = false,
     this.version = 1,
   });
 
-  PaintStroke copyWithAll({
+  PaintCanvas copyWithAll({
     String? id,
     String? userId,
-    List<Offset>? points,
-    Color? color,
-    double? strokeWidth,
-    int? order,
-    String? canvasId,
+    String? title,
+    String? description,
+    List<Map<String, dynamic>>? thumbnailStrokeData,
+    int? strokeCount,
     DateTime? createdAt,
     DateTime? modifiedAt,
     bool? isDeleted,
@@ -102,23 +92,21 @@ class PaintStroke extends RelationalDatumEntity {
   }) {
     final bool hasChanges = id != null ||
         userId != null ||
-        points != null ||
-        color != null ||
-        strokeWidth != null ||
-        order != null ||
-        canvasId != null ||
+        title != null ||
+        description != null ||
+        thumbnailStrokeData != null ||
+        strokeCount != null ||
         createdAt != null ||
         modifiedAt != null ||
         isDeleted != null;
 
-    return PaintStroke(
+    return PaintCanvas(
       id: id ?? this.id,
       userId: userId ?? this.userId,
-      points: points ?? this.points,
-      color: color ?? this.color,
-      strokeWidth: strokeWidth ?? this.strokeWidth,
-      order: order ?? this.order,
-      canvasId: canvasId ?? this.canvasId,
+      title: title ?? this.title,
+      description: description ?? this.description,
+      thumbnailStrokeData: thumbnailStrokeData ?? this.thumbnailStrokeData,
+      strokeCount: strokeCount ?? this.strokeCount,
       createdAt: createdAt ?? this.createdAt,
       modifiedAt: (modifiedAt ?? this.modifiedAt),
       isDeleted: isDeleted ?? this.isDeleted,
@@ -128,22 +116,22 @@ class PaintStroke extends RelationalDatumEntity {
 
   @override
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
-    final oldStroke = oldVersion as PaintStroke;
+    final oldCanvas = oldVersion as PaintCanvas;
     final diff = <String, dynamic>{};
 
-    if (points != oldStroke.points) {
-      diff['points'] = points.map((p) => {'x': p.dx, 'y': p.dy}).toList();
+    if (title != oldCanvas.title) {
+      diff['title'] = title;
     }
-    if (color != oldStroke.color) {
-      diff['color'] = color.toARGB32();
+    if (description != oldCanvas.description) {
+      diff['description'] = description;
     }
-    if (strokeWidth != oldStroke.strokeWidth) {
-      diff['strokeWidth'] = strokeWidth;
+    if (thumbnailStrokeData != oldCanvas.thumbnailStrokeData) {
+      diff['thumbnailStrokeData'] = thumbnailStrokeData;
     }
-    if (order != oldStroke.order) {
-      diff['order'] = order;
+    if (strokeCount != oldCanvas.strokeCount) {
+      diff['strokeCount'] = strokeCount;
     }
-    if (isDeleted != oldStroke.isDeleted) {
+    if (isDeleted != oldCanvas.isDeleted) {
       diff['isDeleted'] = isDeleted;
     }
 
@@ -160,10 +148,10 @@ class PaintStroke extends RelationalDatumEntity {
     final map = {
       'id': id,
       'userId': userId,
-      'points': points.map((p) => {'x': p.dx, 'y': p.dy}).toList(),
-      'color': color.toARGB32(),
-      'strokeWidth': strokeWidth,
-      'order': order,
+      'title': title,
+      'description': description,
+      'thumbnailStrokeData': thumbnailStrokeData,
+      'strokeCount': strokeCount,
       'isDeleted': isDeleted,
       'version': version,
     };
@@ -178,20 +166,16 @@ class PaintStroke extends RelationalDatumEntity {
     return map;
   }
 
-  factory PaintStroke.fromMap(Map<String, dynamic> map) {
-    return PaintStroke(
+  factory PaintCanvas.fromMap(Map<String, dynamic> map) {
+    return PaintCanvas(
       id: (map['id'] ?? '') as String,
       userId: (map['userId'] ?? map['user_id'] ?? '') as String,
-      points: ((map['points'] ?? []) as List<dynamic>)
-          .map((p) =>
-              Offset((p['x'] as num).toDouble(), (p['y'] as num).toDouble()))
-          .toList(),
-      color: Color((map['color'] ?? 0xFF000000) as int),
-      strokeWidth: (map['strokeWidth'] ?? 2.0) is int
-          ? (map['strokeWidth'] as int).toDouble()
-          : (map['strokeWidth'] ?? 2.0) as double,
-      order: (map['order'] ?? 0) as int,
-      canvasId: (map['canvasId'] ?? map['canvas_id'] ?? '') as String,
+      title: (map['title'] ?? 'Untitled') as String,
+      description: map['description'] as String?,
+      thumbnailStrokeData: (map['thumbnailStrokeData'] ?? map['thumbnail_stroke_data']) as List<Map<String, dynamic>>?,
+      strokeCount: (map['strokeCount'] ?? map['stroke_count'] ?? 0) is num
+          ? (map['strokeCount'] ?? map['stroke_count'] ?? 0).toInt()
+          : (map['strokeCount'] ?? map['stroke_count'] ?? 0) as int,
       createdAt: _parseDate(map['createdAt'] ?? map['created_at']),
       modifiedAt: _parseDate(map['modifiedAt'] ?? map['modified_at']),
       isDeleted: (map['isDeleted'] ?? map['is_deleted'] ?? false) as bool,
@@ -210,26 +194,21 @@ class PaintStroke extends RelationalDatumEntity {
     return DateTime.fromMillisecondsSinceEpoch(0);
   }
 
-  static PaintStroke create({
-    required List<Offset> points,
-    required Color color,
-    required double strokeWidth,
-    required int order,
-    required String canvasId,
+  static PaintCanvas create({
+    required String title,
+    String? description,
   }) {
     final now = DateTime.now();
     final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) {
-      throw Exception('Cannot create paint stroke: user is not logged in.');
+      throw Exception('Cannot create paint canvas: user is not logged in.');
     }
-    return PaintStroke(
+    return PaintCanvas(
       id: '${now.millisecondsSinceEpoch}${Random().nextInt(9999)}',
       userId: userId,
-      points: points,
-      color: color,
-      strokeWidth: strokeWidth,
-      order: order,
-      canvasId: canvasId,
+      title: title,
+      description: description,
+      strokeCount: 0,
       createdAt: now,
       modifiedAt: now,
     );
@@ -237,46 +216,36 @@ class PaintStroke extends RelationalDatumEntity {
 
   String toJson() => json.encode(toDatumMap());
 
-  factory PaintStroke.fromJson(String source) =>
-      PaintStroke.fromMap(json.decode(source) as Map<String, dynamic>);
+  factory PaintCanvas.fromJson(String source) =>
+      PaintCanvas.fromMap(json.decode(source) as Map<String, dynamic>);
 
   @override
   String toString() {
-    return 'PaintStroke(id: $id, userId: $userId, points: ${points.length} points, color: $color, strokeWidth: $strokeWidth, order: $order, createdAt: $createdAt, modifiedAt: $modifiedAt, isDeleted: $isDeleted, version: $version)';
+    return 'PaintCanvas(id: $id, userId: $userId, title: $title, description: $description, strokeCount: $strokeCount, createdAt: $createdAt, modifiedAt: $modifiedAt, isDeleted: $isDeleted, version: $version)';
   }
 
   @override
-  bool operator ==(covariant PaintStroke other) {
+  bool operator ==(covariant PaintCanvas other) {
     if (identical(this, other)) return true;
 
     return other.id == id &&
         other.userId == userId &&
-        _listEquals(other.points, points) &&
-        other.color == color &&
-        other.strokeWidth == strokeWidth &&
-        other.order == order &&
+        other.title == title &&
+        other.description == description &&
+        other.strokeCount == strokeCount &&
         other.createdAt == createdAt &&
         other.modifiedAt == modifiedAt &&
         other.isDeleted == isDeleted &&
         other.version == version;
   }
 
-  bool _listEquals(List<Offset> a, List<Offset> b) {
-    if (a.length != b.length) return false;
-    for (int i = 0; i < a.length; i++) {
-      if (a[i] != b[i]) return false;
-    }
-    return true;
-  }
-
   @override
   int get hashCode {
     return id.hashCode ^
         userId.hashCode ^
-        points.hashCode ^
-        color.hashCode ^
-        strokeWidth.hashCode ^
-        order.hashCode ^
+        title.hashCode ^
+        description.hashCode ^
+        strokeCount.hashCode ^
         createdAt.hashCode ^
         modifiedAt.hashCode ^
         isDeleted.hashCode ^
@@ -291,9 +260,10 @@ class PaintStroke extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-    'canvas': BelongsTo<PaintCanvas>(
+    'strokes': HasMany<PaintStroke>(
       this,
-      'canvasId', // The foreign key in this entity that points to the canvas
+      'canvasId', // The foreign key in PaintStroke that points to this canvas
+      cascadeDeleteBehavior: CascadeDeleteBehavior.cascade, // Delete strokes when canvas is deleted
     ),
   };
 

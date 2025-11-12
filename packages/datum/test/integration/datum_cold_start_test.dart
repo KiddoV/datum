@@ -86,6 +86,7 @@ void main() {
               pendingOperations: [],
             );
           },
+          synchronous: true, // Use synchronous mode for testing
         );
 
         expect(result, isTrue);

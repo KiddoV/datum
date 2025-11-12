@@ -768,7 +768,7 @@ class Datum {
         pendingOperations: allPending,
       );
 
-      _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.completed));
+      _updateSnapshot(userId, (s) => s.copyWith(status: DatumSyncStatus.completed, lastCompletedAt: DateTime.now()));
       for (final observer in globalObservers) {
         observer.onSyncEnd(result);
       }
@@ -1079,8 +1079,9 @@ class Datum {
   /// Returns true if a cold start sync was performed, false otherwise.
   Future<bool> handleColdStartIfNeeded<T extends DatumEntityInterface>(
     String? userId,
-    Future<DatumSyncResult<T>> Function(DatumSyncOptions) syncFunction,
-  ) async {
+    Future<DatumSyncResult<T>> Function(DatumSyncOptions) syncFunction, {
+    bool synchronous = false,
+  }) async {
     return Datum.manager<T>().coldStartManager.handleColdStartIfNeeded(
       userId,
       (options) async {
@@ -1102,6 +1103,7 @@ class Datum {
         return await syncFunction(typedOptions);
       },
       entityType: T.toString(),
+      synchronous: synchronous,
     );
   }
 
@@ -1110,6 +1112,43 @@ class Datum {
   /// Returns a set of user IDs that have been tracked by the cold start manager.
   Set<String> getColdStartActiveUsers<T extends DatumEntityInterface>() {
     return Datum.manager<T>().coldStartManager.getActiveUsers();
+  }
+
+  /// Gets the most recent last sync time across all registered entities for the specified user.
+  ///
+  /// This method queries the sync metadata of all registered entity managers and returns
+  /// the most recent `lastSyncTime` found. Returns null if no sync has ever been performed
+  /// for this user across any entity type.
+  ///
+  /// This is useful for displaying when the last synchronization occurred in UI components.
+  ///
+  /// Example:
+  /// ```dart
+  /// final lastSync = await Datum.instance.getLastSyncTime('user123');
+  /// if (lastSync != null) {
+  ///   print('Last sync was ${DateTime.now().difference(lastSync).inMinutes} minutes ago');
+  /// } else {
+  ///   print('No sync has been performed yet');
+  /// }
+  /// ```
+  Future<DateTime?> getLastSyncTime(String userId) async {
+    if (_managers.isEmpty) return null;
+
+    DateTime? mostRecentSync;
+    for (final manager in _managers.allManagers) {
+      try {
+        final metadata = await manager.localAdapter.getSyncMetadata(userId);
+        if (metadata?.lastSyncTime != null) {
+          if (mostRecentSync == null || metadata!.lastSyncTime!.isAfter(mostRecentSync)) {
+            mostRecentSync = metadata!.lastSyncTime!;
+          }
+        }
+      } catch (e) {
+        // Continue with other managers if one fails
+        logger.debug('Failed to get sync metadata from ${manager.runtimeType}: $e');
+      }
+    }
+    return mostRecentSync;
   }
 
 

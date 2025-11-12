@@ -3,11 +3,13 @@ import 'package:datum/source/core/models/cold_start_strategy.dart';
 
 import 'package:example/const/secrets.dart';
 import 'package:example/custom_connectivity_checker.dart';
-import 'package:example/custom_datum_logger.dart';
+import 'package:example/sync/isolate_stratergy.dart';
 import 'package:example/data/task/adapters/hive_isolate_adapter.dart';
+import 'package:example/bootstrap.dart' as bootstrap;
 import 'package:example/data/task/entity/task.dart';
 import 'package:example/data/user/adapters/supabase_adapter.dart';
 import 'package:example/data/paint/entity/paint_stroke.dart';
+import 'package:example/data/paint/entity/paint_canvas.dart';
 import 'package:example/features/simple_datum/controller/simple_datum_provider.dart';
 import 'package:example/my_datum_observer.dart';
 import 'package:example/shared/riverpod_ext/riverpod_observer/riverpod_obs.dart';
@@ -66,17 +68,18 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
         return null;
       }
     }, // Reactive function to get current user ID
-    changeCacheDuration: Duration(milliseconds: 0),
-    remoteEventDebounceTime: Duration(milliseconds: 0),
+    changeCacheDuration: Duration(seconds: 1),
+    remoteEventDebounceTime: Duration(milliseconds: 100),
     autoSyncInterval: Duration(
-      minutes: 30,
+      minutes: 10,
     ),
     syncRequestStrategy: SequentialRequestStrategy(),
-    syncExecutionStrategy: DatumSyncExecutionStrategy.sequential(),
+    syncExecutionStrategy:
+        const IsolateStrategy(DatumSyncExecutionStrategy.sequential()),
     schemaVersion: 0,
     migrations: [],
     enablePerformanceLogging: false,
-    logLevel: LogLevel.info,
+    logLevel: LogLevel.trace,
     onMigrationError: (error, stackTrace) async {
       talker.error(error, stackTrace);
     },
@@ -91,10 +94,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
   final datum = await Datum.initialize(
     config: config,
     connectivityChecker: CustomConnectivityChecker(),
-    logger: CustomDatumLogger(
-      enabled: config.enableLogging,
-      minimumLevel: LogLevel.trace,
-    ),
+    logger: bootstrap.isolateLogger,
     observers: [
       MyDatumObserver(),
     ],
@@ -119,6 +119,17 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
         remoteAdapter: SupabaseRemoteAdapter<PaintStroke>(
           fromMap: PaintStroke.fromMap,
           tableName: "paint_strokes",
+        ),
+      ),
+      DatumRegistration<PaintCanvas>(
+        localAdapter: IsolatedHiveLocalAdapter<PaintCanvas>(
+          entityBoxName: "PaintCanvas",
+          fromMap: (map) => PaintCanvas.fromMap(map),
+          schemaVersion: 0,
+        ),
+        remoteAdapter: SupabaseRemoteAdapter<PaintCanvas>(
+          fromMap: PaintCanvas.fromMap,
+          tableName: "paint_canvases",
         ),
       ),
     ],

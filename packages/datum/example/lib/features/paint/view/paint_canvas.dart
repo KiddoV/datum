@@ -4,34 +4,47 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:datum/datum.dart';
 import 'package:example/data/paint/entity/paint_stroke.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+// ============================================================================
+// PROVIDERS
+// ============================================================================
+
+final paintStrokesStreamProvider =
+    StreamProvider.autoDispose.family<List<PaintStroke>, String>(
+  (ref, canvasId) async* {
+    final userId = Supabase.instance.client.auth.currentUser?.id;
+    if (userId == null) {
+      yield [];
+      return;
+    }
+
+    yield* Datum.manager<PaintStroke>()
+            .watchAll(userId: userId, includeInitialData: true)
+            ?.map((allStrokes) => allStrokes
+                .where((stroke) =>
+                    stroke.canvasId == canvasId && !stroke.isDeleted)
+                .toList()
+              ..sort((a, b) => a.order.compareTo(b.order))) ??
+        const Stream.empty();
+  },
+  name: 'paintStrokesStreamProvider',
+);
 
 class PaintCanvas extends ConsumerStatefulWidget {
-  const PaintCanvas({super.key});
+  final String canvasId;
+
+  const PaintCanvas({super.key, required this.canvasId});
 
   @override
   ConsumerState<PaintCanvas> createState() => _PaintCanvasState();
 }
 
 class _PaintCanvasState extends ConsumerState<PaintCanvas> {
-  final List<PaintStroke> _strokes = [];
   final List<PaintStroke> _redoStrokes = [];
   List<Offset> _currentPoints = [];
   Color _selectedColor = Colors.black;
   double _strokeWidth = 2.0;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadStrokes();
-  }
-
-  Future<void> _loadStrokes() async {
-    final strokes = await Datum.manager<PaintStroke>().readAll();
-    setState(() {
-      _strokes.clear();
-      _strokes.addAll(strokes..sort((a, b) => a.order.compareTo(b.order)));
-    });
-  }
 
   void _startStroke(Offset position) {
     setState(() {
@@ -51,35 +64,48 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
     final userId = await Datum.instance.config.initialUserId?.call();
     if (userId == null) return;
 
+    // Get current strokes count for ordering
+    final strokesAsync = ref.read(paintStrokesStreamProvider(widget.canvasId));
+    final currentStrokes = strokesAsync.maybeWhen(
+      data: (strokes) => strokes,
+      orElse: () => <PaintStroke>[],
+    );
+
     final stroke = PaintStroke.create(
       points: List.from(_currentPoints),
       color: _selectedColor,
       strokeWidth: _strokeWidth,
-      order: _strokes.length,
+      order: currentStrokes.length,
+      canvasId: widget.canvasId,
     );
 
     setState(() {
-      _strokes.add(stroke);
       _currentPoints.clear();
       _redoStrokes.clear();
     });
 
-    // Save to Datum
+    // Save to Datum - the UI will update reactively
     await Datum.manager<PaintStroke>()
         .push(item: stroke, userId: stroke.userId);
   }
 
   Future<void> _undo() async {
-    if (_strokes.isEmpty) return;
+    final strokesAsync = ref.read(paintStrokesStreamProvider(widget.canvasId));
+    final strokes = strokesAsync.maybeWhen(
+      data: (data) => data,
+      orElse: () => <PaintStroke>[],
+    );
 
-    final lastStroke = _strokes.removeLast();
+    if (strokes.isEmpty) return;
+
+    final lastStroke = strokes.last;
 
     setState(() {
       _redoStrokes.add(lastStroke);
     });
 
-    // Mark as deleted in Datum
-    final deletedStroke = lastStroke.copyWith(isDeleted: true);
+    // Mark as deleted in Datum - the UI will update reactively
+    final deletedStroke = lastStroke.copyWith(isDeleted: true) as PaintStroke;
     await Datum.manager<PaintStroke>()
         .push(item: deletedStroke, userId: deletedStroke.userId);
   }
@@ -89,12 +115,8 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
 
     final stroke = _redoStrokes.removeLast();
 
-    setState(() {
-      _strokes.add(stroke);
-    });
-
-    // Restore by updating isDeleted to false
-    final restoredStroke = stroke.copyWith(isDeleted: false);
+    // Restore by updating isDeleted to false - the UI will update reactively
+    final restoredStroke = stroke.copyWith(isDeleted: false) as PaintStroke;
     await Datum.manager<PaintStroke>()
         .push(item: restoredStroke, userId: restoredStroke.userId);
   }
@@ -103,16 +125,22 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
     final userId = await Datum.instance.config.initialUserId?.call();
     if (userId == null) return;
 
+    final strokesAsync = ref.read(paintStrokesStreamProvider(widget.canvasId));
+    final strokes = strokesAsync.maybeWhen(
+      data: (data) => data,
+      orElse: () => <PaintStroke>[],
+    );
+
     // Mark all strokes as deleted
-    for (final stroke in _strokes) {
-      final deletedStroke = stroke.copyWith(isDeleted: true);
-      await Datum.manager<PaintStroke>().remoteAdapter.create(
-            deletedStroke,
-          );
+    for (final stroke in strokes) {
+      final deletedStroke = stroke.copyWith(isDeleted: true) as PaintStroke;
+      await Datum.manager<PaintStroke>().push(
+        item: deletedStroke,
+        userId: userId,
+      );
     }
 
     setState(() {
-      _strokes.clear();
       _redoStrokes.clear();
     });
   }
@@ -152,6 +180,14 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
     if (userId == null) return;
 
     try {
+      // Get current strokes count for ordering
+      final strokesAsync =
+          ref.read(paintStrokesStreamProvider(widget.canvasId));
+      final currentStrokes = strokesAsync.maybeWhen(
+        data: (strokes) => strokes,
+        orElse: () => <PaintStroke>[],
+      );
+
       // Create a simple test stroke - a diagonal line
       final testPoints = [
         const Offset(100, 100),
@@ -163,18 +199,19 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
         points: testPoints,
         color: Colors.purple, // Use a distinctive color for test strokes
         strokeWidth: 5.0,
-        order: _strokes.length,
+        order: currentStrokes.length,
+        canvasId: widget.canvasId,
       );
 
       setState(() {
-        _strokes.add(stroke);
         _redoStrokes.clear();
       });
 
-      // Save to Datum
-      await Datum.manager<PaintStroke>().remoteAdapter.create(
-            stroke,
-          );
+      // Save to Datum - the UI will update reactively
+      await Datum.manager<PaintStroke>().push(
+        item: stroke,
+        userId: userId,
+      );
 
       // Show success feedback
       if (mounted) {
@@ -201,6 +238,8 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
 
   @override
   Widget build(BuildContext context) {
+    final strokesAsync = ref.watch(paintStrokesStreamProvider(widget.canvasId));
+
     return Column(
       children: [
         // Optimized Scrollable Toolbar
@@ -275,45 +314,84 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
                   margin: const EdgeInsets.symmetric(horizontal: 8),
                 ),
                 // Action buttons section
-                IconButton(
-                  onPressed: _strokes.isNotEmpty ? _undo : null,
-                  icon: Icon(
-                    Icons.undo,
-                    color:
-                        _strokes.isNotEmpty ? Colors.black : Colors.grey[400],
+                strokesAsync.maybeWhen(
+                  data: (strokes) => Row(
+                    children: [
+                      IconButton(
+                        onPressed: strokes.isNotEmpty ? _undo : null,
+                        icon: Icon(
+                          Icons.undo,
+                          color: strokes.isNotEmpty
+                              ? Colors.black
+                              : Colors.grey[400],
+                        ),
+                        tooltip: 'Undo',
+                        iconSize: 24,
+                        padding: const EdgeInsets.all(8),
+                        constraints:
+                            const BoxConstraints(minWidth: 40, minHeight: 40),
+                      ),
+                      IconButton(
+                        onPressed: _redoStrokes.isNotEmpty ? _redo : null,
+                        icon: Icon(
+                          Icons.redo,
+                          color: _redoStrokes.isNotEmpty
+                              ? Colors.black
+                              : Colors.grey[400],
+                        ),
+                        tooltip: 'Redo',
+                        iconSize: 24,
+                        padding: const EdgeInsets.all(8),
+                        constraints:
+                            const BoxConstraints(minWidth: 40, minHeight: 40),
+                      ),
+                      IconButton(
+                        onPressed: strokes.isNotEmpty ? _clearCanvas : null,
+                        icon: Icon(
+                          Icons.clear,
+                          color: strokes.isNotEmpty
+                              ? Colors.black
+                              : Colors.grey[400],
+                        ),
+                        tooltip: 'Clear Canvas',
+                        iconSize: 24,
+                        padding: const EdgeInsets.all(8),
+                        constraints:
+                            const BoxConstraints(minWidth: 40, minHeight: 40),
+                      ),
+                    ],
                   ),
-                  tooltip: 'Undo',
-                  iconSize: 24,
-                  padding: const EdgeInsets.all(8),
-                  constraints:
-                      const BoxConstraints(minWidth: 40, minHeight: 40),
-                ),
-                IconButton(
-                  onPressed: _redoStrokes.isNotEmpty ? _redo : null,
-                  icon: Icon(
-                    Icons.redo,
-                    color: _redoStrokes.isNotEmpty
-                        ? Colors.black
-                        : Colors.grey[400],
+                  orElse: () => const Row(
+                    children: [
+                      IconButton(
+                        onPressed: null,
+                        icon: Icon(Icons.undo, color: Colors.grey),
+                        tooltip: 'Undo',
+                        iconSize: 24,
+                        padding: EdgeInsets.all(8),
+                        constraints:
+                            BoxConstraints(minWidth: 40, minHeight: 40),
+                      ),
+                      IconButton(
+                        onPressed: null,
+                        icon: Icon(Icons.redo, color: Colors.grey),
+                        tooltip: 'Redo',
+                        iconSize: 24,
+                        padding: EdgeInsets.all(8),
+                        constraints:
+                            BoxConstraints(minWidth: 40, minHeight: 40),
+                      ),
+                      IconButton(
+                        onPressed: null,
+                        icon: Icon(Icons.clear, color: Colors.grey),
+                        tooltip: 'Clear Canvas',
+                        iconSize: 24,
+                        padding: EdgeInsets.all(8),
+                        constraints:
+                            BoxConstraints(minWidth: 40, minHeight: 40),
+                      ),
+                    ],
                   ),
-                  tooltip: 'Redo',
-                  iconSize: 24,
-                  padding: const EdgeInsets.all(8),
-                  constraints:
-                      const BoxConstraints(minWidth: 40, minHeight: 40),
-                ),
-                IconButton(
-                  onPressed: _strokes.isNotEmpty ? _clearCanvas : null,
-                  icon: Icon(
-                    Icons.clear,
-                    color:
-                        _strokes.isNotEmpty ? Colors.black : Colors.grey[400],
-                  ),
-                  tooltip: 'Clear Canvas',
-                  iconSize: 24,
-                  padding: const EdgeInsets.all(8),
-                  constraints:
-                      const BoxConstraints(minWidth: 40, minHeight: 40),
                 ),
                 IconButton(
                   onPressed: _syncToRemote,
@@ -347,18 +425,24 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
         Expanded(
           child: Container(
             color: Colors.white,
-            child: GestureDetector(
-              onPanStart: (details) => _startStroke(details.localPosition),
-              onPanUpdate: (details) => _updateStroke(details.localPosition),
-              onPanEnd: (details) => _endStroke(),
-              child: CustomPaint(
-                painter: _CanvasPainter(
-                  strokes: _strokes,
-                  currentPoints: _currentPoints,
-                  currentColor: _selectedColor,
-                  currentStrokeWidth: _strokeWidth,
+            child: strokesAsync.when(
+              data: (strokes) => GestureDetector(
+                onPanStart: (details) => _startStroke(details.localPosition),
+                onPanUpdate: (details) => _updateStroke(details.localPosition),
+                onPanEnd: (details) => _endStroke(),
+                child: CustomPaint(
+                  painter: _CanvasPainter(
+                    strokes: strokes,
+                    currentPoints: _currentPoints,
+                    currentColor: _selectedColor,
+                    currentStrokeWidth: _strokeWidth,
+                  ),
+                  size: Size.infinite,
                 ),
-                size: Size.infinite,
+              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Text('Error loading strokes: $error'),
               ),
             ),
           ),

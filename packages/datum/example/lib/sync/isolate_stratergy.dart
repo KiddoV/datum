@@ -1,6 +1,7 @@
 import 'package:datum/source/core/models/datum_entity.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
 import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
+import 'package:datum/source/utils/datum_logger.dart';
 
 import '_isolate_runner_io.dart';
 
@@ -30,8 +31,9 @@ class IsolateStrategy implements DatumSyncExecutionStrategy {
     List<DatumSyncOperation<T>> operations,
     Future<void> Function(DatumSyncOperation<T> operation) processOperation,
     bool Function() isCancelled,
-    void Function(int completed, int total) onProgress,
-  ) {
+    void Function(int completed, int total) onProgress, {
+    DatumLogger? logger,
+  }) {
     if (!forceIsolateInTest) {
       // In a test environment (and not forced), run the wrapped strategy
       // directly on the main thread to simplify testing.
@@ -54,6 +56,7 @@ class IsolateStrategy implements DatumSyncExecutionStrategy {
       isCancelled,
       onProgress,
       wrappedStrategy,
+      logger ?? DatumLogger(),
     );
   }
 }

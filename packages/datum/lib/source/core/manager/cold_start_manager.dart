@@ -38,6 +38,7 @@ class ColdStartManager {
   // Per-user state instead of global static state
   final Map<String, bool> _isColdStart = {};
   final Map<String, DateTime?> _lastColdStartTime = {};
+  final Map<String, bool> _isColdStartInProgress = {}; // Track ongoing cold start syncs
   final ColdStartConfig _config;
   final DatumLogger _logger;
 
@@ -64,6 +65,7 @@ class ColdStartManager {
     String? userId,
     Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction, {
     String? entityType,
+    bool synchronous = false,
   }) async {
     final entityInfo = entityType != null ? ' for $entityType' : '';
 
@@ -89,6 +91,12 @@ class ColdStartManager {
       return false;
     }
 
+    // Check if a cold start sync is already in progress for this user
+    if (_isColdStartInProgress[userId] == true) {
+      _logger.debug('Cold start sync already in progress for user: $userId$entityInfo');
+      return false;
+    }
+
     final shouldSync = await _shouldPerformColdStartSync(userId);
     if (!shouldSync) {
       _logger.debug('Cold start sync not needed based on strategy evaluation$entityInfo');
@@ -96,24 +104,49 @@ class ColdStartManager {
       return false;
     }
 
-    _logger.info('🚀 Starting background cold start sync for user: $userId using strategy: ${_config.strategy}$entityInfo');
+    // Mark that a cold start sync is now in progress
+    _isColdStartInProgress[userId] = true;
 
-    // Start cold start sync in background to prevent blocking app initialization
-    // Use Future.delayed with zero duration to make it work with fakeAsync in tests
-    unawaited(Future.delayed(Duration.zero, () async {
+    if (synchronous) {
+      // For testing: execute synchronously
+      _logger.info('🚀 Starting synchronous cold start sync for user: $userId using strategy: ${_config.strategy}$entityInfo');
       try {
         await _performColdStartSync(userId, syncFunction, entityType: entityType);
         _isColdStart[userId] = false;
         _lastColdStartTime[userId] = DateTime.now();
-        _logger.info('✅ Background cold start sync completed successfully for user: $userId$entityInfo');
+        _logger.info('✅ Synchronous cold start sync completed successfully for user: $userId$entityInfo');
       } catch (e, stack) {
-        _logger.error('❌ Background cold start sync failed for user: $userId$entityInfo', stack);
+        _logger.error('❌ Synchronous cold start sync failed for user: $userId$entityInfo', stack);
         // On cold start sync failure, don't mark as completed
         // Allow retry on next app launch
+        rethrow;
+      } finally {
+        // Always clear the in-progress flag when done
+        _isColdStartInProgress[userId] = false;
       }
-    }));
+    } else {
+      // Start cold start sync in background to prevent blocking app initialization
+      // Use Future.delayed with zero duration to make it work with fakeAsync in tests
+      _logger.info('🚀 Starting background cold start sync for user: $userId using strategy: ${_config.strategy}$entityInfo');
+      unawaited(Future.delayed(Duration.zero, () async {
+        try {
+          await _performColdStartSync(userId, syncFunction, entityType: entityType);
+          _isColdStart[userId] = false;
+          _lastColdStartTime[userId] = DateTime.now();
+          _logger.info('✅ Background cold start sync completed successfully for user: $userId$entityInfo');
+        } catch (e, stack) {
+          _logger.error('❌ Background cold start sync failed for user: $userId$entityInfo', stack);
+          // On cold start sync failure, don't mark as completed
+          // Allow retry on next app launch
+        } finally {
+          // Always clear the in-progress flag when done
+          _isColdStartInProgress[userId] = false;
+        }
+      }));
+    }
 
-    // Return immediately without waiting for sync to complete
+    // Return immediately without waiting for sync to complete (for async mode)
+    // or after sync completion (for sync mode)
     return true;
   }
 
@@ -284,12 +317,14 @@ class ColdStartManager {
   void resetForUser(String userId) {
     _isColdStart[userId] = true;
     _lastColdStartTime[userId] = null;
+    _isColdStartInProgress[userId] = false;
   }
 
   /// Resets cold start state for all users (useful for testing).
   void resetAll() {
     _isColdStart.clear();
     _lastColdStartTime.clear();
+    _isColdStartInProgress.clear();
   }
 
   /// Sets the last cold start time for a specific user (useful for testing).
