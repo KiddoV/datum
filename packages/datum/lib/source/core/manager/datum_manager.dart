@@ -312,21 +312,14 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     for (final userId in userIds) {
       if (userId.isNotEmpty) {
         // Check if cold start sync is needed
-        final coldStartPerformed = await _coldStartManager.handleColdStartIfNeeded(
-          userId,
-          (options) => synchronize(userId, options: options),
-        );
+        unawaited(_coldStartManager.handleColdStartIfNeeded(
+          evaluatedInitialUserId,
+          (options) => synchronize(evaluatedInitialUserId ?? '', options: options),
+          entityType: T.toString(),
+        ));
 
-        if (!coldStartPerformed) {
-          _logger.info('Auto-sync starting for user: $userId');
-          // Perform regular initial sync if cold start wasn't triggered
-          unawaited(
-            synchronize(userId).catchError(
-              (_) => DatumSyncResult<T>.skipped(userId, 0),
-            ),
-          );
-        }
-
+        // Cold start is now asynchronous, so we always start auto-sync
+        // The cold start will run in background if needed
         startAutoSync(userId);
       }
     }
@@ -1723,6 +1716,8 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     DatumSyncScope? scope,
   }) async {
     _ensureInitialized();
+
+    _logger.info('🔄 [${T.toString()}] Starting sync for user: $userId');
 
     return _syncRequestStrategy.execute(
       () async {

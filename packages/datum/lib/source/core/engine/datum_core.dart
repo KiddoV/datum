@@ -1078,7 +1078,7 @@ class Datum {
   ///
   /// Returns true if a cold start sync was performed, false otherwise.
   Future<bool> handleColdStartIfNeeded<T extends DatumEntityInterface>(
-    String userId,
+    String? userId,
     Future<DatumSyncResult<T>> Function(DatumSyncOptions) syncFunction,
   ) async {
     return Datum.manager<T>().coldStartManager.handleColdStartIfNeeded(
@@ -1101,6 +1101,7 @@ class Datum {
         );
         return await syncFunction(typedOptions);
       },
+      entityType: T.toString(),
     );
   }
 

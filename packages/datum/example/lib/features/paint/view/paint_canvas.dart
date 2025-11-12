@@ -1,4 +1,5 @@
 import 'dart:ui' as ui;
+import 'package:example/bootstrap.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:datum/datum.dart';
@@ -105,8 +106,9 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
     // Mark all strokes as deleted
     for (final stroke in _strokes) {
       final deletedStroke = stroke.copyWith(isDeleted: true);
-      await Datum.manager<PaintStroke>()
-          .push(item: deletedStroke, userId: deletedStroke.userId);
+      await Datum.manager<PaintStroke>().remoteAdapter.create(
+            deletedStroke,
+          );
     }
 
     setState(() {
@@ -132,11 +134,64 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
         );
       }
     } catch (e) {
+      talker.error(e);
       // Show error feedback
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Failed to sync: $e'),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _createTestStroke() async {
+    final userId = await Datum.instance.config.initialUserId?.call();
+    if (userId == null) return;
+
+    try {
+      // Create a simple test stroke - a diagonal line
+      final testPoints = [
+        const Offset(100, 100),
+        const Offset(150, 150),
+        const Offset(200, 200),
+      ];
+
+      final stroke = PaintStroke.create(
+        points: testPoints,
+        color: Colors.purple, // Use a distinctive color for test strokes
+        strokeWidth: 5.0,
+        order: _strokes.length,
+      );
+
+      setState(() {
+        _strokes.add(stroke);
+        _redoStrokes.clear();
+      });
+
+      // Save to Datum
+      await Datum.manager<PaintStroke>().remoteAdapter.create(
+            stroke,
+          );
+
+      // Show success feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Test stroke created and saved!'),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      talker.error('Failed to create test stroke: $e');
+      // Show error feedback
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to create test stroke: $e'),
             duration: Duration(seconds: 3),
           ),
         );
@@ -267,6 +322,18 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
                     color: Colors.blue,
                   ),
                   tooltip: 'Sync to Remote',
+                  iconSize: 24,
+                  padding: const EdgeInsets.all(8),
+                  constraints:
+                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                ),
+                IconButton(
+                  onPressed: _createTestStroke,
+                  icon: const Icon(
+                    Icons.add_circle,
+                    color: Colors.green,
+                  ),
+                  tooltip: 'Create Test Stroke',
                   iconSize: 24,
                   padding: const EdgeInsets.all(8),
                   constraints:

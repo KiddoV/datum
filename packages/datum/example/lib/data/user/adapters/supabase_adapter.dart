@@ -188,16 +188,31 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<DatumSyncMetadata?> getSyncMetadata(String userId) async {
-    final response = await _client
-        .from(_metadataTableName)
-        .select()
-        .eq('user_id', userId)
-        .maybeSingle();
+    talker.info("🔍 [Adapter] getSyncMetadata called for userId: $userId, table: $_metadataTableName");
 
-    if (response == null) {
-      return null;
+    try {
+      talker.debug("🔍 [Adapter] Executing query: SELECT from $_metadataTableName WHERE user_id = $userId");
+      final response = await _client
+          .from(_metadataTableName)
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      talker.info("✅ [Adapter] getSyncMetadata query successful, response: ${response != null ? 'found' : 'null'}");
+
+      if (response == null) {
+        talker.debug("🔍 [Adapter] No sync metadata found for user $userId, returning null");
+        return null;
+      }
+
+      talker.debug("🔍 [Adapter] Parsing sync metadata response: $response");
+      final metadata = DatumSyncMetadata.fromMap(response);
+      talker.info("✅ [Adapter] Successfully parsed sync metadata for user $userId");
+      return metadata;
+    } catch (e, stackTrace) {
+      talker.error("❌ [Adapter] getSyncMetadata failed for user $userId - $e", stackTrace);
+      rethrow;
     }
-    return DatumSyncMetadata.fromMap((response));
   }
 
   @override

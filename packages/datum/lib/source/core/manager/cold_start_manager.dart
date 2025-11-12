@@ -61,10 +61,19 @@ class ColdStartManager {
   /// Checks if this is a cold start and performs appropriate sync if needed.
   /// Now runs sync in background to prevent blocking app initialization.
   Future<bool> handleColdStartIfNeeded(
-    String userId,
-    Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction,
-  ) async {
-    _logger.debug('Checking for cold start sync for user: $userId');
+    String? userId,
+    Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction, {
+    String? entityType,
+  }) async {
+    final entityInfo = entityType != null ? ' for $entityType' : '';
+
+    // Guard against null userId - skip cold start sync if user is not authenticated
+    if (userId == null || userId.isEmpty) {
+      _logger.debug('Skipping cold start sync: user not authenticated$entityInfo');
+      return false;
+    }
+
+    _logger.debug('Checking for cold start sync for user: $userId$entityInfo');
 
     // Initialize user state if not exists
     _isColdStart.putIfAbsent(userId, () => true);
@@ -73,48 +82,41 @@ class ColdStartManager {
 
     if (!isColdStart || _config.strategy == ColdStartStrategy.disabled) {
       if (_config.strategy == ColdStartStrategy.disabled) {
-        _logger.debug('Cold start sync disabled by configuration');
+        _logger.debug('Cold start sync disabled by configuration$entityInfo');
       } else if (!isColdStart) {
-        _logger.debug('Not a cold start, skipping cold start sync');
+        _logger.debug('Not a cold start, skipping cold start sync$entityInfo');
       }
       return false;
     }
 
     final shouldSync = await _shouldPerformColdStartSync(userId);
     if (!shouldSync) {
-      _logger.debug('Cold start sync not needed based on strategy evaluation');
+      _logger.debug('Cold start sync not needed based on strategy evaluation$entityInfo');
       _isColdStart[userId] = false;
       return false;
     }
 
-    _logger.info('Starting background cold start sync for user: $userId using strategy: ${_config.strategy}');
+    _logger.info('🚀 Starting background cold start sync for user: $userId using strategy: ${_config.strategy}$entityInfo');
 
     // Start cold start sync in background to prevent blocking app initialization
-    _startBackgroundColdStartSync(userId, syncFunction);
+    // Use Future.delayed with zero duration to make it work with fakeAsync in tests
+    unawaited(Future.delayed(Duration.zero, () async {
+      try {
+        await _performColdStartSync(userId, syncFunction, entityType: entityType);
+        _isColdStart[userId] = false;
+        _lastColdStartTime[userId] = DateTime.now();
+        _logger.info('✅ Background cold start sync completed successfully for user: $userId$entityInfo');
+      } catch (e, stack) {
+        _logger.error('❌ Background cold start sync failed for user: $userId$entityInfo', stack);
+        // On cold start sync failure, don't mark as completed
+        // Allow retry on next app launch
+      }
+    }));
 
     // Return immediately without waiting for sync to complete
     return true;
   }
 
-  /// Starts cold start sync in background without blocking the caller
-  void _startBackgroundColdStartSync(
-    String userId,
-    Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction,
-  ) {
-    // Use Future.microtask to run in background after current task completes
-    Future.microtask(() async {
-      try {
-        await _performColdStartSync(userId, syncFunction);
-        _isColdStart[userId] = false;
-        _lastColdStartTime[userId] = DateTime.now();
-        _logger.info('Background cold start sync completed successfully for user: $userId');
-      } catch (e, stack) {
-        _logger.error('Background cold start sync failed for user: $userId', stack);
-        // On cold start sync failure, don't mark as completed
-        // Allow retry on next app launch
-      }
-    });
-  }
 
   /// Determines if cold start sync should be performed based on strategy and conditions.
   Future<bool> _shouldPerformColdStartSync(String userId) async {
@@ -176,16 +178,18 @@ class ColdStartManager {
   /// Performs the appropriate cold start sync based on strategy.
   Future<void> _performColdStartSync(
     String userId,
-    Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction,
-  ) async {
-    _logger.info('🔄 Starting cold start sync execution for user: $userId');
+    Future<DatumSyncResult> Function(DatumSyncOptions) syncFunction, {
+    String? entityType,
+  }) async {
+    final entityInfo = entityType != null ? ' for $entityType' : '';
+    _logger.info('🔄 [Cold Start] Starting sync execution for user: $userId$entityInfo');
     _logger.debug('Cold start config: strategy=${_config.strategy}, threshold=${_config.syncThreshold}, maxDuration=${_config.maxDuration}, initialDelay=${_config.initialDelay}');
 
     // Add initial delay to allow UI to load
     if (_config.initialDelay > Duration.zero) {
-      _logger.info('⏳ Applying initial delay of ${_config.initialDelay} before cold start sync');
+      _logger.info('⏳ [Cold Start] Applying initial delay of ${_config.initialDelay} before sync');
       await Future.delayed(_config.initialDelay);
-      _logger.debug('✅ Initial delay completed');
+      _logger.debug('✅ [Cold Start] Initial delay completed');
     }
 
     final forceFullSync = _shouldForceFullSync();
@@ -194,24 +198,25 @@ class ColdStartManager {
       timeout: _config.maxDuration,
     );
 
-    _logger.info('🚀 Executing cold start sync with forceFullSync: $forceFullSync, timeout: ${_config.maxDuration}');
+    _logger.info('🚀 [Cold Start] Executing sync with forceFullSync: $forceFullSync, timeout: ${_config.maxDuration}');
     _logger.debug('Sync options created: $options');
 
     try {
       // Implement retry logic with exponential backoff
-      _logger.debug('🔄 Calling sync function with retry logic');
+      _logger.debug('🔄 [Cold Start] Calling sync function with retry logic');
       final result = await _executeWithRetry(
         () => syncFunction(options),
         userId: userId,
         operationName: 'cold start sync',
+        entityType: entityType,
       );
-      _logger.info('✅ Cold start sync execution completed successfully: $result');
+      _logger.info('✅ [Cold Start] Sync execution completed successfully: $result');
     } catch (e, stack) {
-      _logger.error('❌ Cold start sync execution failed: $e', stack);
+      _logger.error('❌ [Cold Start] Sync execution failed: $e', stack);
       rethrow;
     }
 
-    _logger.debug('🏁 Cold start sync execution completed');
+    _logger.debug('🏁 [Cold Start] Sync execution completed');
   }
 
   /// Executes an operation with retry logic and exponential backoff.
@@ -219,32 +224,37 @@ class ColdStartManager {
     Future<T> Function() operation, {
     required String userId,
     required String operationName,
+    String? entityType,
   }) async {
+    final entityInfo = entityType != null ? ' for $entityType' : '';
     int attempt = 0;
     Duration currentDelay = _initialRetryDelay;
 
     while (attempt <= _maxRetries) {
       try {
         if (attempt > 0) {
-          _logger.info('Retrying $operationName for user $userId (attempt ${attempt + 1}/${_maxRetries + 1}) after ${currentDelay.inSeconds}s delay');
+          _logger.info('🔄 [Cold Start] Retrying $operationName for user $userId$entityInfo (attempt ${attempt + 1}/${_maxRetries + 1}) after ${currentDelay.inSeconds}s delay');
           await Future.delayed(currentDelay);
           currentDelay = Duration(milliseconds: (currentDelay.inMilliseconds * _retryBackoffMultiplier).round());
         }
 
-        return await operation();
+        _logger.debug('🔄 [Cold Start] Executing $operationName for user $userId$entityInfo (attempt ${attempt + 1})');
+        final result = await operation();
+        _logger.debug('✅ [Cold Start] $operationName succeeded for user $userId$entityInfo');
+        return result;
       } catch (e, stack) {
         attempt++;
 
         if (attempt > _maxRetries) {
-          _logger.error('$operationName failed after ${_maxRetries + 1} attempts for user $userId', stack);
+          _logger.error('❌ [Cold Start] $operationName failed after ${_maxRetries + 1} attempts for user $userId$entityInfo', stack);
           rethrow;
         }
 
-        _logger.warn('$operationName failed on attempt $attempt for user $userId: $e');
+        _logger.warn('⚠️ [Cold Start] $operationName failed on attempt $attempt for user $userId$entityInfo: $e');
 
         // Don't retry certain types of errors
         if (e is ArgumentError || e is StateError || e is UnsupportedError) {
-          _logger.warn('Not retrying $operationName for user $userId due to non-retryable error: $e');
+          _logger.warn('🚫 [Cold Start] Not retrying $operationName for user $userId$entityInfo due to non-retryable error: $e');
           rethrow;
         }
       }

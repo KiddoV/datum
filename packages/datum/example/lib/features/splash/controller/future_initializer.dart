@@ -91,7 +91,10 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
   final datum = await Datum.initialize(
     config: config,
     connectivityChecker: CustomConnectivityChecker(),
-    logger: CustomDatumLogger(enabled: config.enableLogging),
+    logger: CustomDatumLogger(
+      enabled: config.enableLogging,
+      minimumLevel: LogLevel.trace,
+    ),
     observers: [
       MyDatumObserver(),
     ],

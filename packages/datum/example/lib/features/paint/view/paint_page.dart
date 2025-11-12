@@ -8,13 +8,15 @@ class PaintPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Paint Canvas'),
-        backgroundColor: Colors.blue,
-        foregroundColor: Colors.white,
+    return ScaffoldMessenger(
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Paint Canvas'),
+          backgroundColor: Colors.blue,
+          foregroundColor: Colors.white,
+        ),
+        body: const PaintCanvas(),
       ),
-      body: const PaintCanvas(),
     );
   }
 }

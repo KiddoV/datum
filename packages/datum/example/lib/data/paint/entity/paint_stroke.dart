@@ -6,12 +6,14 @@ import 'dart:ui';
 import 'package:datum/datum.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-////-- Create paint_strokes table
-/* CREATE TABLE public.paint_strokes (
+//-- Create paint_strokes table - COMPATIBLE WITH SUPABASE
+/*
+-- Step 1: Create the table
+CREATE TABLE public.paint_strokes (
     id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
     points JSONB NOT NULL,
-    color BIGINT NOT NULL,  -- Changed from INTEGER to BIGINT for Flutter Color values
+    color BIGINT NOT NULL,
     stroke_width REAL NOT NULL,
     "order" INTEGER NOT NULL,
     is_deleted BOOLEAN DEFAULT FALSE,
@@ -20,21 +22,25 @@ import 'package:supabase_flutter/supabase_flutter.dart';
     modified_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Enable Row Level Security
+-- Step 2: Enable Row Level Security
 ALTER TABLE public.paint_strokes ENABLE ROW LEVEL SECURITY;
 
--- Create policy for users to only access their own data
+-- Step 3: Create RLS policy
 CREATE POLICY "Users can only access their own paint strokes" ON public.paint_strokes
     FOR ALL USING (auth.uid()::text = user_id);
 
--- Create indexes for better performance
+-- Step 4: Create indexes
 CREATE INDEX idx_paint_strokes_user_id ON public.paint_strokes(user_id);
 CREATE INDEX idx_paint_strokes_modified_at ON public.paint_strokes(modified_at);
 CREATE INDEX idx_paint_strokes_order ON public.paint_strokes("order");
 
--- Enable realtime
+-- Step 5: Enable realtime
 ALTER PUBLICATION supabase_realtime ADD TABLE public.paint_strokes;
- */
+
+-- Step 6: Test the table (optional - run after creating)
+-- INSERT INTO public.paint_strokes (id, user_id, points, color, stroke_width, "order")
+-- VALUES ('test-123', 'user-456', '[{"x": 100, "y": 200}, {"x": 150, "y": 250}]', 4294198070, 5.0, 1);
+*/
 
 class PaintStroke extends DatumEntity {
   @override
