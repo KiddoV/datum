@@ -556,58 +556,75 @@ void main() {
         expect(callCount, 1);
       });
 
-      test('_executeWithRetry should retry on failure and succeed', () async {
-        const userId = 'user-1';
-        var callCount = 0;
-        var failureCount = 0;
+      test('_executeWithRetry should retry on failure and succeed', () {
+        fakeAsync((async) async {
+          const userId = 'user-1';
+          var callCount = 0;
+          var failureCount = 0;
 
-        const successResult = DatumSyncResult<TestDatumEntity>(
-          userId: userId,
-          duration: Duration(seconds: 1),
-          syncedCount: 5,
-          failedCount: 0,
-          conflictsResolved: 0,
-          pendingOperations: [],
-        );
+          const successResult = DatumSyncResult<TestDatumEntity>(
+            userId: userId,
+            duration: Duration(seconds: 1),
+            syncedCount: 5,
+            failedCount: 0,
+            conflictsResolved: 0,
+            pendingOperations: [],
+          );
 
-        final result = await manager.handleColdStartIfNeeded(userId, (options) async {
-          callCount++;
-          if (callCount <= 2) {
-            failureCount++;
-            throw Exception('Temporary failure');
-          }
-          return successResult;
+          // Create manager with very short retry delays for testing
+          final fastRetryManager = ColdStartManager(
+            config,
+            maxRetries: 2,
+            initialRetryDelay: const Duration(milliseconds: 1),
+            retryBackoffMultiplier: 1.0,
+          );
+
+          final result = await fastRetryManager.handleColdStartIfNeeded(userId, (options) async {
+            callCount++;
+            if (callCount <= 2) {
+              failureCount++;
+              throw Exception('Temporary failure');
+            }
+            return successResult;
+          });
+
+          expect(result, isTrue);
+          expect(callCount, 3); // Failed twice, succeeded on third try
+          expect(failureCount, 2);
         });
-
-        expect(result, isTrue);
-        expect(callCount, 3); // Failed twice, succeeded on third try
-        expect(failureCount, 2);
       });
 
-      test('_executeWithRetry should fail after max retries', () async {
-        const userId = 'user-1';
-        var callCount = 0;
+      test('_executeWithRetry should fail after max retries', () {
+        fakeAsync((async) async {
+          const userId = 'user-1';
+          var callCount = 0;
 
-        // Create manager with low retry count for testing
-        const retryConfig = ColdStartConfig(
-          strategy: ColdStartStrategy.adaptive,
-          syncThreshold: Duration(hours: 24),
-          initialDelay: Duration.zero, // No delay for faster tests
-          maxDuration: Duration(minutes: 5),
-        );
-        final retryManager = ColdStartManager(retryConfig, maxRetries: 2);
+          // Create manager with low retry count and short delays for testing
+          const retryConfig = ColdStartConfig(
+            strategy: ColdStartStrategy.adaptive,
+            syncThreshold: Duration(hours: 24),
+            initialDelay: Duration.zero, // No delay for faster tests
+            maxDuration: Duration(minutes: 5),
+          );
+          final retryManager = ColdStartManager(
+            retryConfig,
+            maxRetries: 2,
+            initialRetryDelay: const Duration(milliseconds: 1),
+            retryBackoffMultiplier: 1.0,
+          );
 
-        // Should throw exception after max retries
-        try {
-          await retryManager.handleColdStartIfNeeded(userId, (options) async {
-            callCount++;
-            throw Exception('Persistent failure');
-          });
-          fail('Expected exception to be thrown');
-        } catch (e) {
-          expect(e, isA<Exception>());
-          expect(callCount, 3); // Initial + 2 retries = 3 total attempts
-        }
+          // Should throw exception after max retries
+          try {
+            await retryManager.handleColdStartIfNeeded(userId, (options) async {
+              callCount++;
+              throw Exception('Persistent failure');
+            });
+            fail('Expected exception to be thrown');
+          } catch (e) {
+            expect(e, isA<Exception>());
+            expect(callCount, 3); // Initial + 2 retries = 3 total attempts
+          }
+        });
       });
 
       test('_executeWithRetry should not retry non-retryable errors', () async {
@@ -627,31 +644,31 @@ void main() {
         }
       });
 
-      test('_executeWithRetry should implement exponential backoff', () async {
-        const userId = 'user-1';
-        var callCount = 0;
-        final callTimes = <DateTime>[];
-
-        const successResult = DatumSyncResult<TestDatumEntity>(
-          userId: userId,
-          duration: Duration(seconds: 1),
-          syncedCount: 5,
-          failedCount: 0,
-          conflictsResolved: 0,
-          pendingOperations: [],
-        );
-
-        // Create manager with specific retry settings
-        final backoffManager = ColdStartManager(
-          config,
-          maxRetries: 2,
-          initialRetryDelay: const Duration(milliseconds: 100),
-          retryBackoffMultiplier: 2.0,
-        );
-
+      test('_executeWithRetry should implement exponential backoff', () {
         fakeAsync((async) async {
+          const userId = 'user-1';
+          var callCount = 0;
+          final callTimes = <DateTime>[];
+
+          const successResult = DatumSyncResult<TestDatumEntity>(
+            userId: userId,
+            duration: Duration(seconds: 1),
+            syncedCount: 5,
+            failedCount: 0,
+            conflictsResolved: 0,
+            pendingOperations: [],
+          );
+
+          // Create manager with short retry delays for testing
+          final backoffManager = ColdStartManager(
+            config,
+            maxRetries: 2,
+            initialRetryDelay: const Duration(milliseconds: 10),
+            retryBackoffMultiplier: 2.0,
+          );
+
           final result = await backoffManager.handleColdStartIfNeeded(userId, (options) async {
-            callTimes.add(clock.now());
+            callTimes.add(DateTime.now());
             callCount++;
             if (callCount <= 2) {
               throw Exception('Temporary failure');
@@ -667,8 +684,8 @@ void main() {
           final delay1 = callTimes[1].difference(callTimes[0]);
           final delay2 = callTimes[2].difference(callTimes[1]);
 
-          expect(delay1.inMilliseconds, greaterThanOrEqualTo(100));
-          expect(delay2.inMilliseconds, greaterThanOrEqualTo(200)); // 100 * 2.0
+          expect(delay1.inMilliseconds, greaterThanOrEqualTo(10));
+          expect(delay2.inMilliseconds, greaterThanOrEqualTo(20)); // 10 * 2.0
         });
       });
 

@@ -306,7 +306,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     }
 
     final userIds = evaluatedInitialUserId != null
-      ? [evaluatedInitialUserId!]
+      ? [evaluatedInitialUserId]
       : await localAdapter.getAllUserIds();
 
     for (final userId in userIds) {

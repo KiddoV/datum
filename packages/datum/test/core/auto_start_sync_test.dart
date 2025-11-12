@@ -223,7 +223,7 @@ void main() {
           autoStartSync: true,
           initialUserId: () async => 'user1', // Target only user1
           schemaVersion: 0,
-          autoSyncInterval: Duration(seconds: 1),
+          autoSyncInterval: const Duration(seconds: 1),
         ),
         );
 

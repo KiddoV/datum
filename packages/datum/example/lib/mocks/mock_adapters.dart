@@ -5,7 +5,8 @@ import 'package:collection/collection.dart';
 import 'package:datum/datum.dart';
 import 'package:rxdart/rxdart.dart' show Rx;
 
-class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter<T> {
+class MockRemoteAdapter<T extends DatumEntityInterface>
+    implements RemoteAdapter<T> {
   MockRemoteAdapter({this.fromJson});
 
   final Map<String, Map<String, T>> _remoteStorage = {};
@@ -52,7 +53,10 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
   @override
   Future<List<T>> readAll({String? userId, DatumSyncScope? scope}) async {
     if (!isConnectedValue) throw Exception('No connection');
-    var items = (userId != null ? _remoteStorage[userId]?.values.toList() : _remoteStorage.values.expand((map) => map.values).toList()) ?? [];
+    var items = (userId != null
+            ? _remoteStorage[userId]?.values.toList()
+            : _remoteStorage.values.expand((map) => map.values).toList()) ??
+        [];
     if (scope != null) {
       // Find if a 'minModifiedDate' filter exists in the query.
       final minDateFilter = scope.query.filters.firstWhereOrNull(
@@ -61,7 +65,8 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
 
       if (minDateFilter != null) {
         final minDate = DateTime.parse(minDateFilter.value as String);
-        items = items.where((item) => item.modifiedAt.isAfter(minDate)).toList();
+        items =
+            items.where((item) => item.modifiedAt.isAfter(minDate)).toList();
       }
     }
     return items;
@@ -97,7 +102,8 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
     if (_failedIds.contains(item.id)) {
       throw NetworkException(message: 'Simulated push failure for ${item.id}');
     }
-    final bool exists = _remoteStorage[item.userId]?.containsKey(item.id) ?? false;
+    final bool exists =
+        _remoteStorage[item.userId]?.containsKey(item.id) ?? false;
     _remoteStorage.putIfAbsent(item.userId, () => {})[item.id] = item;
     if (!silent) {
       _changeController.add(
@@ -118,7 +124,9 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
     required Map<String, dynamic> delta,
     String? userId,
   }) async {
-    if (!isConnectedValue) throw const NetworkException(message: 'No connection', isRetryable: true);
+    if (!isConnectedValue) {
+      throw const NetworkException(message: 'No connection', isRetryable: true);
+    }
     await Future<void>.delayed(_processingDelay);
     if (_failedIds.contains(id)) {
       throw NetworkException(message: 'Simulated patch failure for $id');
@@ -142,7 +150,9 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
 
   @override
   Future<void> delete(String id, {String? userId}) async {
-    if (!isConnectedValue) throw const NetworkException(message: 'No connection');
+    if (!isConnectedValue) {
+      throw const NetworkException(message: 'No connection');
+    }
     await Future<void>.delayed(_processingDelay);
     final item = _remoteStorage[userId ?? '']?.remove(id);
     if (item != null) {
@@ -187,7 +197,9 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
 
   @override
   Future<List<T>> query(DatumQuery query, {String? userId}) async {
-    if (!isConnectedValue) throw const NetworkException(message: 'No connection');
+    if (!isConnectedValue) {
+      throw const NetworkException(message: 'No connection');
+    }
     // Pass the userId to readAll. If it's null, readAll will correctly
     // fetch from all users, which is the desired behavior for relational queries.
     final allItems = await readAll(userId: userId);
@@ -213,7 +225,9 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
     final initialDataStream = Stream.fromFuture(
       readAll(userId: userId, scope: scope),
     );
-    final updateStream = changeStream!.where((event) => userId == null || event.userId == userId).asyncMap((_) => readAll(userId: userId, scope: scope));
+    final updateStream = changeStream!
+        .where((event) => userId == null || event.userId == userId)
+        .asyncMap((_) => readAll(userId: userId, scope: scope));
 
     return Rx.concat([initialDataStream, updateStream]);
   }
@@ -244,7 +258,9 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
     }
 
     final initialDataStream = Stream.fromFuture(getFiltered());
-    final updateStream = changeStream!.where((event) => userId == null || event.userId == userId).asyncMap((_) => getFiltered());
+    final updateStream = changeStream!
+        .where((event) => userId == null || event.userId == userId)
+        .asyncMap((_) => getFiltered());
 
     return Rx.concat([initialDataStream, updateStream]);
   }
@@ -303,7 +319,11 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
         }
 
         // 3. Extract the IDs of the "other" side of the relationship.
-        final otherIds = pivotEntries.map((e) => e.toDatumMap()[relation.otherForeignKey] as String?).where((id) => id != null && id.isNotEmpty).cast<String>().toList();
+        final otherIds = pivotEntries
+            .map((e) => e.toDatumMap()[relation.otherForeignKey] as String?)
+            .where((id) => id != null && id.isNotEmpty)
+            .cast<String>()
+            .toList();
 
         if (otherIds.isEmpty) return [];
 
@@ -334,7 +354,8 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
 }
 
 /// A helper function to apply query filters and sorting to a list of items.
-List<T> applyQuery<T extends DatumEntityInterface>(List<T> items, DatumQuery query) {
+List<T> applyQuery<T extends DatumEntityInterface>(
+    List<T> items, DatumQuery query) {
   var filteredItems = items.where((item) {
     final json = item.toDatumMap();
     if (query.logicalOperator == LogicalOperator.and) {
@@ -382,7 +403,9 @@ List<T> applyQuery<T extends DatumEntityInterface>(List<T> items, DatumQuery que
 bool _matches(Map<String, dynamic> json, FilterCondition condition) {
   if (condition is Filter) {
     final value = json[condition.field];
-    if (value == null && condition.operator != FilterOperator.isNull && condition.operator != FilterOperator.isNotNull) {
+    if (value == null &&
+        condition.operator != FilterOperator.isNull &&
+        condition.operator != FilterOperator.isNotNull) {
       return false;
     }
 
@@ -402,9 +425,11 @@ bool _matches(Map<String, dynamic> json, FilterCondition condition) {
       case FilterOperator.contains:
         return value is String && value.contains(condition.value as String);
       case FilterOperator.isIn:
-        return condition.value is List && (condition.value as List).contains(value);
+        return condition.value is List &&
+            (condition.value as List).contains(value);
       case FilterOperator.isNotIn:
-        return condition.value is List && !(condition.value as List).contains(value);
+        return condition.value is List &&
+            !(condition.value as List).contains(value);
       case FilterOperator.isNull:
         return value == null;
       case FilterOperator.isNotNull:
@@ -416,9 +441,13 @@ bool _matches(Map<String, dynamic> json, FilterCondition condition) {
                   (condition.value as String).toLowerCase(),
                 );
       case FilterOperator.startsWith:
-        return value is String && condition.value is String && value.startsWith(condition.value as String);
+        return value is String &&
+            condition.value is String &&
+            value.startsWith(condition.value as String);
       case FilterOperator.endsWith:
-        return value is String && condition.value is String && value.endsWith(condition.value as String);
+        return value is String &&
+            condition.value is String &&
+            value.endsWith(condition.value as String);
       case FilterOperator.arrayContains:
         return value is List && value.contains(condition.value);
       case FilterOperator.arrayContainsAny:
@@ -426,14 +455,19 @@ bool _matches(Map<String, dynamic> json, FilterCondition condition) {
         final valueSet = value.toSet();
         return (condition.value as List).any(valueSet.contains);
       case FilterOperator.matches:
-        return value is String && condition.value is String && RegExp(condition.value as String).hasMatch(value);
+        return value is String &&
+            condition.value is String &&
+            RegExp(condition.value as String).hasMatch(value);
       case FilterOperator.withinDistance:
         if (value is! Map || condition.value is! Map) return false;
         final point = value as Map<String, dynamic>;
         final params = condition.value as Map<String, dynamic>;
         final center = params['center'] as Map<String, double>?;
         final radius = params['radius'] as double?;
-        if (point['latitude'] == null || point['longitude'] == null || center == null || radius == null) {
+        if (point['latitude'] == null ||
+            point['longitude'] == null ||
+            center == null ||
+            radius == null) {
           return false;
         }
         final distance = _haversineDistance(
@@ -447,7 +481,8 @@ bool _matches(Map<String, dynamic> json, FilterCondition condition) {
         if (value is! Comparable || condition.value is! List) return false;
         final bounds = condition.value as List;
         if (bounds.length != 2) return false;
-        return value.compareTo(bounds[0]) >= 0 && value.compareTo(bounds[1]) <= 0;
+        return value.compareTo(bounds[0]) >= 0 &&
+            value.compareTo(bounds[1]) <= 0;
     }
   } else if (condition is CompositeFilter) {
     if (condition.operator == LogicalOperator.and) {
@@ -466,7 +501,8 @@ double _haversineDistance(double lat1, double lon1, double lat2, double lon2) {
   final deltaPhi = (lat2 - lat1) * pi / 180;
   final deltaLambda = (lon2 - lon1) * pi / 180;
 
-  final a = sin(deltaPhi / 2) * sin(deltaPhi / 2) + cos(phi1) * cos(phi2) * sin(deltaLambda / 2) * sin(deltaLambda / 2);
+  final a = sin(deltaPhi / 2) * sin(deltaPhi / 2) +
+      cos(phi1) * cos(phi2) * sin(deltaLambda / 2) * sin(deltaLambda / 2);
   final c = 2 * atan2(sqrt(a), sqrt(1 - a));
   return r * c;
 }
