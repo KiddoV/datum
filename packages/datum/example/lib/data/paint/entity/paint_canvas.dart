@@ -172,7 +172,8 @@ class PaintCanvas extends RelationalDatumEntity {
       userId: (map['userId'] ?? map['user_id'] ?? '') as String,
       title: (map['title'] ?? 'Untitled') as String,
       description: map['description'] as String?,
-      thumbnailStrokeData: (map['thumbnailStrokeData'] ?? map['thumbnail_stroke_data']) as List<Map<String, dynamic>>?,
+      thumbnailStrokeData: (map['thumbnailStrokeData'] ??
+          map['thumbnail_stroke_data']) as List<Map<String, dynamic>>?,
       strokeCount: (map['strokeCount'] ?? map['stroke_count'] ?? 0) is num
           ? (map['strokeCount'] ?? map['stroke_count'] ?? 0).toInt()
           : (map['strokeCount'] ?? map['stroke_count'] ?? 0) as int,
@@ -260,12 +261,13 @@ class PaintCanvas extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-    'strokes': HasMany<PaintStroke>(
-      this,
-      'canvasId', // The foreign key in PaintStroke that points to this canvas
-      cascadeDeleteBehavior: CascadeDeleteBehavior.cascade, // Delete strokes when canvas is deleted
-    ),
-  };
+        'strokes': HasMany<PaintStroke>(
+          this,
+          'canvasId', // The foreign key in PaintStroke that points to this canvas
+          cascadeDeleteBehavior: CascadeDeleteBehavior
+              .cascade, // Delete strokes when canvas is deleted
+        ),
+      };
 
   @override
   RelationalDatumEntity copyWith({

@@ -12,7 +12,8 @@ class AllEntitiesColdStartWidget extends ConsumerWidget {
     final userId = ref.watch(userIdProvider);
     if (userId == null) return const SizedBox.shrink();
 
-    final coldStartStatusesAsync = ref.watch(allEntitiesColdStartStatusProvider(userId));
+    final coldStartStatusesAsync =
+        ref.watch(allEntitiesColdStartStatusProvider(userId));
 
     return coldStartStatusesAsync.when(
       data: (statuses) => _buildColdStartChips(context, statuses),
@@ -21,8 +22,10 @@ class AllEntitiesColdStartWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildColdStartChips(BuildContext context, Map<Type, ColdStartStatus> statuses) {
-    final activeColdStarts = statuses.entries.where((entry) => entry.value.isColdStart).toList();
+  Widget _buildColdStartChips(
+      BuildContext context, Map<Type, ColdStartStatus> statuses) {
+    final activeColdStarts =
+        statuses.entries.where((entry) => entry.value.isColdStart).toList();
 
     if (activeColdStarts.isEmpty) {
       return const SizedBox.shrink();
@@ -30,11 +33,14 @@ class AllEntitiesColdStartWidget extends ConsumerWidget {
 
     return Wrap(
       spacing: 8,
-      children: activeColdStarts.map((entry) => _buildColdStartChip(context, entry.key, entry.value)).toList(),
+      children: activeColdStarts
+          .map((entry) => _buildColdStartChip(context, entry.key, entry.value))
+          .toList(),
     );
   }
 
-  Widget _buildColdStartChip(BuildContext context, Type entityType, ColdStartStatus status) {
+  Widget _buildColdStartChip(
+      BuildContext context, Type entityType, ColdStartStatus status) {
     final color = Colors.orange;
     final icon = Icons.sync;
 
@@ -78,7 +84,9 @@ class AllEntitiesColdStartWidget extends ConsumerWidget {
     // Convert PascalCase to Title Case
     return baseName.replaceAllMapped(
       RegExp(r'([A-Z])'),
-      (match) => match.group(1) == baseName[0] ? match.group(1)! : ' ${match.group(1)!}',
+      (match) => match.group(1) == baseName[0]
+          ? match.group(1)!
+          : ' ${match.group(1)!}',
     );
   }
 }

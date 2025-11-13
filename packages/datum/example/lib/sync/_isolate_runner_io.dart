@@ -126,7 +126,8 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
       : IsolateLogger(initMessage.logger).createWorkerLogger();
 
   // Only log at info level for isolate start to reduce overhead
-  workerLogger.info('Starting isolate sync execution with ${operations.length} operations');
+  workerLogger.info(
+      'Starting isolate sync execution with ${operations.length} operations');
 
   Future<void> requestProcessing(
       DatumSyncOperation<DatumEntityInterface> operation) async {
@@ -140,7 +141,8 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
 
     if (result is _IsolateError) {
       // Only log errors, not every operation
-      workerLogger.warn('Operation ${operation.id} failed in isolate: ${result.error}');
+      workerLogger
+          .warn('Operation ${operation.id} failed in isolate: ${result.error}');
       return Future.error(result.error, result.stackTrace);
     }
     // Remove success logging for each operation
@@ -149,7 +151,8 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
   void reportProgress(int completed, int total) {
     // Reduce progress logging frequency - only log every 10 operations or at completion
     if (completed % 10 == 0 || completed == total) {
-      workerLogger.debug('Isolate progress: $completed/$total operations completed');
+      workerLogger
+          .debug('Isolate progress: $completed/$total operations completed');
     }
     mainSendPort.send(_ProgressUpdate(completed, total));
   }
@@ -158,19 +161,18 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
 
   initMessage.wrappedStrategy
       .execute<DatumEntityInterface>(
-        operations.cast<DatumSyncOperation<DatumEntityInterface>>(),
-        requestProcessing,
-        isCancelled,
-        reportProgress,
-      )
+    operations.cast<DatumSyncOperation<DatumEntityInterface>>(),
+    requestProcessing,
+    isCancelled,
+    reportProgress,
+  )
       .then((_) {
-        workerLogger.info('Isolate sync execution completed successfully');
-        mainSendPort.send(_SyncComplete());
-      })
-      .catchError(
-        (Object e, StackTrace s) {
-          workerLogger.error('Isolate sync execution failed: $e');
-          mainSendPort.send(_SyncError(e, s));
-        },
-      );
+    workerLogger.info('Isolate sync execution completed successfully');
+    mainSendPort.send(_SyncComplete());
+  }).catchError(
+    (Object e, StackTrace s) {
+      workerLogger.error('Isolate sync execution failed: $e');
+      mainSendPort.send(_SyncError(e, s));
+    },
+  );
 }

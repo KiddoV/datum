@@ -11,7 +11,8 @@ class AnimatedTestFeaturesButton extends StatefulWidget {
   const AnimatedTestFeaturesButton({super.key});
 
   @override
-  State<AnimatedTestFeaturesButton> createState() => _AnimatedTestFeaturesButtonState();
+  State<AnimatedTestFeaturesButton> createState() =>
+      _AnimatedTestFeaturesButtonState();
 }
 
 class _AnimatedTestFeaturesButtonState extends State<AnimatedTestFeaturesButton>

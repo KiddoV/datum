@@ -108,7 +108,8 @@ class IsolateLogger implements DatumLogger {
   }
 
   @override
-  void debug(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void debug(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _delegate.debug(message, category: category, metadata: metadata);
   }
 
@@ -118,17 +119,20 @@ class IsolateLogger implements DatumLogger {
   }
 
   @override
-  void info(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void info(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _delegate.info(message, category: category, metadata: metadata);
   }
 
   @override
-  void warn(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void warn(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _delegate.warn(message, category: category, metadata: metadata);
   }
 
   @override
-  void trace(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void trace(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _delegate.trace(message, category: category, metadata: metadata);
   }
 
@@ -169,22 +173,27 @@ class IsolateWorkerLogger implements DatumLogger {
   IsolateWorkerLogger(this._mainSendPort);
 
   @override
-  bool get enabled => true; // Always enabled - filtering happens in main isolate
+  bool get enabled =>
+      true; // Always enabled - filtering happens in main isolate
 
   @override
   bool get colors => false; // Colors handled in main isolate
 
   @override
-  LogLevel get minimumLevel => LogLevel.trace; // All levels sent to main isolate
+  LogLevel get minimumLevel =>
+      LogLevel.trace; // All levels sent to main isolate
 
   @override
-  Map<String, LogSampler> get samplers => {}; // Sampling handled in main isolate
+  Map<String, LogSampler> get samplers =>
+      {}; // Sampling handled in main isolate
 
   @override
-  bool get enablePerformanceLogging => true; // Performance logging handled in main isolate
+  bool get enablePerformanceLogging =>
+      true; // Performance logging handled in main isolate
 
   @override
-  Duration get performanceThreshold => Duration.zero; // Threshold handled in main isolate
+  Duration get performanceThreshold =>
+      Duration.zero; // Threshold handled in main isolate
 
   @override
   void log(LogEntry entry) {
@@ -230,7 +239,8 @@ class IsolateWorkerLogger implements DatumLogger {
   }
 
   @override
-  void debug(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void debug(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.debug,
@@ -251,7 +261,8 @@ class IsolateWorkerLogger implements DatumLogger {
   }
 
   @override
-  void info(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void info(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.info,
@@ -262,7 +273,8 @@ class IsolateWorkerLogger implements DatumLogger {
   }
 
   @override
-  void warn(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void warn(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.warn,
@@ -273,7 +285,8 @@ class IsolateWorkerLogger implements DatumLogger {
   }
 
   @override
-  void trace(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void trace(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.trace,

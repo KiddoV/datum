@@ -16,7 +16,8 @@ class EntityDetailedDataWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entityStatusAsync = ref.watch(entitySyncStatusProvider((userId: userId, entityType: entityType)));
+    final entityStatusAsync = ref.watch(
+        entitySyncStatusProvider((userId: userId, entityType: entityType)));
 
     return entityStatusAsync.when(
       data: (status) => _buildDetailedCard(context, status),
@@ -25,7 +26,8 @@ class EntityDetailedDataWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailedCard(BuildContext context, DatumSyncStatusSnapshot status) {
+  Widget _buildDetailedCard(
+      BuildContext context, DatumSyncStatusSnapshot status) {
     final entityName = _getEntityName();
 
     return Card(
@@ -57,7 +59,8 @@ class EntityDetailedDataWidget extends ConsumerWidget {
               LinearProgressIndicator(
                 value: status.progress,
                 backgroundColor: Colors.grey[300],
-                valueColor: AlwaysStoppedAnimation<Color>(_getStatusColor(status)),
+                valueColor:
+                    AlwaysStoppedAnimation<Color>(_getStatusColor(status)),
               ),
               const SizedBox(height: 8),
             ],
@@ -127,7 +130,8 @@ class EntityDetailedDataWidget extends ConsumerWidget {
             const SizedBox(height: 4),
             Row(
               children: [
-                const Icon(Icons.health_and_safety, size: 14, color: Colors.grey),
+                const Icon(Icons.health_and_safety,
+                    size: 14, color: Colors.grey),
                 const SizedBox(width: 4),
                 Text(
                   'Health: ${status.health.status.name}',
@@ -144,7 +148,8 @@ class EntityDetailedDataWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildMetricItem(String label, String value, IconData icon, Color color) {
+  Widget _buildMetricItem(
+      String label, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
       decoration: BoxDecoration(
@@ -275,7 +280,9 @@ class EntityDetailedDataWidget extends ConsumerWidget {
       case DatumSyncStatus.cancelled:
         return Icons.cancel;
       case DatumSyncStatus.idle:
-        return status.pendingOperations > 0 ? Icons.schedule : Icons.check_circle;
+        return status.pendingOperations > 0
+            ? Icons.schedule
+            : Icons.check_circle;
     }
   }
 
@@ -303,7 +310,9 @@ class EntityDetailedDataWidget extends ConsumerWidget {
     // Convert PascalCase to Title Case
     return baseName.replaceAllMapped(
       RegExp(r'([A-Z])'),
-      (match) => match.group(1) == baseName[0] ? match.group(1)! : ' ${match.group(1)!}',
+      (match) => match.group(1) == baseName[0]
+          ? match.group(1)!
+          : ' ${match.group(1)!}',
     );
   }
 

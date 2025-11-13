@@ -11,35 +11,49 @@ import 'strings.g.dart';
 
 // Path: <root>
 class TranslationsEs implements Translations {
-	/// You can call this constructor and build your own translation instance of this locale.
-	/// Constructing via the enum [AppLocale.build] is preferred.
-	TranslationsEs({Map<String, Node>? overrides, PluralResolver? cardinalResolver, PluralResolver? ordinalResolver, TranslationMetadata<AppLocale, Translations>? meta})
-		: assert(overrides == null, 'Set "translation_overrides: true" in order to enable this feature.'),
-		  $meta = meta ?? TranslationMetadata(
-		    locale: AppLocale.es,
-		    overrides: overrides ?? {},
-		    cardinalResolver: cardinalResolver,
-		    ordinalResolver: ordinalResolver,
-		  ) {
-		$meta.setFlatMapFunction(_flatMapFunction);
-	}
+  /// You can call this constructor and build your own translation instance of this locale.
+  /// Constructing via the enum [AppLocale.build] is preferred.
+  TranslationsEs(
+      {Map<String, Node>? overrides,
+      PluralResolver? cardinalResolver,
+      PluralResolver? ordinalResolver,
+      TranslationMetadata<AppLocale, Translations>? meta})
+      : assert(overrides == null,
+            'Set "translation_overrides: true" in order to enable this feature.'),
+        $meta = meta ??
+            TranslationMetadata(
+              locale: AppLocale.es,
+              overrides: overrides ?? {},
+              cardinalResolver: cardinalResolver,
+              ordinalResolver: ordinalResolver,
+            ) {
+    $meta.setFlatMapFunction(_flatMapFunction);
+  }
 
-	/// Metadata for the translations of <es>.
-	@override final TranslationMetadata<AppLocale, Translations> $meta;
+  /// Metadata for the translations of <es>.
+  @override
+  final TranslationMetadata<AppLocale, Translations> $meta;
 
-	/// Access flat map
-	@override dynamic operator[](String key) => $meta.getTranslation(key);
+  /// Access flat map
+  @override
+  dynamic operator [](String key) => $meta.getTranslation(key);
 
-	late final TranslationsEs _root = this; // ignore: unused_field
+  late final TranslationsEs _root = this; // ignore: unused_field
 
-	@override 
-	TranslationsEs $copyWith({TranslationMetadata<AppLocale, Translations>? meta}) => TranslationsEs(meta: meta ?? this.$meta);
+  @override
+  TranslationsEs $copyWith(
+          {TranslationMetadata<AppLocale, Translations>? meta}) =>
+      TranslationsEs(meta: meta ?? this.$meta);
 
-	// Translations
-	@override String get locale => 'es';
-	@override String get locale_en => 'English';
-	@override String get locale_es => 'Spanish';
-	@override String get counterAppBarTitle => 'Contador';
+  // Translations
+  @override
+  String get locale => 'es';
+  @override
+  String get locale_en => 'English';
+  @override
+  String get locale_es => 'Spanish';
+  @override
+  String get counterAppBarTitle => 'Contador';
 }
 
 /// The flat map containing all translations for locale <es>.
@@ -48,18 +62,22 @@ class TranslationsEs implements Translations {
 /// The Dart AOT compiler has issues with very large switch statements,
 /// so the map is split into smaller functions (512 entries each).
 extension on TranslationsEs {
-	dynamic _flatMapFunction(String path) {
-		return _flatMapFunction$0(path);
-	}
+  dynamic _flatMapFunction(String path) {
+    return _flatMapFunction$0(path);
+  }
 
-	dynamic _flatMapFunction$0(String path) {
-		switch (path) {
-			case 'locale': return 'es';
-			case 'locale_en': return 'English';
-			case 'locale_es': return 'Spanish';
-			case 'counterAppBarTitle': return 'Contador';
-			default: return null;
-		}
-	}
+  dynamic _flatMapFunction$0(String path) {
+    switch (path) {
+      case 'locale':
+        return 'es';
+      case 'locale_en':
+        return 'English';
+      case 'locale_es':
+        return 'Spanish';
+      case 'counterAppBarTitle':
+        return 'Contador';
+      default:
+        return null;
+    }
+  }
 }
-

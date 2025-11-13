@@ -16,7 +16,8 @@ class EntitySyncStatusWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final entityStatusAsync = ref.watch(entitySyncStatusProvider((userId: userId, entityType: entityType)));
+    final entityStatusAsync = ref.watch(
+        entitySyncStatusProvider((userId: userId, entityType: entityType)));
 
     return entityStatusAsync.when(
       data: (status) => _buildStatusChip(context, status),
@@ -25,7 +26,8 @@ class EntitySyncStatusWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildStatusChip(BuildContext context, DatumSyncStatusSnapshot status) {
+  Widget _buildStatusChip(
+      BuildContext context, DatumSyncStatusSnapshot status) {
     final color = _getStatusColor(status);
     final icon = _getStatusIcon(status);
 
@@ -158,7 +160,9 @@ class EntitySyncStatusWidget extends ConsumerWidget {
       case DatumSyncStatus.cancelled:
         return Icons.cancel;
       case DatumSyncStatus.idle:
-        return status.pendingOperations > 0 ? Icons.schedule : Icons.check_circle;
+        return status.pendingOperations > 0
+            ? Icons.schedule
+            : Icons.check_circle;
     }
   }
 
@@ -169,7 +173,9 @@ class EntitySyncStatusWidget extends ConsumerWidget {
     // Convert PascalCase to Title Case
     return baseName.replaceAllMapped(
       RegExp(r'([A-Z])'),
-      (match) => match.group(1) == baseName[0] ? match.group(1)! : ' ${match.group(1)!}',
+      (match) => match.group(1) == baseName[0]
+          ? match.group(1)!
+          : ' ${match.group(1)!}',
     );
   }
 }

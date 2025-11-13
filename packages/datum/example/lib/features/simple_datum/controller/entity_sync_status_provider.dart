@@ -19,7 +19,9 @@ final allEntitiesSyncStatusProvider = StreamProvider.autoDispose
       taskManager.statusStream,
       paintStrokeManager.statusStream,
       paintCanvasManager.statusStream,
-      (DatumSyncStatusSnapshot taskStatus, DatumSyncStatusSnapshot paintStrokeStatus, DatumSyncStatusSnapshot paintCanvasStatus) {
+      (DatumSyncStatusSnapshot taskStatus,
+          DatumSyncStatusSnapshot paintStrokeStatus,
+          DatumSyncStatusSnapshot paintCanvasStatus) {
         return <Type, DatumSyncStatusSnapshot>{
           Task: taskStatus,
           PaintStroke: paintStrokeStatus,
@@ -37,25 +39,25 @@ final entitySyncStatusProvider = StreamProvider.autoDispose
   (ref, params) {
     final manager = Datum.managerByType(params.entityType);
     return manager.statusStream;
-    },
+  },
   name: "entitySyncStatusProvider",
 );
 
 /// Provider for last sync time that automatically updates when sync operations complete
-final lastSyncTimeProvider = StreamProvider.autoDispose.family<DateTime?, String>(
+final lastSyncTimeProvider =
+    StreamProvider.autoDispose.family<DateTime?, String>(
   (ref, userId) {
     // Watch for sync completion events and refresh the last sync time
-    final eventsStream = Datum.instance.events.where((event) =>
-      event is DatumSyncCompletedEvent && event.userId == userId
-    );
+    final eventsStream = Datum.instance.events.where(
+        (event) => event is DatumSyncCompletedEvent && event.userId == userId);
 
     // Combine the events stream with a periodic refresh to ensure reactivity
     return Stream.fromFuture(Datum.instance.getLastSyncTime(userId))
         .asyncExpand((initialTime) {
-          return eventsStream.asyncMap((_) async {
-            return await Datum.instance.getLastSyncTime(userId);
-          }).startWith(initialTime);
-        });
+      return eventsStream.asyncMap((_) async {
+        return await Datum.instance.getLastSyncTime(userId);
+      }).startWith(initialTime);
+    });
   },
   name: "lastSyncTimeProvider",
 );

@@ -612,16 +612,16 @@ void main() {
 
       // Mock patch operations to fail with EntityNotFoundException
       when(() => remoteAdapter1.patch(
-        id: any(named: 'id'),
-        delta: any(named: 'delta'),
-        userId: any(named: 'userId'),
-      )).thenThrow(const EntityNotFoundException(message: 'Entity not found on remote'));
+            id: any(named: 'id'),
+            delta: any(named: 'delta'),
+            userId: any(named: 'userId'),
+          )).thenThrow(const EntityNotFoundException(message: 'Entity not found on remote'));
 
       when(() => remoteAdapter2.patch(
-        id: any(named: 'id'),
-        delta: any(named: 'delta'),
-        userId: any(named: 'userId'),
-      )).thenThrow(const EntityNotFoundException(message: 'Entity not found on remote'));
+            id: any(named: 'id'),
+            delta: any(named: 'delta'),
+            userId: any(named: 'userId'),
+          )).thenThrow(const EntityNotFoundException(message: 'Entity not found on remote'));
 
       // Mock fallback create operations
       when(() => remoteAdapter1.create(any())).thenAnswer((_) async {});
@@ -650,23 +650,27 @@ void main() {
       final entities1 = List.generate(3, (i) => TestEntity.create('conc-entity1-$i', 'user1', 'Entity 1-$i'));
       final entities2 = List.generate(3, (i) => TestEntity2.create('conc-entity2-$i', 'user1', 'Entity 2-$i'));
 
-      final ops1 = entities1.map((entity) => DatumSyncOperation<TestEntity>(
-        id: 'conc-op1-${entity.id}',
-        userId: 'user1',
-        entityId: entity.id,
-        type: DatumOperationType.create,
-        timestamp: DateTime.now(),
-        data: entity,
-      )).toList();
+      final ops1 = entities1
+          .map((entity) => DatumSyncOperation<TestEntity>(
+                id: 'conc-op1-${entity.id}',
+                userId: 'user1',
+                entityId: entity.id,
+                type: DatumOperationType.create,
+                timestamp: DateTime.now(),
+                data: entity,
+              ))
+          .toList();
 
-      final ops2 = entities2.map((entity) => DatumSyncOperation<TestEntity2>(
-        id: 'conc-op2-${entity.id}',
-        userId: 'user1',
-        entityId: entity.id,
-        type: DatumOperationType.create,
-        timestamp: DateTime.now(),
-        data: entity,
-      )).toList();
+      final ops2 = entities2
+          .map((entity) => DatumSyncOperation<TestEntity2>(
+                id: 'conc-op2-${entity.id}',
+                userId: 'user1',
+                entityId: entity.id,
+                type: DatumOperationType.create,
+                timestamp: DateTime.now(),
+                data: entity,
+              ))
+          .toList();
 
       when(() => localAdapter1.getPendingOperations('user1')).thenAnswer((_) async => ops1);
       when(() => localAdapter2.getPendingOperations('user1')).thenAnswer((_) async => ops2);

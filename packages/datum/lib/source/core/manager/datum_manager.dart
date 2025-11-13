@@ -87,8 +87,6 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// Last cache cleanup time
   DateTime _lastCacheCleanup = DateTime.now();
 
-
-
   /// Cache for relationship query results to improve performance
   final Map<String, List<DatumEntityInterface>> _relationshipQueryCache = {};
 
@@ -136,8 +134,6 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
   /// Exposes the cold start manager for testing purposes.
   ColdStartManager get coldStartManager => _coldStartManager;
-
-
 
   /// Public event streams
   Stream<DatumSyncEvent<T>> get eventStream => _eventController.stream;
@@ -311,9 +307,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       }
     }
 
-    final userIds = evaluatedInitialUserId != null
-      ? [evaluatedInitialUserId]
-      : await localAdapter.getAllUserIds();
+    final userIds = evaluatedInitialUserId != null ? [evaluatedInitialUserId] : await localAdapter.getAllUserIds();
 
     for (final userId in userIds) {
       if (userId.isNotEmpty) {

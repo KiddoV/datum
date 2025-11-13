@@ -964,9 +964,7 @@ void main() {
     test('partial sync with complex query filters during pull operation', () async {
       // 1. ARRANGE
       // Create a query that filters entities with names containing "Important"
-      const importantQuery = DatumQuery(filters: [
-        Filter('name', FilterOperator.contains, 'Important')
-      ]);
+      const importantQuery = DatumQuery(filters: [Filter('name', FilterOperator.contains, 'Important')]);
 
       const optionsWithQuery = DatumSyncOptions<TestEntity>(
         query: importantQuery,

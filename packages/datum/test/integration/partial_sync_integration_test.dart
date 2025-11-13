@@ -202,8 +202,7 @@ void main() {
 
       // Assert: Should return 5 tasks (3 completed + 2 low priority: task-5:4, task-9:3)
       expect(queriedData.length, 5);
-      expect(queriedData.every((task) =>
-        task.completed == true || task.value <= 4), isTrue);
+      expect(queriedData.every((task) => task.completed == true || task.value <= 4), isTrue);
     });
 
     test('Use Case 5: Query tasks containing specific text in name (contains filter)', () async {
@@ -221,8 +220,7 @@ void main() {
 
       // Assert: Should return 2 tasks (task-2: "Review code changes", task-10: "Conduct code review")
       expect(queriedData.length, 2);
-      expect(queriedData.every((task) =>
-        task.name.toLowerCase().contains('code')), isTrue);
+      expect(queriedData.every((task) => task.name.toLowerCase().contains('code')), isTrue);
     });
 
     test('Use Case 6: Query tasks that are NOT completed (not equals filter)', () async {
@@ -329,8 +327,7 @@ bool _matchesFilter(dynamic value, Filter filter) {
     case FilterOperator.lessThanOrEqual:
       return value is num && filter.value is num && value <= filter.value;
     case FilterOperator.contains:
-      return value is String && filter.value is String &&
-             value.toLowerCase().contains(filter.value.toLowerCase());
+      return value is String && filter.value is String && value.toLowerCase().contains(filter.value.toLowerCase());
     default:
       return false;
   }

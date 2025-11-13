@@ -219,12 +219,12 @@ void main() {
           localAdapter: localAdapter,
           remoteAdapter: remoteAdapter,
           connectivity: connectivityChecker,
-        datumConfig: DatumConfig<TestEntity>(
-          autoStartSync: true,
-          initialUserId: () async => 'user1', // Target only user1
-          schemaVersion: 0,
-          autoSyncInterval: const Duration(seconds: 1),
-        ),
+          datumConfig: DatumConfig<TestEntity>(
+            autoStartSync: true,
+            initialUserId: () async => 'user1', // Target only user1
+            schemaVersion: 0,
+            autoSyncInterval: const Duration(seconds: 1),
+          ),
         );
 
         await manager.initialize();

@@ -89,7 +89,8 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
               : descriptionController.text.trim(),
         );
 
-        await Datum.manager<PaintCanvas>().push(item: canvas, userId: canvas.userId);
+        await Datum.manager<PaintCanvas>()
+            .push(item: canvas, userId: canvas.userId);
 
         setState(() {
           _canvases.insert(0, canvas);
@@ -124,7 +125,8 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Delete Painting'),
-        content: Text('Are you sure you want to delete "${canvas.title}"? This action cannot be undone.'),
+        content: Text(
+            'Are you sure you want to delete "${canvas.title}"? This action cannot be undone.'),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -142,7 +144,8 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
     if (confirmed == true) {
       try {
         final deletedCanvas = canvas.copyWith(isDeleted: true) as PaintCanvas;
-        await Datum.manager<PaintCanvas>().push(item: deletedCanvas, userId: deletedCanvas.userId);
+        await Datum.manager<PaintCanvas>()
+            .push(item: deletedCanvas, userId: deletedCanvas.userId);
 
         setState(() {
           _canvases.removeWhere((c) => c.id == canvas.id);
@@ -214,7 +217,8 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.blue,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
               ),
             ),
           ],
@@ -278,7 +282,8 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      if (canvas.description != null && canvas.description!.isNotEmpty)
+                      if (canvas.description != null &&
+                          canvas.description!.isNotEmpty)
                         Text(
                           canvas.description!,
                           maxLines: 1,

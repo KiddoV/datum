@@ -176,10 +176,10 @@ void main() async {
           remoteAdapter: remoteAdapter,
           connectivity: connectivityChecker,
           logger: TestLogger(),
-        datumConfig: DatumConfig(
-          autoStartSync: true,
-          initialUserId: () async => 'user1',
-        ),
+          datumConfig: DatumConfig(
+            autoStartSync: true,
+            initialUserId: () async => 'user1',
+          ),
         );
 
         // When the synchronize call eventually happens, complete the completer.

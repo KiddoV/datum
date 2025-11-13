@@ -452,15 +452,17 @@ void main() {
           source: DataSource.local,
         ),
         throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('Entity of type _NonRelationalMixinEntity is not relational and cannot have relations'),
-          ).having(
-            (e) => e.message,
-            'message',
-            contains('To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin'),
-          ),
+          isA<ArgumentError>()
+              .having(
+                (e) => e.message,
+                'message',
+                contains('Entity of type _NonRelationalMixinEntity is not relational and cannot have relations'),
+              )
+              .having(
+                (e) => e.message,
+                'message',
+                contains('To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin'),
+              ),
         ),
       );
     });
@@ -494,15 +496,17 @@ void main() {
           'posts',
         ),
         throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('Entity of type _NonRelationalMixinEntity is not relational and cannot have relations'),
-          ).having(
-            (e) => e.message,
-            'message',
-            contains('To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin'),
-          ),
+          isA<ArgumentError>()
+              .having(
+                (e) => e.message,
+                'message',
+                contains('Entity of type _NonRelationalMixinEntity is not relational and cannot have relations'),
+              )
+              .having(
+                (e) => e.message,
+                'message',
+                contains('To use relations, extend RelationalDatumEntity instead of DatumEntity or use RelationalDatumEntityMixin'),
+              ),
         ),
       );
     });
@@ -600,8 +604,6 @@ void main() {
       expect(result, isA<DatumSyncResult<TestEntity>>());
       expect(result.syncedCount, 0); // Pull operations don't increment syncedCount
     });
-
-
   });
 
   group('Datum.isInitialized', () {

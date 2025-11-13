@@ -20,7 +20,8 @@ class _PaintPageState extends ConsumerState<PaintPage> {
     return ScaffoldMessenger(
       child: Scaffold(
         appBar: AppBar(
-          title: Text(_selectedCanvasId != null ? 'Paint Canvas' : 'My Paintings'),
+          title:
+              Text(_selectedCanvasId != null ? 'Paint Canvas' : 'My Paintings'),
           backgroundColor: Colors.blue,
           foregroundColor: Colors.white,
           leading: _selectedCanvasId != null

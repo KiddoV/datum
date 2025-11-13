@@ -373,9 +373,11 @@ class _SimpleDatumPageState extends ConsumerState<SimpleDatumPage>
             }
 
             // Handle cold start sync for the newly authenticated user
-            final coldStartPerformed = await Datum.instance.handleColdStartIfNeeded<Task>(
+            final coldStartPerformed =
+                await Datum.instance.handleColdStartIfNeeded<Task>(
               userId,
-              (options) => Datum.manager<Task>().synchronize(userId, options: options),
+              (options) =>
+                  Datum.manager<Task>().synchronize(userId, options: options),
             );
 
             if (!coldStartPerformed) {

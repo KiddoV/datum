@@ -152,7 +152,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<List<T>> readAll({String? userId, DatumSyncScope? scope}) async {
-    talker.info("🔍 [Adapter] readAll called for table: $tableName, userId: $userId");
+    talker.info(
+        "🔍 [Adapter] readAll called for table: $tableName, userId: $userId");
     talker.debug("🔍 [Adapter] scope: $scope");
 
     try {
@@ -161,7 +162,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
       // Apply filters from the sync scope, if provided.
       if (scope != null) {
-        talker.debug("🔍 [Adapter] Applying ${scope.query.filters.length} filters");
+        talker.debug(
+            "🔍 [Adapter] Applying ${scope.query.filters.length} filters");
         for (final condition in scope.query.filters) {
           queryBuilder = _applyFilter(queryBuilder, condition);
           talker.debug("🔍 [Adapter] Applied filter: $condition");
@@ -170,18 +172,23 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
       talker.debug("🔍 [Adapter] Executing query for table: $tableName");
       final response = await queryBuilder;
-      talker.info("✅ [Adapter] Query successful for table: $tableName, response type: ${response.runtimeType}");
+      talker.info(
+          "✅ [Adapter] Query successful for table: $tableName, response type: ${response.runtimeType}");
 
       if (response is List<Map<String, dynamic>>) {
-        final items = response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
-        talker.info("✅ [Adapter] Successfully parsed ${items.length} items from table: $tableName");
+        final items =
+            response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
+        talker.info(
+            "✅ [Adapter] Successfully parsed ${items.length} items from table: $tableName");
         return items;
       } else {
-        talker.warning("⚠️ [Adapter] Unexpected response type for table: $tableName - expected List<Map<String, dynamic>>, got ${response.runtimeType}");
+        talker.warning(
+            "⚠️ [Adapter] Unexpected response type for table: $tableName - expected List<Map<String, dynamic>>, got ${response.runtimeType}");
         return [];
       }
     } catch (e, stackTrace) {
-      talker.error("❌ [Adapter] readAll failed for table: $tableName - $e", stackTrace);
+      talker.error(
+          "❌ [Adapter] readAll failed for table: $tableName - $e", stackTrace);
       rethrow;
     }
   }
@@ -198,29 +205,35 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<DatumSyncMetadata?> getSyncMetadata(String userId) async {
-    talker.info("🔍 [Adapter] getSyncMetadata called for userId: $userId, table: $_metadataTableName");
+    talker.info(
+        "🔍 [Adapter] getSyncMetadata called for userId: $userId, table: $_metadataTableName");
 
     try {
-      talker.debug("🔍 [Adapter] Executing query: SELECT from $_metadataTableName WHERE user_id = $userId");
+      talker.debug(
+          "🔍 [Adapter] Executing query: SELECT from $_metadataTableName WHERE user_id = $userId");
       final response = await _client
           .from(_metadataTableName)
           .select()
           .eq('user_id', userId)
           .maybeSingle();
 
-      talker.info("✅ [Adapter] getSyncMetadata query successful, response: ${response != null ? 'found' : 'null'}");
+      talker.info(
+          "✅ [Adapter] getSyncMetadata query successful, response: ${response != null ? 'found' : 'null'}");
 
       if (response == null) {
-        talker.debug("🔍 [Adapter] No sync metadata found for user $userId, returning null");
+        talker.debug(
+            "🔍 [Adapter] No sync metadata found for user $userId, returning null");
         return null;
       }
 
       talker.debug("🔍 [Adapter] Parsing sync metadata response: $response");
       final metadata = DatumSyncMetadata.fromMap(response);
-      talker.info("✅ [Adapter] Successfully parsed sync metadata for user $userId");
+      talker.info(
+          "✅ [Adapter] Successfully parsed sync metadata for user $userId");
       return metadata;
     } catch (e, stackTrace) {
-      talker.error("❌ [Adapter] getSyncMetadata failed for user $userId - $e", stackTrace);
+      talker.error("❌ [Adapter] getSyncMetadata failed for user $userId - $e",
+          stackTrace);
       rethrow;
     }
   }
@@ -269,7 +282,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
       // PGRST116: "Cannot coerce the result to a single JSON object" - means no rows were affected
       if (e.code == 'PGRST116') {
         throw EntityNotFoundException(
-          message: 'Entity with id $id not found in table $tableName during patch operation',
+          message:
+              'Entity with id $id not found in table $tableName during patch operation',
         );
       }
       rethrow;

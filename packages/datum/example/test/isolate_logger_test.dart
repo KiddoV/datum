@@ -1,4 +1,3 @@
-
 import 'package:datum/source/utils/datum_logger.dart';
 import 'package:example/isolate_logger.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -23,7 +22,8 @@ void main() {
 
       final testLogger = delegateLogger as TestLogger;
       expect(testLogger.messages.length, 1);
-      expect(testLogger.messages[0], contains('Test message from main isolate'));
+      expect(
+          testLogger.messages[0], contains('Test message from main isolate'));
     });
 
     test('creates worker logger', () {
@@ -43,7 +43,8 @@ void main() {
 
       final testLogger = delegateLogger as TestLogger;
       expect(testLogger.messages.length, 1);
-      expect(testLogger.messages[0], contains('Test message from worker isolate'));
+      expect(
+          testLogger.messages[0], contains('Test message from worker isolate'));
     });
 
     test('handles multiple worker loggers', () async {
@@ -58,8 +59,14 @@ void main() {
 
       final testLogger = delegateLogger as TestLogger;
       expect(testLogger.messages.length, 2);
-      expect(testLogger.messages.any((msg) => msg.contains('Message from worker 1')), isTrue);
-      expect(testLogger.messages.any((msg) => msg.contains('Message from worker 2')), isTrue);
+      expect(
+          testLogger.messages
+              .any((msg) => msg.contains('Message from worker 1')),
+          isTrue);
+      expect(
+          testLogger.messages
+              .any((msg) => msg.contains('Message from worker 2')),
+          isTrue);
     });
   });
 }
@@ -110,7 +117,8 @@ class TestLogger implements DatumLogger {
   }) {}
 
   @override
-  void debug(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void debug(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.debug,
@@ -131,7 +139,8 @@ class TestLogger implements DatumLogger {
   }
 
   @override
-  void info(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void info(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.info,
@@ -142,7 +151,8 @@ class TestLogger implements DatumLogger {
   }
 
   @override
-  void warn(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void warn(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.warn,
@@ -153,7 +163,8 @@ class TestLogger implements DatumLogger {
   }
 
   @override
-  void trace(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void trace(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     log(LogEntry(
       timestamp: DateTime.now(),
       level: LogLevel.trace,

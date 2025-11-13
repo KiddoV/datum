@@ -46,8 +46,9 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
   Stream<DatumChangeDetail<PaintStroke>>? changeStream() {
     return entityBox.watch().map((event) {
       final entityMap = event.value;
-      final entity =
-          entityMap != null ? PaintStroke.fromMap(_normalizeMap(entityMap)) : null;
+      final entity = entityMap != null
+          ? PaintStroke.fromMap(_normalizeMap(entityMap))
+          : null;
       return DatumChangeDetail(
         entityId: event.key as String,
         userId: entity?.userId ?? '',
@@ -170,7 +171,8 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
     final opsList = pendingOpsBox.get(userId);
     if (opsList == null) return [];
     return opsList.cast<Map<dynamic, dynamic>>().map((raw) {
-      return DatumSyncOperation.fromMap(_normalizeMap(raw), PaintStroke.fromMap);
+      return DatumSyncOperation.fromMap(
+          _normalizeMap(raw), PaintStroke.fromMap);
     }).toList();
   }
 
@@ -252,7 +254,8 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
   }
 
   @override
-  Future<void> saveLastSyncResult(String userId, DatumSyncResult<PaintStroke> result) {
+  Future<void> saveLastSyncResult(
+      String userId, DatumSyncResult<PaintStroke> result) {
     return metadataBox.put('last_sync_result_$userId', result.toMap());
   }
 
@@ -319,7 +322,8 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
   }
 
   @override
-  Stream<List<PaintStroke>>? watchAll({String? userId, bool includeInitialData = true}) {
+  Stream<List<PaintStroke>>? watchAll(
+      {String? userId, bool includeInitialData = true}) {
     final Stream<BoxEvent> eventMaps = entityBox.watch();
 
     return eventMaps.asyncExpand(
@@ -333,8 +337,9 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
         );
 
         // 3. Transform the filtered maps into your entity objects.
-        final entities =
-            filteredMaps.map((map) => PaintStroke.fromMap(_normalizeMap(map))).toList();
+        final entities = filteredMaps
+            .map((map) => PaintStroke.fromMap(_normalizeMap(map)))
+            .toList();
 
         // 4. Yield the complete list as a single event on the stream.
         yield entities;

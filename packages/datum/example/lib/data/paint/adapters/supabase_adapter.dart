@@ -11,7 +11,8 @@ class PaintStrokeSupabaseAdapter extends SupabaseRemoteAdapter<PaintStroke> {
 
   @override
   Future<void> initialize() async {
-    talker.info("🎨 Initializing PaintStrokeSupabaseAdapter for table: paint_strokes");
+    talker.info(
+        "🎨 Initializing PaintStrokeSupabaseAdapter for table: paint_strokes");
     await super.initialize();
     talker.info("✅ PaintStrokeSupabaseAdapter initialized successfully");
   }

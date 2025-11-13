@@ -8,41 +8,64 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:rxdart/rxdart.dart';
 
 /// Provider that exposes cold start sync status for all entities
-final allEntitiesColdStartStatusProvider = StreamProvider.autoDispose.family<Map<Type, ColdStartStatus>, String>((ref, userId) {
+final allEntitiesColdStartStatusProvider = StreamProvider.autoDispose
+    .family<Map<Type, ColdStartStatus>, String>((ref, userId) {
   // Create a periodic stream that emits every 2 seconds with current cold start status
   // Cold start status changes infrequently, so polling is acceptable here
   return Stream.periodic(const Duration(seconds: 2), (_) {
     return <Type, ColdStartStatus>{
       Task: ColdStartStatus(
-        isColdStart: Datum.manager<Task>().coldStartManager.isColdStartForUser(userId),
-        lastColdStartTime: Datum.manager<Task>().coldStartManager.getLastColdStartTimeForUser(userId),
+        isColdStart:
+            Datum.manager<Task>().coldStartManager.isColdStartForUser(userId),
+        lastColdStartTime: Datum.manager<Task>()
+            .coldStartManager
+            .getLastColdStartTimeForUser(userId),
         strategy: Datum.manager<Task>().config.coldStartConfig.strategy,
       ),
       PaintStroke: ColdStartStatus(
-        isColdStart: Datum.manager<PaintStroke>().coldStartManager.isColdStartForUser(userId),
-        lastColdStartTime: Datum.manager<PaintStroke>().coldStartManager.getLastColdStartTimeForUser(userId),
+        isColdStart: Datum.manager<PaintStroke>()
+            .coldStartManager
+            .isColdStartForUser(userId),
+        lastColdStartTime: Datum.manager<PaintStroke>()
+            .coldStartManager
+            .getLastColdStartTimeForUser(userId),
         strategy: Datum.manager<PaintStroke>().config.coldStartConfig.strategy,
       ),
       PaintCanvas: ColdStartStatus(
-        isColdStart: Datum.manager<PaintCanvas>().coldStartManager.isColdStartForUser(userId),
-        lastColdStartTime: Datum.manager<PaintCanvas>().coldStartManager.getLastColdStartTimeForUser(userId),
+        isColdStart: Datum.manager<PaintCanvas>()
+            .coldStartManager
+            .isColdStartForUser(userId),
+        lastColdStartTime: Datum.manager<PaintCanvas>()
+            .coldStartManager
+            .getLastColdStartTimeForUser(userId),
         strategy: Datum.manager<PaintCanvas>().config.coldStartConfig.strategy,
       ),
     };
   }).startWith(<Type, ColdStartStatus>{
     Task: ColdStartStatus(
-      isColdStart: Datum.manager<Task>().coldStartManager.isColdStartForUser(userId),
-      lastColdStartTime: Datum.manager<Task>().coldStartManager.getLastColdStartTimeForUser(userId),
+      isColdStart:
+          Datum.manager<Task>().coldStartManager.isColdStartForUser(userId),
+      lastColdStartTime: Datum.manager<Task>()
+          .coldStartManager
+          .getLastColdStartTimeForUser(userId),
       strategy: Datum.manager<Task>().config.coldStartConfig.strategy,
     ),
     PaintStroke: ColdStartStatus(
-      isColdStart: Datum.manager<PaintStroke>().coldStartManager.isColdStartForUser(userId),
-      lastColdStartTime: Datum.manager<PaintStroke>().coldStartManager.getLastColdStartTimeForUser(userId),
+      isColdStart: Datum.manager<PaintStroke>()
+          .coldStartManager
+          .isColdStartForUser(userId),
+      lastColdStartTime: Datum.manager<PaintStroke>()
+          .coldStartManager
+          .getLastColdStartTimeForUser(userId),
       strategy: Datum.manager<PaintStroke>().config.coldStartConfig.strategy,
     ),
     PaintCanvas: ColdStartStatus(
-      isColdStart: Datum.manager<PaintCanvas>().coldStartManager.isColdStartForUser(userId),
-      lastColdStartTime: Datum.manager<PaintCanvas>().coldStartManager.getLastColdStartTimeForUser(userId),
+      isColdStart: Datum.manager<PaintCanvas>()
+          .coldStartManager
+          .isColdStartForUser(userId),
+      lastColdStartTime: Datum.manager<PaintCanvas>()
+          .coldStartManager
+          .getLastColdStartTimeForUser(userId),
       strategy: Datum.manager<PaintCanvas>().config.coldStartConfig.strategy,
     ),
   });
@@ -55,7 +78,8 @@ final coldStartStatusProvider =
 
   return Stream.value(ColdStartStatus(
     isColdStart: taskManager.coldStartManager.isColdStartForUser(userId),
-    lastColdStartTime: taskManager.coldStartManager.getLastColdStartTimeForUser(userId),
+    lastColdStartTime:
+        taskManager.coldStartManager.getLastColdStartTimeForUser(userId),
     strategy: taskManager.config.coldStartConfig.strategy,
   ));
 });

@@ -1,4 +1,3 @@
-
 import 'package:clock/clock.dart';
 import 'package:datum/datum.dart';
 import 'package:datum/source/core/models/cold_start_strategy.dart';
@@ -332,8 +331,6 @@ void main() {
         expect(result, isTrue);
         expect(syncCalled.length, 1);
       });
-
-
     });
 
     group('Cold Start Configuration', () {

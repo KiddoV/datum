@@ -52,24 +52,16 @@ class CascadeAnalytics {
   });
 
   /// Total number of entities processed across all types.
-  int get totalEntitiesProcessed =>
-      entitiesProcessedByType.values.fold(0, (sum, count) => sum + count);
+  int get totalEntitiesProcessed => entitiesProcessedByType.values.fold(0, (sum, count) => sum + count);
 
   /// Total number of entities deleted across all types.
-  int get totalEntitiesDeleted =>
-      entitiesDeletedByType.values.fold(0, (sum, count) => sum + count);
+  int get totalEntitiesDeleted => entitiesDeletedByType.values.fold(0, (sum, count) => sum + count);
 
   /// Success rate as a percentage (0.0 to 100.0).
-  double get successRate =>
-      totalEntitiesProcessed > 0
-          ? (totalEntitiesDeleted / totalEntitiesProcessed) * 100.0
-          : 100.0;
+  double get successRate => totalEntitiesProcessed > 0 ? (totalEntitiesDeleted / totalEntitiesProcessed) * 100.0 : 100.0;
 
   /// Average time per entity processed.
-  Duration get averageTimePerEntity =>
-      totalEntitiesProcessed > 0
-          ? Duration(microseconds: totalDuration.inMicroseconds ~/ totalEntitiesProcessed)
-          : Duration.zero;
+  Duration get averageTimePerEntity => totalEntitiesProcessed > 0 ? Duration(microseconds: totalDuration.inMicroseconds ~/ totalEntitiesProcessed) : Duration.zero;
 
   /// Creates a copy with updated values.
   CascadeAnalytics copyWith({
@@ -170,9 +162,7 @@ class CascadeAnalyticsBuilder {
     final now = DateTime.now();
     final startedAt = _startedAt ?? now;
     final completedAt = _completedAt ?? (_startedAt != null ? now : startedAt);
-    final totalDuration = _startedAt != null && _completedAt != null
-        ? completedAt.difference(startedAt)
-        : Duration.zero;
+    final totalDuration = _startedAt != null && _completedAt != null ? completedAt.difference(startedAt) : Duration.zero;
 
     return CascadeAnalytics(
       totalDuration: totalDuration,
@@ -218,8 +208,6 @@ class CascadeDeleteResult<T extends DatumEntityInterface> {
   /// Total number of entities deleted across all types.
   int get totalDeleted => deletedEntities.values.fold(0, (sum, list) => sum + list.length);
 }
-
-
 
 /// Configuration for cascade delete operations.
 class CascadeOptions {
@@ -305,8 +293,7 @@ class CascadeDeleteBuilder<T extends DatumEntityInterface> {
   String? _userId;
   CascadeOptions _options;
 
-  CascadeDeleteBuilder(this._manager, this._entityId)
-      : _options = const CascadeOptions();
+  CascadeDeleteBuilder(this._manager, this._entityId) : _options = const CascadeOptions();
 
   /// Specify the user ID for the operation.
   CascadeDeleteBuilder<T> forUser(String userId) {

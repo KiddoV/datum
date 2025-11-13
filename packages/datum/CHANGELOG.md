@@ -1,4 +1,4 @@
-# Unreleased
+# 0.0.14
 
 ## 🗑️ Breaking Changes
 - **core**: Removed deprecated `pause()` and `resume()` methods from `DatumManager` and `Datum` classes - use `unsubscribeFromRemoteChanges()` and `resubscribeToRemoteChanges()` instead

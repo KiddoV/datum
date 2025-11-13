@@ -49,7 +49,8 @@ class FeatureSelectionPage extends StatelessWidget {
                     SizedBox(width: 12),
                     Text(
                       'Simple Datum',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -78,7 +79,8 @@ class FeatureSelectionPage extends StatelessWidget {
                     SizedBox(width: 12),
                     Text(
                       'Paint Canvas',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                      style:
+                          TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),

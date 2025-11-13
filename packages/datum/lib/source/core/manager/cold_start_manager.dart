@@ -150,7 +150,6 @@ class ColdStartManager {
     return true;
   }
 
-
   /// Determines if cold start sync should be performed based on strategy and conditions.
   Future<bool> _shouldPerformColdStartSync(String userId) async {
     switch (_config.strategy) {
@@ -310,8 +309,6 @@ class ColdStartManager {
         return false;
     }
   }
-
-
 
   /// Resets cold start state for a specific user (useful for testing).
   void resetForUser(String userId) {

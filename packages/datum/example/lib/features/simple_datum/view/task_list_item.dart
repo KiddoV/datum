@@ -29,14 +29,16 @@ class TaskListItem extends ConsumerWidget {
               task.title,
               style: task.isCompleted
                   ? const TextStyle(
-                      decoration: TextDecoration.lineThrough, color: Colors.grey)
+                      decoration: TextDecoration.lineThrough,
+                      color: Colors.grey)
                   : null,
             ),
           ),
           // Sync status indicator based on last sync time vs task modification time
           lastSyncTimeAsync.when(
             data: (lastSyncTime) {
-              final isPendingSync = lastSyncTime == null || task.modifiedAt.isAfter(lastSyncTime);
+              final isPendingSync =
+                  lastSyncTime == null || task.modifiedAt.isAfter(lastSyncTime);
               return Container(
                 margin: const EdgeInsets.only(left: 8),
                 child: Tooltip(

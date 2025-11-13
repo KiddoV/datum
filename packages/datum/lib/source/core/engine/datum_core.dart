@@ -674,11 +674,7 @@ class Datum {
       }
       _metricsSubject.add(next);
     });
-
-
   }
-
-
 
   /// Provides access to the specific manager for an entity type.
   static DatumManager<T> manager<T extends DatumEntityInterface>() {
@@ -1104,11 +1100,7 @@ class Datum {
           includeDeletes: options.includeDeletes,
           resolveConflicts: options.resolveConflicts,
           overrideBatchSize: options.overrideBatchSize,
-          conflictResolver: options.conflictResolver != null
-              ? (options.conflictResolver is DatumConflictResolver<T>
-                  ? options.conflictResolver as DatumConflictResolver<T>
-                  : null)
-              : null,
+          conflictResolver: options.conflictResolver != null ? (options.conflictResolver is DatumConflictResolver<T> ? options.conflictResolver as DatumConflictResolver<T> : null) : null,
           query: options.query,
         );
         return await syncFunction(typedOptions);
@@ -1256,10 +1248,6 @@ class Datum {
       conflictCount: totalConflicts,
     );
   }
-
-
-
-
 
   Future<void> dispose() async {
     pauseSync();

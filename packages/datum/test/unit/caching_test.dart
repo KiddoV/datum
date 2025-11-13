@@ -629,9 +629,7 @@ void main() {
         await userManager.push(item: user, userId: 'user-1');
 
         // Run multiple concurrent queries
-        final futures = List.generate(10, (_) =>
-          userManager.query(const DatumQuery(), source: DataSource.local, userId: 'user-1')
-        );
+        final futures = List.generate(10, (_) => userManager.query(const DatumQuery(), source: DataSource.local, userId: 'user-1'));
 
         final results = await Future.wait(futures);
 
@@ -643,9 +641,7 @@ void main() {
       });
 
       test('cache survives multiple operations', () async {
-        final users = List.generate(5, (i) =>
-          TestUser(id: 'user-$i', name: 'User $i', email: 'user$i@example.com', modifiedAt: DateTime.now(), createdAt: DateTime.now())
-        );
+        final users = List.generate(5, (i) => TestUser(id: 'user-$i', name: 'User $i', email: 'user$i@example.com', modifiedAt: DateTime.now(), createdAt: DateTime.now()));
 
         // Create users
         for (final user in users) {

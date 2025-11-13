@@ -38,12 +38,14 @@ class DatumProviderWithLifecycleState
       case AppLifecycleState.inactive:
       case AppLifecycleState.hidden:
         // The adapter handles background/foreground transitions automatically
-        talker.debug('App backgrounded - adapter will handle reconnection automatically');
+        talker.debug(
+            'App backgrounded - adapter will handle reconnection automatically');
         break;
 
       case AppLifecycleState.resumed:
         // When app resumes, trigger a sync to catch up on any changes missed during background
-        talker.debug('App foregrounded - triggering sync to catch up on missed changes');
+        talker.debug(
+            'App foregrounded - triggering sync to catch up on missed changes');
         _syncOnResume();
         break;
 
@@ -59,20 +61,24 @@ class DatumProviderWithLifecycleState
     try {
       final currentUser = Supabase.instance.client.auth.currentUser;
       if (currentUser != null) {
-        talker.info('Performing background catch-up sync for user: ${currentUser.id}');
+        talker.info(
+            'Performing background catch-up sync for user: ${currentUser.id}');
         await Datum.instance.synchronize(
           currentUser.id,
           options: DatumSyncOptions(
-            forceFullSync: true, // Force full sync to ensure we get all changes missed during background
+            forceFullSync:
+                true, // Force full sync to ensure we get all changes missed during background
             direction: SyncDirection.pullOnly, // Only pull to avoid conflicts
           ),
         );
         talker.debug('Background catch-up sync completed successfully');
       } else {
-        talker.debug('No authenticated user found, skipping background catch-up sync');
+        talker.debug(
+            'No authenticated user found, skipping background catch-up sync');
       }
     } catch (e, stackTrace) {
-      talker.error('Failed to perform background catch-up sync: $e', stackTrace);
+      talker.error(
+          'Failed to perform background catch-up sync: $e', stackTrace);
     }
   }
 

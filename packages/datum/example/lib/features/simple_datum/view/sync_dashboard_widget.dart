@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:datum/datum.dart';
@@ -15,12 +14,14 @@ class SyncDashboardWidget extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final allEntitiesStatusAsync = ref.watch(allEntitiesSyncStatusProvider(userId));
+    final allEntitiesStatusAsync =
+        ref.watch(allEntitiesSyncStatusProvider(userId));
     final lastSyncTimeAsync = ref.watch(lastSyncTimeProvider(userId));
 
     return allEntitiesStatusAsync.when(
       data: (entityStatuses) => lastSyncTimeAsync.when(
-        data: (lastSyncTime) => _buildDashboard(context, entityStatuses, lastSyncTime),
+        data: (lastSyncTime) =>
+            _buildDashboard(context, entityStatuses, lastSyncTime),
         loading: () => _buildDashboard(context, entityStatuses, null),
         error: (error, stack) => _buildDashboard(context, entityStatuses, null),
       ),
@@ -29,12 +30,19 @@ class SyncDashboardWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildDashboard(BuildContext context, Map<Type, DatumSyncStatusSnapshot> entityStatuses, DateTime? lastSyncTime) {
+  Widget _buildDashboard(
+      BuildContext context,
+      Map<Type, DatumSyncStatusSnapshot> entityStatuses,
+      DateTime? lastSyncTime) {
     // Calculate aggregate metrics
-    final totalSynced = entityStatuses.values.fold<int>(0, (sum, status) => sum + status.syncedCount);
-    final totalPending = entityStatuses.values.fold<int>(0, (sum, status) => sum + status.pendingOperations);
-    final totalConflicts = entityStatuses.values.fold<int>(0, (sum, status) => sum + status.conflictsResolved);
-    final totalFailed = entityStatuses.values.fold<int>(0, (sum, status) => sum + status.failedOperations);
+    final totalSynced = entityStatuses.values
+        .fold<int>(0, (sum, status) => sum + status.syncedCount);
+    final totalPending = entityStatuses.values
+        .fold<int>(0, (sum, status) => sum + status.pendingOperations);
+    final totalConflicts = entityStatuses.values
+        .fold<int>(0, (sum, status) => sum + status.conflictsResolved);
+    final totalFailed = entityStatuses.values
+        .fold<int>(0, (sum, status) => sum + status.failedOperations);
 
     // Get overall health status
     final overallHealth = _calculateOverallHealth(entityStatuses);
@@ -121,7 +129,9 @@ class SyncDashboardWidget extends ConsumerWidget {
                 Expanded(
                   child: _buildInfoCard(
                     'Last Sync',
-                    lastSyncTime != null ? _formatLastSync(lastSyncTime) : 'Never',
+                    lastSyncTime != null
+                        ? _formatLastSync(lastSyncTime)
+                        : 'Never',
                     Icons.access_time,
                     Colors.blue,
                   ),
@@ -160,8 +170,8 @@ class SyncDashboardWidget extends ConsumerWidget {
     );
   }
 
-
-  Widget _buildMetricCard(String title, String value, IconData icon, Color color) {
+  Widget _buildMetricCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -193,7 +203,8 @@ class SyncDashboardWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildInfoCard(String title, String value, IconData icon, Color color) {
+  Widget _buildInfoCard(
+      String title, String value, IconData icon, Color color) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -234,10 +245,14 @@ class SyncDashboardWidget extends ConsumerWidget {
     );
   }
 
-  Widget _buildOverallStatusBadge(Map<Type, DatumSyncStatusSnapshot> entityStatuses) {
-    final isAnySyncing = entityStatuses.values.any((status) => status.status == DatumSyncStatus.syncing);
-    final hasAnyPending = entityStatuses.values.any((status) => status.pendingOperations > 0);
-    final hasAnyFailed = entityStatuses.values.any((status) => status.failedOperations > 0);
+  Widget _buildOverallStatusBadge(
+      Map<Type, DatumSyncStatusSnapshot> entityStatuses) {
+    final isAnySyncing = entityStatuses.values
+        .any((status) => status.status == DatumSyncStatus.syncing);
+    final hasAnyPending =
+        entityStatuses.values.any((status) => status.pendingOperations > 0);
+    final hasAnyFailed =
+        entityStatuses.values.any((status) => status.failedOperations > 0);
 
     Color color;
     String text;
@@ -286,7 +301,8 @@ class SyncDashboardWidget extends ConsumerWidget {
     );
   }
 
-  List<Widget> _buildEntityStatusList(Map<Type, DatumSyncStatusSnapshot> entityStatuses) {
+  List<Widget> _buildEntityStatusList(
+      Map<Type, DatumSyncStatusSnapshot> entityStatuses) {
     return entityStatuses.entries.map((entry) {
       final entityType = entry.key;
       final status = entry.value;
@@ -375,9 +391,11 @@ class SyncDashboardWidget extends ConsumerWidget {
     );
   }
 
-  DatumSyncHealth _calculateOverallHealth(Map<Type, DatumSyncStatusSnapshot> entityStatuses) {
+  DatumSyncHealth _calculateOverallHealth(
+      Map<Type, DatumSyncStatusSnapshot> entityStatuses) {
     // Return the worst health status among all entities
-    final healthStatuses = entityStatuses.values.map((status) => status.health.status).toList();
+    final healthStatuses =
+        entityStatuses.values.map((status) => status.health.status).toList();
 
     if (healthStatuses.contains(DatumSyncHealth.error)) {
       return DatumSyncHealth.error;
@@ -393,9 +411,6 @@ class SyncDashboardWidget extends ConsumerWidget {
       return DatumSyncHealth.healthy;
     }
   }
-
-
-
 
   String _formatLastSync(DateTime dateTime) {
     final now = DateTime.now();
@@ -476,7 +491,9 @@ class SyncDashboardWidget extends ConsumerWidget {
       case DatumSyncStatus.cancelled:
         return Icons.cancel;
       case DatumSyncStatus.idle:
-        return status.pendingOperations > 0 ? Icons.schedule : Icons.check_circle;
+        return status.pendingOperations > 0
+            ? Icons.schedule
+            : Icons.check_circle;
     }
   }
 
@@ -487,7 +504,9 @@ class SyncDashboardWidget extends ConsumerWidget {
     // Convert PascalCase to Title Case
     return baseName.replaceAllMapped(
       RegExp(r'([A-Z])'),
-      (match) => match.group(1) == baseName[0] ? match.group(1)! : ' ${match.group(1)!}',
+      (match) => match.group(1) == baseName[0]
+          ? match.group(1)!
+          : ' ${match.group(1)!}',
     );
   }
 }

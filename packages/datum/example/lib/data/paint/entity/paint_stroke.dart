@@ -291,11 +291,11 @@ class PaintStroke extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-    'canvas': BelongsTo<PaintCanvas>(
-      this,
-      'canvasId', // The foreign key in this entity that points to the canvas
-    ),
-  };
+        'canvas': BelongsTo<PaintCanvas>(
+          this,
+          'canvasId', // The foreign key in this entity that points to the canvas
+        ),
+      };
 
   @override
   RelationalDatumEntity copyWith({

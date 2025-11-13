@@ -52,8 +52,6 @@ class ColdStartConfig {
   }
 }
 
-
-
 /// Metrics collected during cold start sync operations
 class ColdStartMetrics {
   final DateTime startTime;

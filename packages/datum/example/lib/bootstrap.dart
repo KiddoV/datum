@@ -47,10 +47,12 @@ class _TalkerDatumLogger implements datum_logger.DatumLogger {
   bool get colors => true; // Talker handles colors
 
   @override
-  datum_logger.LogLevel get minimumLevel => datum_logger.LogLevel.trace; // Talker handles all levels
+  datum_logger.LogLevel get minimumLevel =>
+      datum_logger.LogLevel.trace; // Talker handles all levels
 
   @override
-  Map<String, datum_logger.LogSampler> get samplers => {}; // Not used with Talker
+  Map<String, datum_logger.LogSampler> get samplers =>
+      {}; // Not used with Talker
 
   @override
   bool get enablePerformanceLogging => false; // Not used with Talker
@@ -113,7 +115,8 @@ class _TalkerDatumLogger implements datum_logger.DatumLogger {
   }
 
   @override
-  void debug(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void debug(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _talker.debug(message);
   }
 
@@ -123,17 +126,20 @@ class _TalkerDatumLogger implements datum_logger.DatumLogger {
   }
 
   @override
-  void info(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void info(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _talker.info(message);
   }
 
   @override
-  void warn(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void warn(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _talker.warning(message);
   }
 
   @override
-  void trace(String message, {String? category, Map<String, dynamic>? metadata}) {
+  void trace(String message,
+      {String? category, Map<String, dynamic>? metadata}) {
     _talker.debug('TRACE: $message');
   }
 

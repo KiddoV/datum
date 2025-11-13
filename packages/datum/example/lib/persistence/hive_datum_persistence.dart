@@ -133,7 +133,8 @@ class HiveDatumPersistence extends DatumPersistence {
             controller.add(null);
           } else {
             try {
-              final metadata = DatumSyncMetadata.fromMap(event.value.cast<String, dynamic>());
+              final metadata = DatumSyncMetadata.fromMap(
+                  event.value.cast<String, dynamic>());
               controller.add(metadata);
             } catch (e) {
               controller.add(null);
@@ -283,8 +284,10 @@ class HiveDatumPersistence extends DatumPersistence {
     final configKeys = await _configBox!.keys;
     final dataKeys = await _dataBox!.keys;
 
-    final configKeysToDelete = configKeys.where((key) => key.toString().contains(userId));
-    final dataKeysToDelete = dataKeys.where((key) => key.toString().contains(userId));
+    final configKeysToDelete =
+        configKeys.where((key) => key.toString().contains(userId));
+    final dataKeysToDelete =
+        dataKeys.where((key) => key.toString().contains(userId));
 
     await Future.wait([
       ...configKeysToDelete.map((key) => deleteConfig(key.toString())),
@@ -328,8 +331,7 @@ class HiveDatumPersistence extends DatumPersistence {
   }
 
   @override
-  bool get isInitialized =>
-      _configBox != null;
+  bool get isInitialized => _configBox != null;
 
   @override
   Future<Map<String, dynamic>?> getStorageStats() async {
