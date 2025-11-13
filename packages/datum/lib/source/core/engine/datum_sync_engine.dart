@@ -152,18 +152,21 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
     try {
       final direction = options?.direction ?? config.defaultSyncDirection;
 
-      switch (direction) {
-        case SyncDirection.pushThenPull:
-          bytesPushedThisCycle += await _pushChanges(userId, generatedEvents);
-          bytesPulledThisCycle += await _pullChanges(userId, options, scope, generatedEvents);
-        case SyncDirection.pullThenPush:
-          bytesPulledThisCycle += await _pullChanges(userId, options, scope, generatedEvents);
-          bytesPushedThisCycle += await _pushChanges(userId, generatedEvents);
-        case SyncDirection.pushOnly:
-          bytesPushedThisCycle += await _pushChanges(userId, generatedEvents);
-        case SyncDirection.pullOnly:
-          bytesPulledThisCycle += await _pullChanges(userId, options, scope, generatedEvents);
-      }
+  switch (direction) {
+    case SyncDirection.pushThenPull:
+      bytesPushedThisCycle += await _pushChanges(userId, generatedEvents);
+      bytesPulledThisCycle += await _pullChanges(userId, options, scope, generatedEvents);
+    case SyncDirection.pullThenPush:
+      bytesPulledThisCycle += await _pullChanges(userId, options, scope, generatedEvents);
+      bytesPushedThisCycle += await _pushChanges(userId, generatedEvents);
+    case SyncDirection.pushOnly:
+      bytesPushedThisCycle += await _pushChanges(userId, generatedEvents);
+    case SyncDirection.pullOnly:
+      bytesPulledThisCycle += await _pullChanges(userId, options, scope, generatedEvents);
+  }
+
+  // Update metadata after sync operations
+  await _updateMetadata(userId);
 
       // After operations, check if the sync was cancelled by a dispose call.
       // The status subject would be closed in this case.
@@ -506,7 +509,6 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
       cumulativeBytesPulled += batchBytes;
     }
 
-    await _updateMetadata(userId);
     return bytesPulled;
   }
 
@@ -793,9 +795,9 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
         devices: updatedDevices.isEmpty ? null : updatedDevices,
         entityCounts: updatedEntityCounts,
         // Preserve other fields from existing metadata or set defaults
-        lastSuccessfulSyncTime: existingMetadata?.lastSuccessfulSyncTime,
+        lastSuccessfulSyncTime: DateTime.now(),
         customMetadata: existingMetadata?.customMetadata,
-        syncStatus: existingMetadata?.syncStatus ?? SyncStatus.neverSynced,
+        syncStatus: SyncStatus.synced,
         syncVersion: existingMetadata?.syncVersion ?? 1,
         serverTimestamp: existingMetadata?.serverTimestamp,
         conflictCount: existingMetadata?.conflictCount ?? 0,

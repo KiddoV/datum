@@ -2,8 +2,9 @@ import 'dart:async';
 
 import 'package:datum/datum.dart';
 import 'package:datum/source/core/cascade_delete.dart';
-
 import 'package:datum/source/core/models/datum_either.dart';
+import 'package:datum/source/core/persistence/datum_persistence.dart';
+import 'package:datum/source/core/persistence/in_memory_datum_persistence.dart';
 import 'package:meta/meta.dart';
 import 'package:rxdart/rxdart.dart';
 
@@ -214,6 +215,7 @@ class Datum {
   final TypeSafeManagerRegistry _managers = TypeSafeManagerRegistry();
   final Map<Type, AdapterPair> _adapterPairs = {};
   final DatumConnectivityChecker connectivityChecker;
+  final DatumPersistence? persistence;
   final List<GlobalDatumObserver> globalObservers = [];
   final DatumLogger logger;
   final List<StreamSubscription<DatumSyncEvent<DatumEntityInterface>>> _managerSubscriptions = [];
@@ -250,6 +252,7 @@ class Datum {
   Datum._({
     required this.config,
     required this.connectivityChecker,
+    this.persistence,
     DatumLogger? logger,
   }) : logger = logger ?? DatumLogger(enabled: config.enableLogging);
 
@@ -257,6 +260,7 @@ class Datum {
   static Future<DatumEither<Object, Datum>> initialize({
     required DatumConfig config,
     required DatumConnectivityChecker connectivityChecker,
+    DatumPersistence? persistence,
     DatumLogger? logger,
     List<DatumRegistration> registrations = const [],
     List<GlobalDatumObserver> observers = const [],
@@ -265,8 +269,12 @@ class Datum {
       if (_instance != null) {
         return Success(_instance!);
       }
+
+      // Default to in-memory persistence if none provided
+      final DatumPersistence effectivePersistence = persistence ?? InMemoryDatumPersistence();
+
       if (!config.enableLogging) {
-        final datum = await _initializeSilently(config, connectivityChecker, logger, registrations, observers);
+        final datum = await _initializeSilently(config, connectivityChecker, effectivePersistence, logger, registrations, observers);
         return Success(datum);
       }
 
@@ -276,6 +284,7 @@ class Datum {
       final datum = Datum._(
         config: config,
         connectivityChecker: connectivityChecker,
+        persistence: effectivePersistence,
         logger: logger,
       );
       datum.globalObservers.addAll(observers);
@@ -310,6 +319,7 @@ class Datum {
   static Future<Datum> _initializeSilently(
     DatumConfig config,
     DatumConnectivityChecker connectivityChecker,
+    DatumPersistence effectivePersistence,
     DatumLogger? logger,
     List<DatumRegistration> registrations,
     List<GlobalDatumObserver> observers,
@@ -317,6 +327,7 @@ class Datum {
     final datum = Datum._(
       config: config,
       connectivityChecker: connectivityChecker,
+      persistence: effectivePersistence,
       logger: logger,
     );
     datum.globalObservers.addAll(observers);

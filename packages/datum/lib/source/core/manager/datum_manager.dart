@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:collection/collection.dart';
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/persistence/datum_persistence.dart';
 
 import 'package:rxdart/rxdart.dart';
 import 'package:uuid/uuid.dart';
@@ -74,6 +75,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   final List<DatumMiddleware<T>> _middlewares = [];
   final DatumSyncRequestStrategy _syncRequestStrategy;
   final String? deviceId;
+  final DatumPersistence? persistence;
 
   // Internal state management
   final Map<String, Timer> _autoSyncTimers = {};
@@ -192,6 +194,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     List<GlobalDatumObserver>? globalObservers,
     DatumSyncRequestStrategy? syncRequestStrategy,
     this.deviceId,
+    this.persistence,
   })  : config = datumConfig ?? const DatumConfig(),
         _connectivity = connectivity,
         // The logger's enabled status should always respect the config.
@@ -1806,6 +1809,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
           // Persist the result of the sync operation.
           if (!result.wasSkipped) {
             await localAdapter.saveLastSyncResult(userId, result);
+            // Also update sync metadata in persistence
+            final metadata = await localAdapter.getSyncMetadata(userId);
+            if (metadata != null) {
+              await persistence?.saveSyncMetadata(userId, metadata);
+            }
           }
           return result;
         } on Object catch (e, _) {

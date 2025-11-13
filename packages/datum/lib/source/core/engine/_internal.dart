@@ -73,6 +73,7 @@ class AdapterPairImpl<T extends DatumEntityInterface> implements AdapterPair {
       connectivity: datum.connectivityChecker,
       logger: datum.logger,
       syncRequestStrategy: syncRequestStrategy,
+      persistence: datum.persistence,
     );
     return manager;
   }
