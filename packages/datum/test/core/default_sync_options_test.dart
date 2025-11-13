@@ -1,6 +1,6 @@
 import 'package:datum/source/config/datum_config.dart';
 import 'package:datum/source/core/models/datum_sync_options.dart';
-import 'package:datum/src/test_utils/test_datum_entity.dart';
+import '../test_utils/test_datum_entity.dart';
 import 'package:test/test.dart';
 
 void main() {

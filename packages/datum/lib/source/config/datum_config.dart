@@ -63,7 +63,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   final UserSwitchStrategy defaultUserSwitchStrategy;
 
   /// The user ID to target for the initial auto-sync if [autoStartSync] is
-  /// true. A function that returns a Future<String?> to get the current user ID.
+  /// true. A function that returns a `Future<String?>` to get the current user ID.
   /// If the function returns null, DatumManager will discover all users with local data.
   /// If null, DatumManager will discover all users with local data.
   final Future<String?> Function()? initialUserId;

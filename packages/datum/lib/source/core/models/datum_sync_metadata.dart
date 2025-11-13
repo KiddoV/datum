@@ -105,7 +105,7 @@ enum SyncStatus {
 /// ```
 ///
 /// Note: The `devices` and `entity_counts` fields are stored as JSON strings in the database
-/// but parsed into structured Dart objects (Map<String, DateTime> and Map<String, DatumEntitySyncDetails> respectively).
+/// but parsed into structured Dart objects (`Map<String, DateTime>` and `Map<String, DatumEntitySyncDetails>` respectively).
 @immutable
 class DatumSyncMetadata extends Equatable {
   /// Helper method to get a value from a map that may contain either camelCase or snake_case keys.

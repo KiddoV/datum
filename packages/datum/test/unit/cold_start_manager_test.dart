@@ -3,7 +3,7 @@ import 'dart:async';
 import 'package:datum/source/core/manager/cold_start_manager.dart';
 import 'package:datum/source/core/models/cold_start_strategy.dart';
 import 'package:datum/source/core/models/datum_sync_result.dart';
-import 'package:datum/src/test_utils/test_datum_entity.dart';
+import '../test_utils/test_datum_entity.dart';
 import 'package:fake_async/fake_async.dart';
 import 'package:test/test.dart';
 

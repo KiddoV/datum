@@ -1,5 +1,5 @@
 import 'package:datum/datum.dart';
-import 'package:datum/src/test_utils/test_datum_entity.dart';
+import '../test_utils/test_datum_entity.dart';
 import 'package:test/test.dart';
 
 void main() {
