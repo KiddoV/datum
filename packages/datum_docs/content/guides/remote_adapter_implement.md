@@ -412,9 +412,209 @@ CREATE POLICY "Users can manage their own sync metadata" ON sync_metadata
   FOR ALL USING (auth.uid()::text = user_id);
 ```
 
-### Real-time Subscriptions
+### Advanced Features
 
-The Supabase adapter automatically handles real-time subscriptions for live data synchronization. When changes occur in the database, they're automatically pushed to connected clients through the `changeStream`.
+The example Supabase adapter includes several advanced features for production use:
+
+#### Authentication Monitoring
+
+```dart
+// Monitor authentication state changes
+void startAuthMonitoring() {
+  _authSubscription = _client.auth.onAuthStateChange.listen((authState) {
+    final isAuthenticated = authState.session != null;
+    _updateAuthenticationState(isAuthenticated);
+
+    if (!isAuthenticated) {
+      // Stop syncing when user logs out
+      unsubscribeFromChanges();
+    } else {
+      // Resume syncing when user logs in
+      if (_channel == null) {
+        _subscribeToChanges();
+      }
+    }
+  });
+}
+```
+
+#### Retry Logic for Subscriptions
+
+```dart
+class _SubscriptionRetryManager {
+  static const int maxRetries = 5;
+  static const Duration baseRetryDelay = Duration(seconds: 1);
+
+  void scheduleRetry(String tableName, bool isAuthenticated, VoidCallback retryCallback) {
+    if (_isRetrying || !isAuthenticated) return;
+
+    _trackFailure();
+    if (_retryCount >= maxRetries) return;
+
+    _isRetrying = true;
+    _retryCount++;
+
+    final delay = _calculateDelay();
+    Timer(delay, () {
+      if (!isAuthenticated) return;
+      _isRetrying = false;
+      retryCallback();
+    });
+  }
+
+  Duration _calculateDelay() {
+    var delaySeconds = (baseRetryDelay.inSeconds * (1 << (_retryCount - 1))).clamp(1, 30);
+    if (_consecutiveFailures >= 3) {
+      delaySeconds = (delaySeconds * 5).clamp(30, 300);
+    }
+    return Duration(seconds: delaySeconds);
+  }
+}
+```
+
+#### Relationship Fetching
+
+```dart
+Future<List<R>> fetchRelated<R extends DatumEntityInterface>(
+  RelationalDatumEntity parent,
+  String relationName,
+  RemoteAdapter<R> relatedAdapter,
+) async {
+  final relatedSupabaseAdapter = relatedAdapter as SupabaseRemoteAdapter<R>;
+  final relatedTableName = relatedSupabaseAdapter.tableName;
+
+  PostgrestFilterBuilder queryBuilder = _client.from(relatedTableName).select();
+
+  final relation = parent.relations[relationName];
+
+  switch (relation) {
+    case BelongsTo(:final foreignKey, :final localKey):
+      final relatedKeyValue = parent.toDatumMap()[localKey];
+      if (relatedKeyValue == null) return [];
+      queryBuilder = queryBuilder.eq(foreignKey.snakeCase, relatedKeyValue);
+      break;
+    case HasMany(:final foreignKey, :final localKey):
+    case HasOne(:final foreignKey, :final localKey):
+      final foreignKeyColumn = foreignKey.snakeCase;
+      final localKeyValue = parent.toDatumMap()[localKey];
+      if (localKeyValue == null) return [];
+      queryBuilder = queryBuilder.eq(foreignKeyColumn, localKeyValue);
+      break;
+    case ManyToMany(:final otherForeignKey, :final otherLocalKey, :final thisForeignKey, :final thisLocalKey):
+      // Handle many-to-many relationships with junction tables
+      final pivotAdapter = Datum.manager().remoteAdapter;
+      if (pivotAdapter is! SupabaseRemoteAdapter) {
+        throw ArgumentError('Pivot adapter must be a SupabaseRemoteAdapter');
+      }
+      final pivotTableName = pivotAdapter.tableName;
+
+      final parentIdValue = parent.toDatumMap()[thisLocalKey];
+      if (parentIdValue == null) return [];
+
+      final junctionRecords = await _client
+          .from(pivotTableName)
+          .select(otherForeignKey.snakeCase)
+          .eq(thisForeignKey.snakeCase, parentIdValue);
+
+      if (junctionRecords.isEmpty) return [];
+
+      final relatedIds = junctionRecords
+          .map((record) => record[otherForeignKey.snakeCase])
+          .whereType<String>()
+          .toList();
+
+      if (relatedIds.isEmpty) return [];
+      queryBuilder = queryBuilder.inFilter(otherLocalKey.snakeCase, relatedIds);
+      break;
+  }
+
+  final response = await queryBuilder;
+  return response.map<R>((json) => relatedSupabaseAdapter.fromMap(_toCamelCase(json))).toList();
+}
+```
+
+#### Real-time Relationship Watching
+
+```dart
+Stream<List<R>> watchRelated<R extends DatumEntityInterface>(
+  RelationalDatumEntity parent,
+  String relationName,
+  RemoteAdapter<R> relatedAdapter,
+) {
+  final relatedSupabaseAdapter = relatedAdapter as SupabaseRemoteAdapter<R>;
+  final relatedTableName = relatedSupabaseAdapter.tableName;
+  final relation = parent.relations[relationName];
+
+  late StreamController<List<R>> controller;
+  RealtimeChannel? channel;
+
+  Future<void> fetchAndEmit() async {
+    try {
+      final items = await fetchRelated<R>(parent, relationName, relatedAdapter);
+      if (!controller.isClosed) {
+        controller.add(items);
+      }
+    } catch (e) {
+      if (!controller.isClosed) {
+        controller.addError(e);
+      }
+    }
+  }
+
+  void setupRealtimeSubscription() {
+    final channelName = 'related:$relatedTableName:${parent.id}:$relationName';
+
+    channel = _client.channel(channelName).onPostgresChanges(
+      event: PostgresChangeEvent.all,
+      schema: 'public',
+      table: relatedTableName,
+      callback: (payload) => fetchAndEmit(),
+    );
+
+    // For ManyToMany relationships, also watch the pivot table
+    if (relation is ManyToMany) {
+      final pivotAdapter = Datum.manager().remoteAdapter;
+      if (pivotAdapter is SupabaseRemoteAdapter) {
+        final pivotTableName = pivotAdapter.tableName;
+        final pivotChannelName = 'pivot:$pivotTableName:${parent.id}:$relationName';
+
+        final pivotChannel = _client
+            .channel(pivotChannelName)
+            .onPostgresChanges(
+              event: PostgresChangeEvent.all,
+              schema: 'public',
+              table: pivotTableName,
+              callback: (payload) => fetchAndEmit(),
+            );
+
+        pivotChannel.subscribe();
+        _relatedChannels[pivotChannelName] = pivotChannel;
+      }
+    }
+
+    channel?.subscribe();
+    if (channel != null) {
+      _relatedChannels[channelName] = channel!;
+    }
+  }
+
+  controller = StreamController<List<R>>.broadcast(
+    onListen: () {
+      fetchAndEmit();
+      setupRealtimeSubscription();
+    },
+    onCancel: () async {
+      if (channel != null) {
+        await _client.removeChannel(channel!);
+        _relatedChannels.remove('related:$relatedTableName:${parent.id}:$relationName');
+      }
+      // Clean up pivot channel if it exists
+    },
+  );
+
+  return controller.stream;
+}
+```
 
 ### Error Handling
 
@@ -422,7 +622,35 @@ The adapter includes comprehensive error handling for common Supabase issues:
 
 - **Authentication errors**: Returns `AdapterHealthStatus.unhealthy` when not authenticated
 - **Network errors**: Throws appropriate exceptions for connection issues
-- **Permission errors**: Handles RLS policy violations
+- **Permission errors**: Handles RLS policy violations with graceful degradation
 - **Data validation**: Validates responses from Supabase
+- **Subscription failures**: Implements retry logic with exponential backoff
 
-This complete Supabase adapter example demonstrates how to implement a production-ready remote adapter for Datum with real-time synchronization, proper error handling, and security considerations.
+### Production Considerations
+
+#### Connection Management
+
+```dart
+// Proper cleanup in dispose
+@Override
+Future<void> dispose() async {
+  _retryManager.dispose();
+  await unsubscribeFromChanges();
+  await _streamController?.close();
+  await _stopAuthMonitoring();
+  await _authStateController.close();
+  return super.dispose();
+}
+```
+
+#### Health Monitoring
+
+```dart
+@Override
+Future<AdapterHealthStatus> checkHealth() async {
+  final hasSession = Supabase.instance.client.auth.currentSession?.accessToken != null;
+  return hasSession ? AdapterHealthStatus.healthy : AdapterHealthStatus.unhealthy;
+}
+```
+
+This complete Supabase adapter example demonstrates how to implement a production-ready remote adapter for Datum with real-time synchronization, authentication monitoring, retry logic, relationship support, and comprehensive error handling.

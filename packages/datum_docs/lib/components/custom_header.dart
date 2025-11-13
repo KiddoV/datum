@@ -8,6 +8,7 @@ class CustomHeader extends StatelessComponent {
     required this.logo,
     required this.title,
     this.subtitle,
+    this.version = '1.0.0',
     this.leading = const [SidebarToggleButton()],
     this.items = const [],
     super.key,
@@ -21,6 +22,9 @@ class CustomHeader extends StatelessComponent {
 
   /// An optional subtitle to render below the [title].
   final String? subtitle;
+
+  /// The current version of the package.
+  final String version;
 
   /// Components to render before the site logo and title.
   ///
@@ -51,7 +55,10 @@ class CustomHeader extends StatelessComponent {
         a(classes: 'header-title', href: '/', [
           img(src: logo, alt: '$title Logo'),
           div(classes: 'header-title-text', [
-            span(classes: 'header-main-title', [text(title)]),
+            div(classes: 'header-title-row', [
+              span(classes: 'header-main-title', [text(title)]),
+              span(classes: 'header-version', [text('v$version')]),
+            ]),
             if (subtitle != null)
               span(classes: 'header-subtitle', [
                 text(subtitle!),
@@ -97,7 +104,20 @@ class CustomHeader extends StatelessComponent {
           justifyContent: JustifyContent.center,
           fontWeight: FontWeight.bold,
         ),
+        css('.header-title-row').styles(
+          display: Display.flex,
+          alignItems: AlignItems.center,
+          gap: Gap(column: 0.5.rem),
+        ),
         css('.header-main-title').styles(fontWeight: FontWeight.w700),
+        css('.header-version').styles(
+          padding: Padding.symmetric(horizontal: 0.375.rem, vertical: 0.125.rem),
+          radius: BorderRadius.all(Radius.circular(0.25.rem)),
+          color: Color('hsl(var(--foreground) / 0.7)'),
+          fontSize: 0.75.rem,
+          fontWeight: FontWeight.w500,
+          backgroundColor: Color('hsl(var(--muted))'),
+        ),
         css('.header-subtitle').styles(
           fontSize: 0.75.rem,
           fontWeight: FontWeight.w400,
@@ -128,6 +148,10 @@ class CustomHeader extends StatelessComponent {
           ),
           css('img').styles(
             height: 2.5.rem,
+          ),
+          css('.header-version').styles(
+            padding: Padding.symmetric(horizontal: 0.25.rem, vertical: 0.0625.rem),
+            fontSize: 0.625.rem,
           ),
           css('.header-subtitle').styles(
             raw: {'display': 'none !important'},

@@ -204,7 +204,47 @@ void main() {
                   },
                 ),
                 [
-                  JasprBadge.lightTwoTone(),
+                  div(
+                    styles: Styles(
+                      display: Display.flex,
+                      flexDirection: FlexDirection.column,
+                      alignItems: AlignItems.end,
+                      gap: Gap(row: 8.px),
+                    ),
+                    [
+                      div(
+                        styles: Styles(
+                          display: Display.flex,
+                          padding: Spacing.symmetric(horizontal: 8.px, vertical: 4.px),
+                          radius: BorderRadius.all(Radius.circular(12.px)),
+                          alignItems: AlignItems.center,
+                          gap: Gap(row: 6.px),
+                          backgroundColor: Color('hsl(var(--primary) / 0.1)'),
+                        ),
+                        [
+                          span(
+                            styles: Styles(
+                              color: Color('hsl(var(--primary))'),
+                              fontSize: 0.6875.rem,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.025.em,
+                            ),
+                            [text('v1.0.0')],
+                          ),
+                          div(
+                            styles: Styles(
+                              width: 6.px,
+                              height: 6.px,
+                              radius: BorderRadius.circular(50.percent),
+                              backgroundColor: Color('hsl(var(--primary))'),
+                            ),
+                            [],
+                          ),
+                        ],
+                      ),
+                      JasprBadge.lightTwoTone(),
+                    ],
+                  ),
                 ],
               );
             },

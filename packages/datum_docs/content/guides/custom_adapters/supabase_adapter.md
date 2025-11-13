@@ -2,11 +2,11 @@
 title: Supabase Remote Adapter
 ---
 
-This guide shows how to use the production-ready Supabase remote adapter for Datum from the example project.
+This guide shows how to implement a complete Supabase remote adapter for Datum.
 
 ## Overview
 
-The Datum example project provides a complete Supabase adapter implementation that includes real-time synchronization, relationship support, and comprehensive error handling. This adapter uses PostgreSQL's real-time capabilities through Supabase.
+Supabase provides real-time database capabilities with PostgreSQL and works seamlessly with Datum's synchronization features. This adapter uses Supabase's realtime subscriptions for live data sync and PostgREST for CRUD operations.
 
 ## Setup
 
@@ -18,16 +18,118 @@ dependencies:
   recase: ^4.1.0
 ```
 
+Initialize Supabase in your app:
+
+```dart
+import 'package:supabase_flutter/supabase_flutter.dart';
+
+Future<void> main() async {
+  await Supabase.initialize(
+    url: 'YOUR_SUPABASE_URL',
+    anonKey: 'YOUR_SUPABASE_ANON_KEY',
+  );
+  runApp(MyApp());
+}
+```
+
 ## Implementation
 
 ```dart
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:datum/datum.dart';
 import 'package:example/bootstrap.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:recase/recase.dart';
+
+/// Manages retry logic for Supabase realtime subscriptions
+class _SubscriptionRetryManager {
+  Timer? _retryTimer;
+  int _retryCount = 0;
+  bool _isRetrying = false;
+  DateTime? _lastRetryTime;
+  int _consecutiveFailures = 0;
+
+  static const int maxRetries = 5;
+  static const Duration baseRetryDelay = Duration(seconds: 1);
+
+  bool get isRetrying => _isRetrying;
+  bool get hasFailures => _retryCount > 0 || _consecutiveFailures > 0;
+
+  void scheduleRetry(
+      String tableName, bool isAuthenticated, VoidCallback retryCallback) {
+    if (_isRetrying || !isAuthenticated) {
+      talker.debug(
+          "Skipping retry: already retrying or not authenticated for table: $tableName");
+      return;
+    }
+
+    _trackFailure();
+
+    if (_retryCount >= maxRetries) {
+      talker.error(
+          "Max retry attempts reached for table: $tableName. Giving up.");
+      return;
+    }
+
+    _isRetrying = true;
+    _retryCount++;
+
+    final delay = _calculateDelay();
+    talker.warning(
+        "Scheduling retry attempt $_retryCount for table: $tableName in ${delay.inSeconds} seconds");
+
+    _retryTimer?.cancel();
+    _retryTimer = Timer(delay, () {
+      if (!isAuthenticated) {
+        talker.debug(
+            "Skipping retry: user not authenticated for table: $tableName");
+        _isRetrying = false;
+        return;
+      }
+
+      talker.info(
+          "Retrying subscription for table: $tableName (attempt $_retryCount)");
+      _isRetrying = false;
+      retryCallback();
+    });
+  }
+
+  void _trackFailure() {
+    final now = DateTime.now();
+    if (_lastRetryTime != null &&
+        now.difference(_lastRetryTime!).inSeconds < 30) {
+      _consecutiveFailures++;
+    } else {
+      _consecutiveFailures = 1;
+    }
+    _lastRetryTime = now;
+  }
+
+  Duration _calculateDelay() {
+    var delaySeconds =
+        (baseRetryDelay.inSeconds * (1 << (_retryCount - 1))).clamp(1, 30);
+    if (_consecutiveFailures >= 3) {
+      delaySeconds = (delaySeconds * 5).clamp(30, 300);
+    }
+    return Duration(seconds: delaySeconds);
+  }
+
+  void reset() {
+    _retryCount = 0;
+    _isRetrying = false;
+    _retryTimer?.cancel();
+    _retryTimer = null;
+    _consecutiveFailures = 0;
+    _lastRetryTime = null;
+  }
+
+  void dispose() {
+    _retryTimer?.cancel();
+  }
+}
 
 class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     extends RemoteAdapter<T> {
@@ -38,20 +140,20 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
   SupabaseRemoteAdapter({
     required this.tableName,
     required this.fromMap,
-    // This is for testing purposes only.
     SupabaseClient? clientOverride,
   }) : _clientOverride = clientOverride;
 
+  // Core components
   RealtimeChannel? _channel;
   StreamController<DatumChangeDetail<T>>? _streamController;
-
-  // Store related entity channels for cleanup
   final Map<String, RealtimeChannel> _relatedChannels = {};
+  final _SubscriptionRetryManager _retryManager = _SubscriptionRetryManager();
 
-  // Authentication state monitoring
+  // Authentication
   StreamSubscription<AuthState>? _authSubscription;
   bool _isAuthenticated = false;
-  final StreamController<bool> _authStateController = StreamController<bool>.broadcast();
+  final StreamController<bool> _authStateController =
+      StreamController<bool>.broadcast();
 
   SupabaseClient get _client => _clientOverride ?? Supabase.instance.client;
   String get _metadataTableName => 'sync_metadata';
@@ -60,10 +162,20 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<void> delete(String id, {String? userId}) async {
-    await _client.from(tableName).delete().eq(
-          'id',
-          id,
+    try {
+      await _client.from(tableName).delete().eq(
+            'id',
+            id,
+          );
+    } on PostgrestException catch (e) {
+      // PGRST116: "Cannot coerce the result to a single JSON object" - means no rows were affected
+      if (e.code == 'PGRST116') {
+        throw EntityNotFoundException(
+          message: 'Entity with id $id not found in table $tableName',
         );
+      }
+      rethrow;
+    }
   }
 
   @override
@@ -77,21 +189,44 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<List<T>> readAll({String? userId, DatumSyncScope? scope}) async {
-    PostgrestFilterBuilder queryBuilder = _client.from(tableName).select();
+    talker.info(
+        "🔍 [Adapter] readAll called for table: $tableName, userId: $userId");
+    talker.debug("🔍 [Adapter] scope: $scope");
 
-    // Apply filters from the sync scope, if provided.
-    if (scope != null) {
-      for (final condition in scope.query.filters) {
-        queryBuilder = _applyFilter(queryBuilder, condition);
+    try {
+      PostgrestFilterBuilder queryBuilder = _client.from(tableName).select();
+      talker.debug("🔍 [Adapter] Created query builder for table: $tableName");
+
+      // Apply filters from the sync scope, if provided.
+      if (scope != null) {
+        talker.debug(
+            "🔍 [Adapter] Applying ${scope.query.filters.length} filters");
+        for (final condition in scope.query.filters) {
+          queryBuilder = _applyFilter(queryBuilder, condition);
+          talker.debug("🔍 [Adapter] Applied filter: $condition");
+        }
       }
-    }
 
-    final response = await queryBuilder;
-    talker.debug("response readAll $response");
-    if (response is List<Map<String, dynamic>>) {
-      return response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
-    } else {
-      return [];
+      talker.debug("🔍 [Adapter] Executing query for table: $tableName");
+      final response = await queryBuilder;
+      talker.info(
+          "✅ [Adapter] Query successful for table: $tableName, response type: ${response.runtimeType}");
+
+      if (response is List<Map<String, dynamic>>) {
+        final items =
+            response.map<T>((json) => fromMap(_toCamelCase(json))).toList();
+        talker.info(
+            "✅ [Adapter] Successfully parsed ${items.length} items from table: $tableName");
+        return items;
+      } else {
+        talker.warning(
+            "⚠️ [Adapter] Unexpected response type for table: $tableName - expected List<Map<String, dynamic>>, got ${response.runtimeType}");
+        return [];
+      }
+    } catch (e, stackTrace) {
+      talker.error(
+          "❌ [Adapter] readAll failed for table: $tableName - $e", stackTrace);
+      rethrow;
     }
   }
 
@@ -107,16 +242,37 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<DatumSyncMetadata?> getSyncMetadata(String userId) async {
-    final response = await _client
-        .from(_metadataTableName)
-        .select()
-        .eq('user_id', userId)
-        .maybeSingle();
+    talker.info(
+        "🔍 [Adapter] getSyncMetadata called for userId: $userId, table: $_metadataTableName");
 
-    if (response == null) {
-      return null;
+    try {
+      talker.debug(
+          "🔍 [Adapter] Executing query: SELECT from $_metadataTableName WHERE user_id = $userId");
+      final response = await _client
+          .from(_metadataTableName)
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      talker.info(
+          "✅ [Adapter] getSyncMetadata query successful, response: ${response != null ? 'found' : 'null'}");
+
+      if (response == null) {
+        talker.debug(
+            "🔍 [Adapter] No sync metadata found for user $userId, returning null");
+        return null;
+      }
+
+      talker.debug("🔍 [Adapter] Parsing sync metadata response: $response");
+      final metadata = DatumSyncMetadata.fromMap(response);
+      talker.info(
+          "✅ [Adapter] Successfully parsed sync metadata for user $userId");
+      return metadata;
+    } catch (e, stackTrace) {
+      talker.error("❌ [Adapter] getSyncMetadata failed for user $userId - $e",
+          stackTrace);
+      rethrow;
     }
-    return DatumSyncMetadata.fromMap(_toCamelCase(response));
   }
 
   @override
@@ -144,20 +300,31 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     required Map<String, dynamic> delta,
     String? userId,
   }) async {
-    final snakeCaseDelta = _toSnakeCase(delta);
-    final response = await _client
-        .from(tableName)
-        .update(snakeCaseDelta)
-        .eq('id', id)
-        .select()
-        .maybeSingle();
-    if (response == null) {
-      throw EntityNotFoundException(
-        message:
-            'Failed to patch item: record not found or RLS policy prevented selection.',
-      );
+    try {
+      final snakeCaseDelta = _toSnakeCase(delta);
+      final response = await _client
+          .from(tableName)
+          .update(snakeCaseDelta)
+          .eq('id', id)
+          .select()
+          .maybeSingle();
+      if (response == null) {
+        throw EntityNotFoundException(
+          message:
+              'Failed to patch item: record not found or RLS policy prevented selection.',
+        );
+      }
+      return fromMap(_toCamelCase(response));
+    } on PostgrestException catch (e) {
+      // PGRST116: "Cannot coerce the result to a single JSON object" - means no rows were affected
+      if (e.code == 'PGRST116') {
+        throw EntityNotFoundException(
+          message:
+              'Entity with id $id not found in table $tableName during patch operation',
+        );
+      }
+      rethrow;
     }
-    return fromMap(_toCamelCase(response));
   }
 
   @override
@@ -202,95 +369,171 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   void _subscribeToChanges() {
     talker.info("Subscribing to Supabase changes for table: $tableName");
-    _channel = _client
-        .channel(
-          'public:$tableName',
-        )
-        .onPostgresChanges(
-          event: PostgresChangeEvent.all,
-          schema: 'public',
-          table: tableName,
-          callback: (payload) {
-            talker.info('Received Supabase change: ${payload.eventType}');
-            talker.debug('Payload: $payload');
 
-            DatumOperationType? type;
-            Map<String, dynamic>? record;
+    // Check authentication state before subscribing
+    final currentUser = _client.auth.currentUser;
+    final hasSession = _client.auth.currentSession != null;
+    talker.debug(
+        "Subscription attempt - Authenticated: $_isAuthenticated, Current user: ${currentUser?.id}, Has session: $hasSession");
 
-            switch (payload.eventType) {
-              case PostgresChangeEvent.insert:
-                type = DatumOperationType.create;
-                record = payload.newRecord;
-                talker.debug('Insert event detected.');
-                break;
-              case PostgresChangeEvent.update:
-                type = DatumOperationType.update;
-                record = payload.newRecord;
-                talker.debug('Update event detected.');
-                break;
-              case PostgresChangeEvent.delete:
-                type = DatumOperationType.delete;
-                record = payload.oldRecord;
-                talker.debug('Delete event detected.');
-                break;
-              case PostgresChangeEvent.all:
-                talker.debug('Received "all" event type, ignoring.');
-                break;
-            }
+    if (!_isAuthenticated) {
+      talker.warning(
+          "Attempting to subscribe to table '$tableName' while not authenticated. Delaying subscription until authenticated.");
+      // Don't attempt subscription if not authenticated - let auth monitoring handle it
+      return;
+    }
 
-            if (type != null && record != null) {
-              talker
-                  .debug('Processing change of type $type for record: $record');
-              final item = fromMap(_toCamelCase(record));
-              // When a delete event comes from Supabase, the oldRecord might only
-              // contain the ID. If the userId is missing, we assume the change
-              // belongs to the currently authenticated user.
-              final userId = item.userId.isNotEmpty
-                  ? item.userId
-                  : _client.auth.currentUser?.id;
-              if (userId == null) {
-                talker.warning(
-                    'Could not determine userId for change, dropping event.');
-                return;
-              }
-              _streamController?.add(
-                DatumChangeDetail<T>(
-                  type: type,
-                  entityId: item.id,
-                  userId: userId,
-                  timestamp: item.modifiedAt,
-                  data: item,
-                ),
-              );
+    try {
+      talker.debug("Creating realtime channel for table: $tableName");
+      _channel = _client
+          .channel(
+            'public:$tableName',
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.all,
+            schema: 'public',
+            table: tableName,
+            callback: (payload) {
               talker.info(
-                  'Successfully processed and streamed change for ${item.id}');
-            } else {
-              talker.warning(
-                  'Change event received but not processed (type or record was null).');
-            }
-          },
-        )..subscribe();
+                  'Received Supabase change: ${payload.eventType} for table: $tableName');
+              talker.debug('Payload: $payload');
+
+              DatumOperationType? type;
+              Map<String, dynamic>? record;
+
+              switch (payload.eventType) {
+                case PostgresChangeEvent.insert:
+                  type = DatumOperationType.create;
+                  record = payload.newRecord;
+                  talker.debug('Insert event detected for table: $tableName');
+                  break;
+                case PostgresChangeEvent.update:
+                  type = DatumOperationType.update;
+                  record = payload.newRecord;
+                  talker.debug('Update event detected for table: $tableName');
+                  break;
+                case PostgresChangeEvent.delete:
+                  type = DatumOperationType.delete;
+                  record = payload.oldRecord;
+                  talker.debug('Delete event detected for table: $tableName');
+                  break;
+                case PostgresChangeEvent.all:
+                  talker.debug(
+                      'Received "all" event type for table: $tableName, ignoring.');
+                  break;
+              }
+
+              if (type != null && record != null) {
+                talker.debug(
+                    'Processing change of type $type for record: $record in table: $tableName');
+                final item = fromMap(_toCamelCase(record));
+                // When a delete event comes from Supabase, the oldRecord might only
+                // contain the ID. If the userId is missing, we assume the change
+                // belongs to the currently authenticated user.
+                final userId = item.userId.isNotEmpty
+                    ? item.userId
+                    : _client.auth.currentUser?.id;
+                if (userId == null) {
+                  talker.warning(
+                      'Could not determine userId for change in table: $tableName, dropping event.');
+                  return;
+                }
+                _streamController?.add(
+                  DatumChangeDetail<T>(
+                    type: type,
+                    entityId: item.id,
+                    userId: userId,
+                    timestamp: item.modifiedAt,
+                    data: item,
+                  ),
+                );
+                talker.info(
+                    'Successfully processed and streamed change for ${item.id} in table: $tableName');
+              } else {
+                talker.warning(
+                    'Change event received for table: $tableName but not processed (type or record was null).');
+              }
+            },
+          );
+
+      talker.debug("Subscribing to channel for table: $tableName");
+      _channel?.subscribe(
+        (status, error) {
+          talker.info(
+              "Channel subscription status for table '$tableName': $status");
+          if (error != null) {
+            talker.error(
+                "Channel subscription error for table '$tableName': $error");
+            _handleSubscriptionError();
+          } else if (status == RealtimeSubscribeStatus.subscribed) {
+            talker.info(
+                "Successfully subscribed to changes for table: $tableName");
+            _onSubscriptionRestored();
+          } else if (status == RealtimeSubscribeStatus.closed) {
+            talker.warning("Channel closed for table: $tableName");
+            _handleSubscriptionError();
+          } else if (status == RealtimeSubscribeStatus.timedOut) {
+            talker
+                .error("Channel subscription timed out for table: $tableName");
+            _handleSubscriptionError();
+          } else if (status == RealtimeSubscribeStatus.channelError) {
+            talker.error("Channel error occurred for table: $tableName");
+            _handleSubscriptionError();
+          }
+        },
+      );
+
+      talker.debug("Channel subscription initiated for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error("Failed to subscribe to changes for table '$tableName': $e",
+          stackTrace);
+      _channel = null;
+    }
   }
 
   @override
   Future<void> unsubscribeFromChanges() async {
+    talker.debug("Unsubscribing from changes for table: $tableName");
+
     if (_channel != null) {
+      talker.debug("Removing main channel for table: $tableName");
       await _client.removeChannel(_channel!);
       _channel = null;
+      talker
+          .info("Successfully unsubscribed from changes for table: $tableName");
+    } else {
+      talker.debug("No active channel to unsubscribe for table: $tableName");
     }
 
     // Unsubscribe from all related entity channels
-    for (final channel in _relatedChannels.values) {
-      await _client.removeChannel(channel);
+    if (_relatedChannels.isNotEmpty) {
+      talker.debug(
+          "Cleaning up ${_relatedChannels.length} related channels for table: $tableName");
+      for (final entry in _relatedChannels.entries) {
+        await _client.removeChannel(entry.value);
+        talker.debug("Removed related channel: ${entry.key}");
+      }
+      _relatedChannels.clear();
     }
-    _relatedChannels.clear();
   }
 
   @override
   Future<void> resubscribeToChanges() async {
-    talker.debug("Called Resub");
-    unsubscribeFromChanges();
-    _subscribeToChanges();
+    talker.info("Resubscribing to changes for table: $tableName");
+    talker.debug(
+        "Current channel state: ${_channel != null ? 'active' : 'null'}");
+
+    try {
+      await unsubscribeFromChanges();
+      talker.debug(
+          "Successfully unsubscribed, now subscribing again for table: $tableName");
+      _subscribeToChanges();
+      talker.info("Resubscription process completed for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error(
+          "Failed to resubscribe to changes for table '$tableName': $e",
+          stackTrace);
+    }
   }
 
   Future<void> clearSyncMetadata(String userId) async {
@@ -301,7 +544,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
   void startAuthMonitoring() {
     if (_authSubscription != null) return; // Already monitoring
 
-    talker.info("Starting authentication state monitoring for $tableName adapter");
+    talker.info(
+        "Starting authentication state monitoring for $tableName adapter");
     _authSubscription = _client.auth.onAuthStateChange.listen(
       (AuthState authState) {
         final isAuthenticated = authState.session != null;
@@ -310,6 +554,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
         if (!isAuthenticated) {
           talker.info("User logged out, stopping sync for $tableName adapter");
           // Stop syncing when user logs out
+          _retryManager.reset();
           unsubscribeFromChanges();
         } else {
           talker.info("User logged in, resuming sync for $tableName adapter");
@@ -333,7 +578,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     if (_authSubscription != null) {
       await _authSubscription!.cancel();
       _authSubscription = null;
-      talker.info("Stopped authentication state monitoring for $tableName adapter");
+      talker.info(
+          "Stopped authentication state monitoring for $tableName adapter");
     }
   }
 
@@ -341,12 +587,67 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     if (_isAuthenticated != isAuthenticated) {
       _isAuthenticated = isAuthenticated;
       _authStateController.add(isAuthenticated);
-      talker.debug("Authentication state changed: $isAuthenticated for $tableName adapter");
+      talker.debug(
+          "Authentication state changed: $isAuthenticated for $tableName adapter");
+    }
+  }
+
+  // Subscription management
+  void _handleSubscriptionError() {
+    _retryManager.scheduleRetry(
+        tableName, _isAuthenticated, _subscribeToChanges);
+  }
+
+  void _onSubscriptionRestored() {
+    final hadFailures = _retryManager.hasFailures;
+    _retryManager.reset();
+
+    if (hadFailures) {
+      talker.info(
+          "Subscription restored for table: $tableName after failures. Triggering full sync to catch missed updates.");
+      _triggerFullSyncAfterRestoration();
+    } else {
+      talker.debug(
+          "Subscription restored for table: $tableName (no failures detected)");
+    }
+  }
+
+  void _triggerFullSyncAfterRestoration() async {
+    try {
+      final currentUser = _client.auth.currentUser;
+      if (currentUser == null) {
+        talker.debug(
+            "No authenticated user found, skipping restoration sync for table: $tableName");
+        return;
+      }
+
+      // Check if Datum is initialized before attempting sync
+      if (!Datum.isInitialized) {
+        talker.debug(
+            "Datum not initialized yet, skipping restoration sync for table: $tableName");
+        return;
+      }
+
+      await Datum.manager<T>().synchronize(
+        currentUser.id,
+        options: DatumSyncOptions<T>(
+          forceFullSync: true,
+          direction: SyncDirection.pullOnly,
+        ),
+      );
+
+      talker.info(
+          "Successfully completed restoration sync for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error(
+          "Failed to perform restoration sync for table: $tableName: $e",
+          stackTrace);
     }
   }
 
   @override
   Future<void> dispose() async {
+    _retryManager.dispose();
     await unsubscribeFromChanges();
     await _streamController?.close();
     await _stopAuthMonitoring();
@@ -356,13 +657,40 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<void> initialize() async {
-    if (_channel == null) {
-      await unsubscribeFromChanges();
-      _subscribeToChanges();
-    }
+    talker.info("Initializing SupabaseRemoteAdapter for table: $tableName");
+    talker.debug(
+        "Current channel state: ${_channel != null ? 'exists' : 'null'}");
 
-    // Start monitoring authentication state
-    startAuthMonitoring();
+    try {
+      // Start monitoring authentication state FIRST
+      talker.debug("Starting authentication monitoring for table: $tableName");
+      startAuthMonitoring();
+
+      // Wait a brief moment for auth state to stabilize
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Only attempt subscription if authenticated
+      if (_isAuthenticated && _channel == null) {
+        talker.debug(
+            "User is authenticated, ensuring clean state and subscribing for table: $tableName");
+        await unsubscribeFromChanges();
+        _subscribeToChanges();
+      } else if (!_isAuthenticated) {
+        talker.debug(
+            "User not authenticated during initialization, subscription will be handled by auth monitoring for table: $tableName");
+      } else {
+        talker.debug(
+            "Channel already exists for table: $tableName, skipping subscription during initialization");
+      }
+
+      talker.info(
+          "Successfully initialized SupabaseRemoteAdapter for table: $tableName");
+    } catch (e, stackTrace) {
+      talker.error(
+          "Failed to initialize SupabaseRemoteAdapter for table '$tableName': $e",
+          stackTrace);
+      rethrow;
+    }
 
     // The Supabase client is initialized globally, so no specific
     // initialization is needed for this adapter instance.
@@ -657,105 +985,117 @@ Map<String, dynamic> _toCamelCase(Map<String, dynamic> map) {
 
 ```dart
 // Create the adapter
-final userAdapter = SupabaseRemoteAdapter<User>(
-  tableName: 'users',
-  fromMap: (map) => User.fromMap(map),
+final taskAdapter = SupabaseRemoteAdapter<Task>(
+  tableName: 'tasks',
+  fromMap: (map) => Task.fromMap(map),
 );
 
 // Register with Datum
 final registrations = [
-  DatumRegistration<User>(
-    localAdapter: HiveLocalAdapter<User>(
-      boxName: 'users',
-      fromMap: (map) => User.fromMap(map),
+  DatumRegistration<Task>(
+    localAdapter: HiveLocalAdapter<Task>(
+      boxName: 'tasks',
+      fromMap: (map) => Task.fromMap(map),
     ),
-    remoteAdapter: userAdapter,
+    remoteAdapter: taskAdapter,
   ),
 ];
 ```
 
-## Supabase Database Setup
+## Supabase RLS Policies
 
-### Enable Row Level Security
+Set up Row Level Security policies for your Supabase tables:
 
-```dart
--- Enable RLS on all tables
-ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+### Tasks Table
+```sql
+-- Enable RLS
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+
+-- Users can only access their own tasks
+CREATE POLICY "Users can view own tasks" ON tasks
+  FOR SELECT USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert own tasks" ON tasks
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update own tasks" ON tasks
+  FOR UPDATE USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete own tasks" ON tasks
+  FOR DELETE USING (auth.uid() = user_id);
+```
+
+### Sync Metadata Table
+```sql
+-- Enable RLS
 ALTER TABLE sync_metadata ENABLE ROW LEVEL SECURITY;
 
--- Create policies for users table
-CREATE POLICY "Users can view their own data" ON users
-  FOR SELECT USING (auth.uid()::text = user_id);
+-- Users can only access their own sync metadata
+CREATE POLICY "Users can view own sync metadata" ON sync_metadata
+  FOR SELECT USING (auth.uid() = user_id);
 
-CREATE POLICY "Users can insert their own data" ON users
-  FOR INSERT WITH CHECK (auth.uid()::text = user_id);
+CREATE POLICY "Users can insert own sync metadata" ON sync_metadata
+  FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY "Users can update their own data" ON users
-  FOR UPDATE USING (auth.uid()::text = user_id);
-
--- Create policies for sync_metadata table
-CREATE POLICY "Users can manage their own sync metadata" ON sync_metadata
-  FOR ALL USING (auth.uid()::text = user_id);
+CREATE POLICY "Users can update own sync metadata" ON sync_metadata
+  FOR UPDATE USING (auth.uid() = user_id);
 ```
 
-### Real-time Configuration
+## Database Schema
 
-Supabase automatically provides real-time capabilities. The adapter subscribes to PostgreSQL changes and converts them to Datum change events.
+Create the necessary tables in your Supabase database:
 
-## Authentication State Management
+```sql
+-- Tasks table
+CREATE TABLE tasks (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  completed BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-The Supabase adapter includes built-in authentication state monitoring to prevent sync operations when users are not authenticated, avoiding Row Level Security (RLS) policy violations.
+-- Sync metadata table
+CREATE TABLE sync_metadata (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  last_sync_at TIMESTAMP WITH TIME ZONE,
+  version INTEGER DEFAULT 1,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-### Key Features
-
-- **Automatic Sync Control**: Sync automatically stops when users log out and resumes when they log back in
-- **RLS Violation Prevention**: Sync metadata updates are skipped when users are not authenticated
-- **Graceful Error Handling**: RLS policy violations are caught and handled without crashing the app
-- **Authentication State Stream**: External components can listen to authentication state changes
-
-### How It Works
-
-```dart
-// Listen to authentication state changes
-userAdapter.authStateStream.listen((isAuthenticated) {
-  if (isAuthenticated) {
-    print("User is authenticated, sync is active");
-  } else {
-    print("User logged out, sync is paused");
-  }
-});
+-- Enable realtime for tasks table
+ALTER PUBLICATION supabase_realtime ADD TABLE tasks;
 ```
-
-### Authentication Flow
-
-1. **Initialization**: `initialize()` starts authentication monitoring
-2. **Login Detection**: When user logs in, sync channels are automatically subscribed
-3. **Logout Detection**: When user logs out, all sync channels are unsubscribed and UI automatically navigates to login screen
-4. **Error Recovery**: If RLS errors occur, the adapter marks the user as unauthenticated
-5. **Cleanup**: Authentication monitoring is properly disposed when the adapter is destroyed
-
-### Benefits
-
-- **No More RLS Errors**: Prevents the `42501` unauthorized errors when users log out
-- **Resource Efficiency**: Stops unnecessary sync operations when users are not authenticated
-- **Automatic Recovery**: Sync resumes automatically when users log back in
-- **Observable State**: UI components can react to authentication state changes
 
 ## Features
 
-- **Real-time Synchronization**: PostgreSQL change streams with automatic conversion
-- **Relationship Support**: Built-in support for BelongsTo, HasMany, HasOne, and ManyToMany relationships
-- **Row Level Security**: Automatic integration with Supabase RLS policies
-- **Authentication State Management**: Prevents sync operations when users are not authenticated
-- **Health Monitoring**: Authentication-based health checks
-- **Error Handling**: Comprehensive error handling with detailed messages
-- **Query Support**: Advanced filtering with PostgREST query builder
-- **Sync Metadata**: Full sync state management with authentication checks
+- **Real-time Synchronization**: Supabase's realtime capabilities enable live data sync with automatic reconnection
+- **Authentication Integration**: Built-in authentication state monitoring with automatic subscription management
+- **Row Level Security**: Granular access control with PostgreSQL RLS policies
+- **Retry Logic**: Robust retry mechanism for failed realtime subscriptions
+- **Relationship Support**: Full support for one-to-one, one-to-many, and many-to-many relationships
+- **Change Streams**: Real-time change notifications with automatic sync restoration
+- **Health Monitoring**: Built-in health checks and connection monitoring
+- **Type Safety**: Full type safety with Dart's generic system
 
 ## Performance Considerations
 
+- **Realtime Subscriptions**: Monitor subscription limits and connection usage
+- **Query Optimization**: Use appropriate indexes for frequently queried fields
+- **Batch Operations**: Consider batch operations for bulk updates
 - **Connection Pooling**: Supabase handles connection pooling automatically
-- **Real-time Subscriptions**: Efficient PostgreSQL change streams
-- **Query Optimization**: PostgREST provides optimized query execution
-- **Batch Operations**: Support for bulk operations where applicable
-- **Memory Management**: Proper cleanup of channels and controllers</content>
+- **Rate Limiting**: Be aware of Supabase's rate limits for API calls
+- **Payload Size**: Large payloads can impact realtime performance
+- **Authentication Overhead**: Authentication checks add minimal overhead but ensure proper indexing
+
+## Configuration Options
+
+- **Client Override**: Provide custom SupabaseClient instance for testing or advanced use cases
+- **Retry Parameters**: Customize retry delays and maximum retry attempts
+- **Authentication Monitoring**: Control authentication state monitoring behavior
+- **Channel Naming**: Customize realtime channel names for debugging
+- **Logging Level**: Adjust logging verbosity for different environments

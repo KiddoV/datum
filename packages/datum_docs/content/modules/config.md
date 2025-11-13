@@ -58,6 +58,14 @@ final config = DatumConfig(
   remoteSyncBatchSize: 100,
   remoteStreamBatchSize: 50,
   progressEventFrequency: 50,
+
+  // Cold start synchronization
+  coldStartConfig: ColdStartConfig(
+    strategy: ColdStartStrategy.adaptive,
+    maxDuration: Duration(seconds: 15),
+    syncThreshold: Duration(hours: 1),
+    initialDelay: Duration(milliseconds: 500),
+  ),
 );
 ```
 
@@ -320,6 +328,36 @@ final config = DatumConfig(
 - **`remoteSyncBatchSize`**: Number of remote items processed together (default: 100)
 - **`remoteStreamBatchSize`**: Number of items streamed at once for memory efficiency (default: 50)
 - **`progressEventFrequency`**: How often progress events are emitted during sync (default: 50)
+
+### Cold Start Configuration
+
+Configure automatic synchronization behavior when the app is fully closed and reopened:
+
+```dart
+final config = DatumConfig(
+  coldStartConfig: ColdStartConfig(
+    strategy: ColdStartStrategy.adaptive,    // Sync strategy
+    maxDuration: Duration(seconds: 15),      // Max sync time to prevent blocking UI
+    syncThreshold: Duration(hours: 1),       // Minimum time between cold starts
+    initialDelay: Duration(milliseconds: 500), // Delay before starting sync
+  ),
+);
+```
+
+#### Cold Start Strategies
+
+- **`ColdStartStrategy.disabled`**: No automatic sync on cold start
+- **`ColdStartStrategy.fullSync`**: Always perform full sync on cold start (default behavior)
+- **`ColdStartStrategy.adaptive`**: Smart sync based on time since last sync and other factors
+- **`ColdStartStrategy.incremental`**: Only sync changes since last successful sync
+- **`ColdStartStrategy.priorityBased`**: Sync critical/high-priority data first, then background sync remaining data
+
+#### Cold Start Configuration Options
+
+- **`strategy`**: The synchronization strategy to use (default: `adaptive`)
+- **`maxDuration`**: Maximum duration allowed for cold start sync to prevent blocking UI (default: 15 seconds)
+- **`syncThreshold`**: Time threshold after which cold start sync is triggered (default: 1 hour)
+- **`initialDelay`**: Delay before starting cold start sync to allow UI to load (default: 500ms)
 
 ## Initialization Configuration
 
