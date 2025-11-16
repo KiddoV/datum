@@ -898,17 +898,28 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     for (final weakObserver in _globalObservers) {
       weakObserver.target?.onDeleteStart(id);
     }
-    final deleted = await localAdapter.delete(id, userId: userId);
-    if (!deleted) {
-      _logger.warn('Local adapter failed to delete entity $id');
-      // Notify observers of the failure before returning.
-      for (final weakObserver in _localObservers) {
-        weakObserver.target?.onDeleteEnd(id, success: false);
+    // Use the configured delete behavior
+    if (config.deleteBehavior == DeleteBehavior.softDelete) {
+      // Soft delete: mark the entity as deleted
+      await localAdapter.patch(
+        id: id,
+        delta: {'isDeleted': true, 'modifiedAt': DateTime.now().toIso8601String()},
+        userId: userId,
+      );
+    } else {
+      // Hard delete: physically remove the entity
+      final deleted = await localAdapter.delete(id, userId: userId);
+      if (!deleted) {
+        _logger.warn('Local adapter failed to delete entity $id');
+        // Notify observers of the failure before returning.
+        for (final weakObserver in _localObservers) {
+          weakObserver.target?.onDeleteEnd(id, success: false);
+        }
+        for (final weakObserver in _globalObservers) {
+          weakObserver.target?.onDeleteEnd(id, success: false);
+        }
+        return false;
       }
-      for (final weakObserver in _globalObservers) {
-        weakObserver.target?.onDeleteEnd(id, success: false);
-      }
-      return false;
     }
 
     _logger.debug('Notifying observers of onDeleteEnd for $id');

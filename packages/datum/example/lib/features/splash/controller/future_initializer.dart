@@ -3,6 +3,7 @@ import 'package:datum/source/core/models/cold_start_strategy.dart';
 
 import 'package:example/const/secrets.dart';
 import 'package:example/custom_connectivity_checker.dart';
+import 'package:example/persistence/hive_datum_persistence.dart';
 import 'package:example/sync/isolate_stratergy.dart';
 import 'package:example/data/task/adapters/hive_isolate_adapter.dart';
 import 'package:example/bootstrap.dart' as bootstrap;
@@ -93,6 +94,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
   );
   final datum = await Datum.initialize(
     config: config,
+    persistence: HiveDatumPersistence(),
     connectivityChecker: CustomConnectivityChecker(),
     logger: bootstrap.isolateLogger,
     observers: [

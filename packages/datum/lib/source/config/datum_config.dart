@@ -43,6 +43,20 @@ enum SyncDirection {
   pullOnly,
 }
 
+/// Defines how delete operations are handled by the DatumManager.
+enum DeleteBehavior {
+  /// Marks items as deleted locally and queues a delete operation. The item is
+  /// only removed from local storage after the delete is synced. This is the
+  /// recommended approach for offline-first applications to ensure data
+  /// consistency.
+  softDelete,
+
+  /// Immediately removes the item from local storage and queues a delete
+  /// operation. This may lead to inconsistent states if the app is offline,
+  /// as the local UI will reflect a deletion that has not yet been synced.
+  hardDelete,
+}
+
 /// Configuration for the Datum engine and its managers.
 class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// The interval for any automatic background synchronization.
@@ -158,6 +172,9 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// Determines how the system handles sync when the app is fully closed and reopened.
   final ColdStartConfig coldStartConfig;
 
+  /// Defines the behavior for delete operations. Defaults to [DeleteBehavior.softDelete].
+  final DeleteBehavior deleteBehavior;
+
   const DatumConfig({
     this.autoSyncInterval = const Duration(minutes: 15),
     this.autoStartSync = false,
@@ -191,6 +208,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     this.logSamplers = const {},
     this.syncDirectionResolver,
     this.coldStartConfig = const ColdStartConfig(),
+    this.deleteBehavior = DeleteBehavior.softDelete,
   });
 
   /// A default configuration with sensible production values.
@@ -228,6 +246,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     Map<String, LogSampler>? logSamplers,
     SyncDirectionResolver? syncDirectionResolver,
     ColdStartConfig? coldStartConfig,
+    DeleteBehavior? deleteBehavior,
   }) {
     return DatumConfig<E>(
       autoSyncInterval: autoSyncInterval ?? this.autoSyncInterval,
@@ -261,6 +280,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       logSamplers: logSamplers ?? this.logSamplers,
       syncDirectionResolver: syncDirectionResolver ?? this.syncDirectionResolver,
       coldStartConfig: coldStartConfig ?? this.coldStartConfig,
+      deleteBehavior: deleteBehavior ?? this.deleteBehavior,
     );
   }
 
@@ -300,6 +320,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       logSamplers,
       syncDirectionResolver,
       coldStartConfig,
+      deleteBehavior,
     ];
   }
 }

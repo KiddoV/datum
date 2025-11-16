@@ -219,6 +219,7 @@ class Datum {
   final List<GlobalDatumObserver> globalObservers = [];
   final DatumLogger logger;
   final List<StreamSubscription<DatumSyncEvent<DatumEntityInterface>>> _managerSubscriptions = [];
+  StreamSubscription<bool>? _connectivitySubscription;
 
   // Stream controllers for events and status
   final StreamController<DatumSyncEvent<DatumEntityInterface>> _eventController = StreamController.broadcast();
@@ -273,6 +274,9 @@ class Datum {
       // Default to in-memory persistence if none provided
       final DatumPersistence effectivePersistence = persistence ?? InMemoryDatumPersistence();
 
+      // Initialize persistence before using it
+      await effectivePersistence.initialize();
+
       if (!config.enableLogging) {
         final datum = await _initializeSilently(config, connectivityChecker, effectivePersistence, logger, registrations, observers);
         return Success(datum);
@@ -306,6 +310,7 @@ class Datum {
       initLogger.info(logBuffer.toString());
 
       datum._listenToEventsForMetrics();
+      datum._startConnectivityMonitoring();
       _instance = datum;
       return Success(datum);
     } catch (e, s) {
@@ -324,6 +329,9 @@ class Datum {
     List<DatumRegistration> registrations,
     List<GlobalDatumObserver> observers,
   ) async {
+    // Initialize persistence before using it
+    await effectivePersistence.initialize();
+
     final datum = Datum._(
       config: config,
       connectivityChecker: connectivityChecker,
@@ -339,6 +347,7 @@ class Datum {
     }
     await datum._initializeManagers(StringBuffer());
     datum._listenToEventsForMetrics();
+    datum._startConnectivityMonitoring();
     _instance = datum;
     return datum;
   }
@@ -674,6 +683,57 @@ class Datum {
       }
       _metricsSubject.add(next);
     });
+  }
+
+  /// Starts monitoring connectivity changes and triggers sync when connectivity is restored.
+  void _startConnectivityMonitoring() {
+    _connectivitySubscription = connectivityChecker.onStatusChange.listen(
+      (isConnected) async {
+        if (isConnected) {
+          logger.info('Connectivity restored - triggering sync for all users with pending changes...');
+          await _syncOnConnectivityRestoration();
+        } else {
+          logger.info('Connectivity lost');
+        }
+      },
+      onError: (error, stackTrace) {
+        logger.error('Error monitoring connectivity changes: $error');
+      },
+    );
+  }
+
+  /// Synchronizes all users that have pending operations when connectivity is restored.
+  Future<void> _syncOnConnectivityRestoration() async {
+    final allUserIds = <String>{};
+    for (final manager in _managers.allManagers) {
+      try {
+        final userIds = await manager.localAdapter.getAllUserIds();
+        allUserIds.addAll(userIds);
+      } catch (e) {
+        logger.warn('Could not get user IDs from ${manager.localAdapter.runtimeType}: $e');
+      }
+    }
+
+    for (final userId in allUserIds) {
+      // Check if user has any pending operations
+      var hasPending = false;
+      for (final manager in _managers.allManagers) {
+        final count = await manager.getPendingCount(userId);
+        if (count > 0) {
+          hasPending = true;
+          break;
+        }
+      }
+
+      if (hasPending) {
+        try {
+          logger.info('Triggering automatic sync for user $userId due to connectivity restoration');
+          await synchronize(userId);
+        } catch (e) {
+          logger.error('Failed to synchronize user $userId on connectivity restoration: $e');
+        }
+      }
+    }
   }
 
   /// Provides access to the specific manager for an entity type.
@@ -1256,6 +1316,8 @@ class Datum {
       ..._managers.allManagers.map((m) => m.dispose()),
       ..._managerSubscriptions.map((s) => s.cancel()),
     ]);
+
+    await _connectivitySubscription?.cancel();
     await _eventController.close();
     await _metricsSubject.close();
     await _statusSubject.close();
