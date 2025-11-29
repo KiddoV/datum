@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:example/features/simple_datum/view/sync_dashboard_widget.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// Animated test features button with entrance and interaction animations
@@ -63,8 +64,26 @@ class _AnimatedTestFeaturesButtonState extends State<AnimatedTestFeaturesButton>
           child: Opacity(
             opacity: _opacityAnimation.value,
             child: SizedBox(
-              width: 220,
-              height: 65,
+              width: ResponsiveValue<double>(
+                context,
+                conditionalValues: [
+                  const Condition.equals(name: MOBILE, value: 200),
+                  const Condition.equals(name: TABLET, value: 240),
+                  const Condition.equals(name: DESKTOP, value: 280),
+                  const Condition.equals(name: '4K', value: 320),
+                ],
+                defaultValue: 220,
+              ).value,
+              height: ResponsiveValue<double>(
+                context,
+                conditionalValues: [
+                  const Condition.equals(name: MOBILE, value: 55),
+                  const Condition.equals(name: TABLET, value: 65),
+                  const Condition.equals(name: DESKTOP, value: 75),
+                  const Condition.equals(name: '4K', value: 85),
+                ],
+                defaultValue: 65,
+              ).value,
               child: ElevatedButton(
                 onPressed: () {
                   // Add press animation
@@ -82,15 +101,47 @@ class _AnimatedTestFeaturesButtonState extends State<AnimatedTestFeaturesButton>
                   elevation: 8,
                   shadowColor: Colors.blue.withValues(alpha: 0.3),
                 ),
-                child: const Row(
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(Icons.explore, size: 26),
-                    SizedBox(width: 8),
+                    Icon(
+                      Icons.explore,
+                      size: ResponsiveValue<double>(
+                        context,
+                        conditionalValues: [
+                          const Condition.equals(name: MOBILE, value: 20),
+                          const Condition.equals(name: TABLET, value: 24),
+                          const Condition.equals(name: DESKTOP, value: 28),
+                          const Condition.equals(name: '4K', value: 32),
+                        ],
+                        defaultValue: 26,
+                      ).value,
+                    ),
+                    SizedBox(
+                      width: ResponsiveValue<double>(
+                        context,
+                        conditionalValues: [
+                          const Condition.equals(name: MOBILE, value: 6),
+                          const Condition.equals(name: TABLET, value: 8),
+                          const Condition.equals(name: DESKTOP, value: 10),
+                          const Condition.equals(name: '4K', value: 12),
+                        ],
+                        defaultValue: 8,
+                      ).value,
+                    ),
                     Text(
                       'Test Features',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: ResponsiveValue<double>(
+                          context,
+                          conditionalValues: [
+                            const Condition.equals(name: MOBILE, value: 14),
+                            const Condition.equals(name: TABLET, value: 16),
+                            const Condition.equals(name: DESKTOP, value: 20),
+                            const Condition.equals(name: '4K', value: 24),
+                          ],
+                          defaultValue: 18,
+                        ).value,
                         fontWeight: FontWeight.w700,
                         letterSpacing: 0.5,
                       ),
@@ -127,46 +178,139 @@ class HomePage extends ConsumerWidget {
         ),
         body: SafeArea(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(
+              ResponsiveValue<double>(
+                context,
+                conditionalValues: [
+                  const Condition.equals(name: MOBILE, value: 12),
+                  const Condition.equals(name: TABLET, value: 16),
+                  const Condition.equals(name: DESKTOP, value: 24),
+                  const Condition.equals(name: '4K', value: 32),
+                ],
+                defaultValue: 16,
+              ).value,
+            ),
             child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'Welcome to Datum Test App',
                     style: TextStyle(
-                      fontSize: 28,
+                      fontSize: ResponsiveValue<double>(
+                        context,
+                        conditionalValues: [
+                          const Condition.equals(name: MOBILE, value: 24),
+                          const Condition.equals(name: TABLET, value: 28),
+                          const Condition.equals(name: DESKTOP, value: 36),
+                          const Condition.equals(name: '4K', value: 48),
+                        ],
+                        defaultValue: 28,
+                      ).value,
                       fontWeight: FontWeight.bold,
                       color: Colors.blue,
                     ),
                   ),
-                  const SizedBox(height: 20),
-                  const Text(
+                  SizedBox(
+                    height: ResponsiveValue<double>(
+                      context,
+                      conditionalValues: [
+                        const Condition.equals(name: MOBILE, value: 16),
+                        const Condition.equals(name: TABLET, value: 20),
+                        const Condition.equals(name: DESKTOP, value: 24),
+                        const Condition.equals(name: '4K', value: 32),
+                      ],
+                      defaultValue: 20,
+                    ).value,
+                  ),
+                  Text(
                     'Test the latest features with real-time sync',
                     style: TextStyle(
-                      fontSize: 16,
+                      fontSize: ResponsiveValue<double>(
+                        context,
+                        conditionalValues: [
+                          const Condition.equals(name: MOBILE, value: 14),
+                          const Condition.equals(name: TABLET, value: 16),
+                          const Condition.equals(name: DESKTOP, value: 18),
+                          const Condition.equals(name: '4K', value: 22),
+                        ],
+                        defaultValue: 16,
+                      ).value,
                       color: Colors.grey,
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 40),
+                  SizedBox(
+                    height: ResponsiveValue<double>(
+                      context,
+                      conditionalValues: [
+                        const Condition.equals(name: MOBILE, value: 32),
+                        const Condition.equals(name: TABLET, value: 40),
+                        const Condition.equals(name: DESKTOP, value: 48),
+                        const Condition.equals(name: '4K', value: 64),
+                      ],
+                      defaultValue: 40,
+                    ).value,
+                  ),
                   // Animated Test Features Button
                   const AnimatedTestFeaturesButton(),
-                  const SizedBox(height: 40),
+                  SizedBox(
+                    height: ResponsiveValue<double>(
+                      context,
+                      conditionalValues: [
+                        const Condition.equals(name: MOBILE, value: 32),
+                        const Condition.equals(name: TABLET, value: 40),
+                        const Condition.equals(name: DESKTOP, value: 48),
+                        const Condition.equals(name: '4K', value: 64),
+                      ],
+                      defaultValue: 40,
+                    ).value,
+                  ),
                   // Sync Dashboard Section
                   if (userId != null) ...[
-                    const Text(
+                    Text(
                       'Sync Dashboard',
                       style: TextStyle(
-                        fontSize: 18,
+                        fontSize: ResponsiveValue<double>(
+                          context,
+                          conditionalValues: [
+                            const Condition.equals(name: MOBILE, value: 16),
+                            const Condition.equals(name: TABLET, value: 18),
+                            const Condition.equals(name: DESKTOP, value: 22),
+                            const Condition.equals(name: '4K', value: 28),
+                          ],
+                          defaultValue: 18,
+                        ).value,
                         fontWeight: FontWeight.w600,
                         color: Colors.blue,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(
+                      height: ResponsiveValue<double>(
+                        context,
+                        conditionalValues: [
+                          const Condition.equals(name: MOBILE, value: 12),
+                          const Condition.equals(name: TABLET, value: 16),
+                          const Condition.equals(name: DESKTOP, value: 20),
+                          const Condition.equals(name: '4K', value: 24),
+                        ],
+                        defaultValue: 16,
+                      ).value,
+                    ),
                     // Comprehensive Sync Dashboard
                     SyncDashboardWidget(userId: userId),
-                    const SizedBox(height: 40),
+                    SizedBox(
+                      height: ResponsiveValue<double>(
+                        context,
+                        conditionalValues: [
+                          const Condition.equals(name: MOBILE, value: 32),
+                          const Condition.equals(name: TABLET, value: 40),
+                          const Condition.equals(name: DESKTOP, value: 48),
+                          const Condition.equals(name: '4K', value: 64),
+                        ],
+                        defaultValue: 40,
+                      ).value,
+                    ),
                   ],
                 ],
               ),

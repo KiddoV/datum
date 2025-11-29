@@ -1,13 +1,57 @@
 import 'package:flutter/material.dart';
 import 'package:responsive_framework/responsive_framework.dart';
 
+/// Global wrapper that integrates Responsive Framework scaling with Shadcn UI breakpoint detection
+class GlobalShadResponsiveWrapper extends StatelessWidget {
+  final Widget child;
+
+  const GlobalShadResponsiveWrapper({
+    super.key,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ResponsiveBreakpoints.builder(
+      child: ShadResponsiveProxyWrapper(child: child),
+      breakpoints: [
+        const Breakpoint(start: 0, end: 639, name: MOBILE), // TN + SM range (0-639px)
+        const Breakpoint(start: 640, end: 1023, name: TABLET), // MD + LG range (640-1023px)
+        const Breakpoint(start: 1024, end: 1535, name: DESKTOP), // XL + XXL range (1024-1535px)
+        const Breakpoint(start: 1536, end: double.infinity, name: '4K'),
+      ],
+    );
+  }
+}
+
+/// Proxy wrapper that ensures ShadResponsiveBuilder gets proper breakpoint context
+class ShadResponsiveProxyWrapper extends StatelessWidget {
+  final Widget child;
+
+  const ShadResponsiveProxyWrapper({
+    super.key,
+    required this.child,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return ResponsiveViewWrapper(
+          firstFrameWidget: Container(color: Colors.white),
+          child: child,
+        );
+      },
+    );
+  }
+}
+
 class ResponsiveBreakPointWrapper extends StatelessWidget {
   final Widget child;
 
   ///the initial frame 0 width and height issue is still present in the Flutter framework
   final Widget firstFrameWidget;
-  const ResponsiveBreakPointWrapper(
-      {super.key, required this.child, required this.firstFrameWidget});
+  const ResponsiveBreakPointWrapper({super.key, required this.child, required this.firstFrameWidget});
 
   @override
   Widget build(BuildContext context) {
@@ -17,10 +61,10 @@ class ResponsiveBreakPointWrapper extends StatelessWidget {
         child: child,
       ),
       breakpoints: [
-        const Breakpoint(start: 0, end: 440, name: MOBILE),
-        const Breakpoint(start: 440, end: 880, name: TABLET),
-        const Breakpoint(start: 880, end: 1920, name: DESKTOP),
-        const Breakpoint(start: 1921, end: double.infinity, name: '4K'),
+        const Breakpoint(start: 0, end: 639, name: MOBILE), // TN + SM range (0-639px)
+        const Breakpoint(start: 640, end: 1023, name: TABLET), // MD + LG range (640-1023px)
+        const Breakpoint(start: 1024, end: 1535, name: DESKTOP), // XL + XXL range (1024-1535px)
+        const Breakpoint(start: 1536, end: double.infinity, name: '4K'),
       ],
     );
   }
@@ -31,8 +75,7 @@ class ResponsiveViewWrapper extends StatefulWidget {
 
   ///the initial frame 0 width and height issue is still present in the Flutter framework
   final Widget firstFrameWidget;
-  const ResponsiveViewWrapper(
-      {super.key, required this.child, required this.firstFrameWidget});
+  const ResponsiveViewWrapper({super.key, required this.child, required this.firstFrameWidget});
 
   @override
   State<ResponsiveViewWrapper> createState() => _ResponsiveViewWrapperState();
@@ -47,21 +90,10 @@ class _ResponsiveViewWrapperState extends State<ResponsiveViewWrapper> {
     if (breakpointsData.breakpoints.isEmpty) {
       return widget.firstFrameWidget;
     } else {
-      return MaxWidthBox(
-        maxWidth: 3840,
-        child: ResponsiveScaledBox(
-          width: ResponsiveValue<double>(context, conditionalValues: [
-            const Condition.equals(name: MOBILE, value: 440),
-            const Condition.equals(name: TABLET, value: 800),
-            const Condition.equals(name: DESKTOP, value: 1800),
-            const Condition.equals(name: '4K', value: 3840),
-          ]).value,
-          child: BouncingScrollWrapper.builder(
-            context,
-            widget.child,
-            dragWithMouse: true,
-          ),
-        ),
+      return BouncingScrollWrapper.builder(
+        context,
+        widget.child,
+        dragWithMouse: true,
       );
     }
   }

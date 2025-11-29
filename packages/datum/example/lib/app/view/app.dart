@@ -54,12 +54,9 @@ class _AppState extends ConsumerState<App> with GlobalHelper {
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       builder: (context, child) {
         if (mounted) {
-          ///Used for responsive design
+          ///Used for responsive design with Shadcn UI integration
           ///Here you can define breakpoint and how the responsive should work
-          child = ResponsiveBreakPointWrapper(
-            firstFrameWidget: Container(
-              color: Colors.white,
-            ),
+          child = GlobalShadResponsiveWrapper(
             child: child!,
           );
 

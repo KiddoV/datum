@@ -9,6 +9,7 @@ import 'package:example/shared/helper/global_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:auto_route/auto_route.dart';
 import 'package:flutter/material.dart';
+import 'package:responsive_framework/responsive_framework.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -61,9 +62,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with GlobalHelper {
               // Don't throw here - we don't want to crash the app if initial sync fails
             }
           }
-          await ref
-              .read(autorouterProvider)
-              .replaceAll([FeatureSelectionRoute()]);
+          await ref.read(autorouterProvider).replaceAll([HomeRoute()]);
         }
       } on AuthException catch (e, s) {
         talker.error(e, s);
@@ -115,11 +114,31 @@ class _LoginPageState extends ConsumerState<LoginPage> with GlobalHelper {
       ),
       body: Center(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(
+            ResponsiveValue<double>(
+              context,
+              conditionalValues: [
+                const Condition.equals(name: MOBILE, value: 16),
+                const Condition.equals(name: TABLET, value: 24),
+                const Condition.equals(name: DESKTOP, value: 32),
+                const Condition.equals(name: '4K', value: 48),
+              ],
+              defaultValue: 16,
+            ).value,
+          ),
           child: ShadForm(
             key: _formKey, // Associate the form key
             child: ShadCard(
-              width: 350,
+              width: ResponsiveValue<double>(
+                context,
+                conditionalValues: [
+                  const Condition.equals(name: MOBILE, value: double.infinity),
+                  const Condition.equals(name: TABLET, value: 400),
+                  const Condition.equals(name: DESKTOP, value: 450),
+                  const Condition.equals(name: '4K', value: 500),
+                ],
+                defaultValue: 350,
+              ).value,
               title: const Text('Login'),
               description: const Text(
                   'Enter your email below to login to your account.'),
