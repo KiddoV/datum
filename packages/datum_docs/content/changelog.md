@@ -1,6 +1,13 @@
-# 1.0.1
+---
+title: Changelog
+description: Version history and release notes for Datum.
+---
 
-## ✨ Features
+# Changelog
+
+## 1.0.1
+
+### ✨ Features
 
 - **core**: add connectivity monitoring and auto-sync
   - Introduces a new feature that monitors the device's connectivity status and automatically triggers a sync when connectivity is restored.
@@ -16,18 +23,18 @@
   - enhanced test setup in background_sync_test.dart with proper mocking of ConnectivityChecker
   - added error handling in integration test for Datum.initialize to catch and report failures
 
-## 🐛 Bug Fixes
+### 🐛 Bug Fixes
 
 - **datum**: revert default delete behavior to hard delete
   - revert default deleteBehavior to hardDelete in DatumConfig
   - update tests to explicitly use soft delete where needed
 
-# 1.0.0
+## 1.0.0
 
-## 🗑️ Breaking Changes
+### 🗑️ Breaking Changes
 - **core**: Removed deprecated `pause()` and `resume()` methods from `DatumManager` and `Datum` classes - use `unsubscribeFromRemoteChanges()` and `resubscribeToRemoteChanges()` instead
 
-## ✨ Core Library Features
+### ✨ Core Library Features
 - **Entity System**: Enhanced entity definitions with interfaces and mixins for more flexible implementations
 - **Sync Engine**: Added initial sync on user authentication, metadata comparison for optimized syncing, device tracking, and improved error handling
 - **Auto-sync**: Enhanced auto-sync functionality with better scheduling and management
@@ -36,16 +43,16 @@
 - **Cold Start Manager**: Major architectural improvements to cold start synchronization including per-user state isolation, configurable retry logic with exponential backoff, pluggable persistence interface, enhanced error handling and recovery, and comprehensive testing. Replaced static state with instance-level per-user state management to prevent race conditions and enable proper multi-user support. Added retry policies, error recovery mechanisms, and extensible persistence layer for custom storage solutions.
 - **Cascading Delete**: Major enhancements to cascading delete functionality including dry-run mode, progress callbacks, cancellation support, timeout protection, and improved error handling. Added comprehensive dry-run capabilities for safely previewing deletion operations before execution. Enhanced cascading delete integration tests with 48 total test cases covering complex relationship scenarios, mixin usage patterns, restrict violations, and edge cases.
 
-## ♻️ Refactors
+### ♻️ Refactors
 - **Entity Handling**: Improved entity mixins and relational detection
 - **Sync Performance**: Batch processing, performance monitoring, and enhanced error boundaries
 - **Concurrent Operations**: Better handling of concurrent sync operations
 
-## 🐛 Bug Fixes
+### 🐛 Bug Fixes
 - **Sync Engine**: Fixed return values and unused variables in tests
 - **Cascading Delete**: Removed unused `_CascadeDeleteStep` and `_CascadeDeletePlan` classes and fixed method call in `CascadeDeleteBuilder.execute()`
 
-## 📖 Documentation
+### 📖 Documentation
 - **API Documentation**: Enhanced documentation for Datum singleton API, sync patterns, and troubleshooting guides
 
 _Medium Priority (Next Release):_
@@ -55,13 +62,12 @@ _Medium Priority (Next Release):_
 3. Relationship caching
 4. Rollback capability
 
-# 0.0.13
+## 0.0.13
 - fixed type casting error in `initialize()` method in Datum
 
+## 0.0.12
 
-# 0.0.12
-
-## ✨ Features
+### ✨ Features
 
 - **core**: Add stacktrace to DatumEither
   - The `Failure` class now includes an optional `StackTrace` property.
@@ -73,7 +79,7 @@ _Medium Priority (Next Release):_
   - Added the `getSuccess` method back to the `DatumEither` class.
   - This method returns the success value if the `DatumEither` is a `Success`, otherwise it throws a `StateError`.
 
-## ♻️ Refactors
+### ♻️ Refactors
 
 - **core**: Remove isSuccess and isFailure methods
   - Removed the `isSuccess` and `isFailure` methods from the `DatumEither` class.
@@ -81,9 +87,9 @@ _Medium Priority (Next Release):_
 - **core**: Use switch statement instead of if statement
   - Refactor the `onSuccess`, `onFailure`, `getSuccess`, `getError`, `successOrNull`, and `errorOrNull` methods to use switch statement instead of if statement.
 
-# 0.0.11
+## 0.0.11
 
-## ✨ Features
+### ✨ Features
 
 - **core**: introduce DatumEither for initialization result
   - Use DatumEither to handle potential errors during Datum initialization
@@ -91,9 +97,9 @@ _Medium Priority (Next Release):_
   - Update related code to handle the new DatumEither return type
   - Add DatumEither model for typing success or failure.
 
-# 0.0.10
+## 0.0.10
 
-## ✨ Features
+### ✨ Features
 
 - **Batch Operations**: Added `createMany` and `updateMany` methods for performing batch create and update operations.
 - **Lifecycle Management**: Implemented `DatumProviderWithLifecycle` widget to manage Datum's lifecycle based on app state.
@@ -102,14 +108,14 @@ _Medium Priority (Next Release):_
 - **Type Comparison**: Added a `sameTypes` method for type comparison.
 - **Dependencies**: Added `equatable` dependency for easier object comparison.
 
-## 🐛 Bug Fixes
+### 🐛 Bug Fixes
 
 - **Logging**: Removed unnecessary debug logs from `tasksStreamProvider`.
 - **Initialization**: Ensured managers are initialized before `saveMany` operations.
 - **Memory Leaks**: Improved stream handling in `SupabaseRemoteAdapter` to prevent memory leaks.
 - **Error Handling**: Improved type safety and error handling in `fetchRelated` methods.
 
-## ♻️ Refactors
+### ♻️ Refactors
 
 - **Background Sync**: Enhanced `SupabaseRemoteAdapter` with `resubscribeToChanges` and `unsubscribeFromChanges` methods for better background sync and lifecycle management.
 - **Entity Handling**: Updated `DatumEntityBase` and related classes for better sync and versioning.
@@ -118,19 +124,19 @@ _Medium Priority (Next Release):_
 - **Sync Execution**: Updated the default sync execution strategy to `parallel`.
 - **Data Serialization**: Enhanced data serialization for local and remote persistence.
 
-## 📖 Documentation
+### 📖 Documentation
 
 - **Datum Class**: Enhanced `Datum` class documentation for clarity and improved usage examples.
 - **Sync Options**: Enhanced `DatumSyncOptions` documentation for better clarity.
 - **General**: Improved overall documentation for clarity.
 
-## ✅ Tests
+### ✅ Tests
 
 - **Background Sync**: Added tests for background sync functionality.
 
-# 0.0.9
+## 0.0.9
 
-## ✨ Features
+### ✨ Features
 
 ### Core
 
@@ -141,12 +147,11 @@ _Medium Priority (Next Release):_
   - Added `syncRequestStrategy` to `DatumConfig` to allow global configuration of this behavior.
   - Added an `isSyncing` getter to `DatumSyncEngine` to check the current sync status.
 
-## 🐛 Bug Fixes
+### 🐛 Bug Fixes
 
 ### Build
 
 - **Correct Conditional Imports**: Fixed conditional imports to ensure compatibility across both `dart:io` and `dart:html` environments.
-
 
 ## 0.0.8
 - fix conditional import for web and io
@@ -196,8 +201,6 @@ _Medium Priority (Next Release):_
 ## 0.0.5
 - Add docs link
 
-
-
 ## 0.0.4
 
 ### Features
@@ -223,10 +226,8 @@ _Medium Priority (Next Release):_
 - update architecture diagrams for better clarity
 - improve image display using <p> tag for alignment
 
-
 ## 0.0.2
 - Update readme to add images correctly
-
 
 ## 0.0.1
 - Initial release 🎉

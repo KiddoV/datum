@@ -430,4 +430,4 @@ class MigrationMonitor {
 ---
 
 
-*For more migration patterns, check the [Migration Module](../../modules/migration.md) documentation.*
+*For more migration patterns, check the [Migration Module](../../modules/migration) documentation.*

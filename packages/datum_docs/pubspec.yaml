@@ -1,9 +1,9 @@
 name: datum_docs
 description: A documentation site built with Jaspr
-version: 1.0.0
+version: 1.0.1
 
 
-resolution: workspace
+
 
 environment:
   sdk: '>=3.8.0 <4.0.0'

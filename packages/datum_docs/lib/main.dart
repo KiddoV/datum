@@ -138,6 +138,7 @@ void main() {
                 links: [
                   SidebarLink(text: "Quick Start / Installation", href: '/getting_started/quick_start'),
                   SidebarLink(text: "About", href: '/about'),
+                  SidebarLink(text: "Changelog", href: '/changelog'),
                   SidebarLink(text: "Costs and Licensing", href: '/costs_licensing'),
                   SidebarLink(text: "🚀 Coming Soon", href: '/coming_soon'),
                 ],
@@ -229,7 +230,7 @@ void main() {
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.025.em,
                             ),
-                            [text('v1.0.0')],
+                            [text('v1.0.1')],
                           ),
                           div(
                             styles: Styles(

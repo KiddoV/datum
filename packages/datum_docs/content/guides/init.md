@@ -8,11 +8,11 @@ Before using Datum, you must initialize it with your configuration, connectivity
 
 ## 1. Define Your Entities
 
-First, create your data models by extending `DatumEntity` or `RelationalDatumEntity`. See the [Entity Definition Guide](entity_define.md) for detailed instructions.
+First, create your data models by extending `DatumEntity` or `RelationalDatumEntity`. See the [Entity Definition Guide](entity_define) for detailed instructions.
 
 ## 2. Implement Adapters
 
-Create local and remote adapters for each entity type. See the [Local Adapter Implementation Guide](local_adapter_implement.md) and [Remote Adapter Implementation Guide](remote_adapter_implement.md) for details.
+Create local and remote adapters for each entity type. See the [Local Adapter Implementation Guide](local_adapter_implement) and [Remote Adapter Implementation Guide](remote_adapter_implement) for details.
 
 ## 3. Implement a Connectivity Checker
 
@@ -127,4 +127,4 @@ The `DatumConfig` class provides extensive configuration options:
 - **Performance**: `remoteEventDebounceTime`, `changeCacheDuration`
 - **Schema Management**: `schemaVersion`, `migrations`
 
-See the [Config Module Documentation](../modules/config.md) for complete details.
+See the [Config Module Documentation](../modules/config) for complete details.

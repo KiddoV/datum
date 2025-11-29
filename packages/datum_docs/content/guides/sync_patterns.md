@@ -416,7 +416,7 @@ await Datum.instance.synchronize(
 
 ## Related Topics
 
-- [Initialization Guide](initialization.md) - Setting up Datum
-- [Entity Definition](entity_define.md) - Creating data models
-- [Querying Guide](querying.md) - Working with data
-- [Remote Adapters](remote_adapter_implement.md) - Server communication
+- [Initialization Guide](initialization) - Setting up Datum
+- [Entity Definition](entity_define) - Creating data models
+- [Querying Guide](querying) - Working with data
+- [Remote Adapters](remote_adapter_implement) - Server communication

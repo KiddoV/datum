@@ -349,4 +349,4 @@ if (memoryUsage > 100 * 1024 * 1024) { // 100MB
 ---
 
 
-*For more performance optimization techniques, check the [Advanced Sync Patterns](../guides/advanced_sync.md) guide.*
+*For more performance optimization techniques, check the [Advanced Sync Patterns](../guides/advanced_sync) guide.*

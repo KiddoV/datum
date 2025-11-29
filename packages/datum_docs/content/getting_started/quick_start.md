@@ -265,9 +265,10 @@ class _TaskListState extends State<TaskList> {
 
 ## Next Steps
 
-- **[Complete Entity Definition](guides/entity_define.md)**: Learn about relational entities and advanced patterns
-- **[Adapter Implementation](guides/local_adapter_implement.md)**: Deep dive into adapter patterns
-- **[Sync Patterns](guides/sync_patterns.md)**: Master synchronization strategies
-- **[Advanced Features](guides/advanced_sync.md)**: Production-ready synchronization features
+- **[Changelog](changelog)**: See what's new in the latest version
+- **[Complete Entity Definition](guides/entity_define)**: Learn about relational entities and advanced patterns
+- **[Adapter Implementation](guides/local_adapter_implement)**: Deep dive into adapter patterns
+- **[Sync Patterns](guides/sync_patterns)**: Master synchronization strategies
+- **[Advanced Features](guides/advanced_sync)**: Production-ready synchronization features
 
 This quick start gets you up and running with basic Datum functionality. As you build more complex features, explore the other guides for advanced patterns and best practices.

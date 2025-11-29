@@ -815,4 +815,4 @@ class DisposableAdapter extends RemoteAdapter<Task> implements Disposable {
 ---
 
 
-*For adapter implementation details, check the [Adapter Module](../../modules/adapter.md) documentation.*
+*For adapter implementation details, check the [Adapter Module](../../modules/adapter) documentation.*
