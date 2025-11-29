@@ -27,6 +27,9 @@ final config = DatumConfig(
   autoSyncInterval: Duration(minutes: 5),
   initialUserId: 'user123',
 
+  // Delete behavior
+  deleteBehavior: DeleteBehavior.hardDelete, // or softDelete
+
   // Sync behavior
   defaultSyncDirection: SyncDirection.pushThenPull,
   syncTimeout: Duration(seconds: 30),
@@ -68,6 +71,66 @@ final config = DatumConfig(
   ),
 );
 ```
+
+### Delete Behavior Configuration
+
+Configure how delete operations are handled globally:
+
+```dart
+final config = DatumConfig(
+  deleteBehavior: DeleteBehavior.hardDelete, // Default: immediately remove from local storage
+  // Or
+  deleteBehavior: DeleteBehavior.softDelete, // Mark as deleted locally, queue for sync
+);
+```
+
+#### Delete Behavior Options
+
+- **`DeleteBehavior.hardDelete`**: Immediately removes items from local storage (default)
+- **`DeleteBehavior.softDelete`**: Marks items as deleted locally and queues the delete operation for synchronization
+
+#### Hard Delete Behavior
+
+```dart
+// Items are immediately removed from local storage
+await manager.delete('task123', userId: 'user1');
+// Item is gone from local storage immediately
+// Delete operation is queued for remote sync
+```
+
+#### Soft Delete Behavior
+
+```dart
+// Items are marked as deleted locally but remain in storage
+await manager.delete('task123', userId: 'user1');
+// Item remains in local storage with isDeleted = true
+// Delete operation is queued for remote sync
+// Item will be removed after successful sync
+```
+
+#### Per-Operation Override
+
+Override the global delete behavior for specific operations:
+
+```dart
+// Override global config for specific delete operations
+await manager.delete(
+  'task123',
+  userId: 'user1',
+  behavior: DeleteBehavior.softDelete, // Override global hardDelete setting
+);
+
+// Or use the sync method with behavior override
+await manager.deleteAndSync(
+  'task123',
+  userId: 'user1',
+  behavior: DeleteBehavior.hardDelete, // Override global softDelete setting
+);
+```
+
+<Info>
+**Delete Behavior Choice**: Use `hardDelete` for immediate local cleanup, `softDelete` for guaranteed sync of delete operations.
+</Info>
 
 ### Default Sync Options
 

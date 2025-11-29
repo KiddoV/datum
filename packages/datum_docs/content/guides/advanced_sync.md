@@ -277,6 +277,59 @@ manager.onUserSwitched.listen((event) {
 });
 ```
 
+## Connectivity Monitoring and Auto-Sync
+
+### Automatic Sync on Connectivity Restoration
+
+Datum can automatically monitor device connectivity and trigger synchronization when the device regains network access. This ensures that any pending operations queued while offline are automatically synchronized once connectivity is restored.
+
+```dart
+// Enable connectivity monitoring in DatumConfig
+final config = DatumConfig(
+  connectivityChecker: DefaultConnectivityChecker(),
+  // Auto-sync is enabled by default when connectivity monitoring is configured
+);
+
+// The system will automatically:
+// 1. Monitor connectivity status changes
+// 2. Queue sync operations when offline
+// 3. Automatically trigger sync when connectivity is restored
+// 4. Handle network failures gracefully with retry logic
+```
+
+### Custom Connectivity Checker
+
+Implement custom connectivity monitoring logic:
+
+```dart
+class CustomConnectivityChecker extends DatumConnectivityChecker {
+  @override
+  Future<bool> isConnected() async {
+    // Implement your connectivity check logic
+    // Return true if connected, false if offline
+    final result = await Connectivity().checkConnectivity();
+    return result != ConnectivityResult.none;
+  }
+
+  @override
+  Stream<bool> get onConnectivityChanged {
+    // Return a stream that emits connectivity status changes
+    return Connectivity().onConnectivityChanged.map(
+      (result) => result != ConnectivityResult.none,
+    );
+  }
+}
+
+// Use custom checker
+final config = DatumConfig(
+  connectivityChecker: CustomConnectivityChecker(),
+);
+```
+
+<Info>
+**Network Optimization**: Connectivity monitoring helps reduce unnecessary sync attempts when offline and ensures data consistency when connectivity is restored.
+</Info>
+
 ## Auto-Sync Management
 
 ### Periodic Auto-Sync
