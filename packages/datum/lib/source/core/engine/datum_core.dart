@@ -942,11 +942,16 @@ class Datum {
     );
   }
 
+  /// Deletes an entity by its ID.
+  ///
+  /// The [behavior] parameter allows overriding the global [DatumConfig.deleteBehavior]
+  /// for this specific delete operation. If null, the global config value is used.
   Future<bool> delete<T extends DatumEntityInterface>({
     required String id,
     required String userId,
+    DeleteBehavior? behavior,
   }) async {
-    return Datum.manager<T>().delete(id: id, userId: userId);
+    return Datum.manager<T>().delete(id: id, userId: userId, behavior: behavior);
   }
 
   /// Deletes an entity with cascading behavior based on relationship configurations.
@@ -1014,12 +1019,17 @@ class Datum {
     );
   }
 
+  /// Deletes an entity and immediately triggers synchronization.
+  ///
+  /// The [behavior] parameter allows overriding the global [DatumConfig.deleteBehavior]
+  /// for this specific delete operation. If null, the global config value is used.
   Future<(bool, DatumSyncResult<T>)> deleteAndSync<T extends DatumEntityInterface>({
     required String id,
     required String userId,
     DatumSyncOptions<T>? syncOptions,
+    DeleteBehavior? behavior,
   }) =>
-      Datum.manager<T>().deleteAndSync(id: id, userId: userId, syncOptions: syncOptions);
+      Datum.manager<T>().deleteAndSync(id: id, userId: userId, syncOptions: syncOptions, behavior: behavior);
 
   Stream<List<T>>? watchAll<T extends DatumEntityInterface>({String? userId, bool includeInitialData = true}) {
     return Datum.manager<T>().watchAll(userId: userId, includeInitialData: includeInitialData);
@@ -1310,17 +1320,23 @@ class Datum {
   }
 
   Future<void> dispose() async {
-    pauseSync();
+    if (_instance != null) {
+      pauseSync();
 
-    await Future.wait([
-      ..._managers.allManagers.map((m) => m.dispose()),
-      ..._managerSubscriptions.map((s) => s.cancel()),
-    ]);
+      await Future.wait([
+        ..._managers.allManagers.map((m) => m.dispose()),
+        ..._managerSubscriptions.map((s) => s.cancel()),
+      ]);
 
-    await _connectivitySubscription?.cancel();
-    await _eventController.close();
-    await _metricsSubject.close();
-    await _statusSubject.close();
+      await _connectivitySubscription?.cancel();
+      await _eventController.close();
+      await _metricsSubject.close();
+      await _statusSubject.close();
+    }
+
+    if (_instance == this) {
+      _instance = null;
+    }
   }
 
   void pauseSync() {

@@ -181,6 +181,19 @@ void main() {
       // Reset Datum singleton for test isolation
       Datum.resetForTesting();
 
+      // Add patch fallback mock as a global fallback before creating other mocks
+      final testEntityFallback = TestEntity(
+        id: 'fallback',
+        userId: 'fallback',
+        name: 'fallback',
+        value: 0,
+        modifiedAt: DateTime(0),
+        createdAt: DateTime(0),
+        version: 0,
+      );
+
+      registerFallbackValue(testEntityFallback);
+
       mockManager = MockDatumManager<TestEntity>();
       localAdapter = MockLocalAdapter<TestEntity>();
       remoteAdapter = MockRemoteAdapter<TestEntity>();
@@ -193,6 +206,7 @@ void main() {
       // Provide a connectivity mock and stub isConnected so Datum can query it.
       final mockConnectivity = MockConnectivityChecker();
       when(() => mockConnectivity.isConnected).thenAnswer((_) async => true);
+      when(() => mockConnectivity.onStatusChange).thenAnswer((_) => Stream.value(true));
 
       // Stubbing manager methods that will be called by Datum.instance
       when(() => mockManager.watchAll(userId: any(named: 'userId'), includeInitialData: any(named: 'includeInitialData'))).thenAnswer((_) => Stream.value([]));
@@ -218,6 +232,15 @@ void main() {
       when(() => mockManager.checkHealth()).thenAnswer((_) async => const DatumHealth());
       when(() => mockManager.pauseSync()).thenAnswer((_) {});
       when(() => mockManager.resumeSync()).thenAnswer((_) {});
+      when(() => mockManager.initialize()).thenAnswer((_) async {});
+      when(() => mockManager.eventStream).thenAnswer((_) => const Stream.empty());
+      when(() => mockPostManager.eventStream).thenAnswer((_) => const Stream.empty());
+
+      when(() => mockManager.localAdapter).thenReturn(localAdapter);
+      when(() => mockPostManager.localAdapter).thenReturn(localPostAdapter);
+
+      when(() => mockManager.currentStatus).thenReturn(DatumSyncStatusSnapshot.initial('user1'));
+      when(() => mockPostManager.currentStatus).thenReturn(DatumSyncStatusSnapshot.initial('user1'));
 
       // Defensive stubs on adapters used by real managers (avoid null/type errors if Datum creates real managers)
       when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 0);
@@ -280,6 +303,18 @@ void main() {
       when(() => localPostAdapter.checkHealth()).thenAnswer((_) async => AdapterHealthStatus.healthy);
       when(() => remotePostAdapter.checkHealth()).thenAnswer((_) async => AdapterHealthStatus.healthy);
 
+      // Additional stubs for Post manager/adapter required by _logPendingOperationsSummary
+      when(() => localPostAdapter.getAllUserIds()).thenAnswer((_) async => ['user1']);
+      when(() => localPostAdapter.getSyncMetadata(any())).thenAnswer((_) async => null);
+      when(() => localPostAdapter.readAll(userId: any(named: 'userId'))).thenAnswer((_) async => []);
+
+      when(() => mockPostManager.getPendingCount(any())).thenAnswer((_) async => 0);
+      when(() => mockPostManager.getStorageSize(userId: any(named: 'userId'))).thenAnswer((_) async => 0);
+      when(() => mockPostManager.getLastSyncResult(any())).thenAnswer((_) async => null);
+
+      when(() => mockManager.dispose()).thenAnswer((_) async {});
+      when(() => mockPostManager.dispose()).thenAnswer((_) async {});
+
       // Mock the manager creation process within Datum
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
@@ -311,10 +346,10 @@ void main() {
 
     test("Uninitalize Datum throws State Error if called instance", () async {
       await Datum.instance.dispose();
-      // Accessing the singleton after dispose should not throw in the current API.
-      // Verify it returns normally and yields a Datum instance.
-      expect(() => Datum.instance, returnsNormally);
-      expect(Datum.instance, isA<Datum>());
+      // After dispose, _instance is set to null, so accessing Datum.instance throws StateError
+      expect(() => Datum.instance, throwsStateError);
+
+      // After resetForTesting, it should also throw StateError
       Datum.resetForTesting();
       expect(() => Datum.instance, throwsStateError);
     });
@@ -615,6 +650,7 @@ void main() {
       Datum.resetForTesting();
       mockConnectivity = MockConnectivityChecker();
       when(() => mockConnectivity.isConnected).thenAnswer((_) async => true);
+      when(() => mockConnectivity.onStatusChange).thenAnswer((_) => Stream.value(true));
       localAdapter = MockLocalAdapter<TestEntity>();
       remoteAdapter = MockRemoteAdapter<TestEntity>();
       when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 0);
@@ -628,6 +664,30 @@ void main() {
       when(() => localAdapter.getAllUserIds()).thenAnswer((_) async => ['user1']);
       when(() => localAdapter.readAll(userId: 'user1')).thenAnswer((_) async => []);
       when(() => localAdapter.getStorageSize(userId: 'user1')).thenAnswer((_) async => 0);
+      when(() => localAdapter.patch(id: any(named: 'id'), delta: any(named: 'delta'), userId: any(named: 'userId'))).thenAnswer((_) async {
+        return TestEntity(
+          id: 'patched',
+          userId: 'default-user',
+          name: 'patched',
+          value: 1,
+          modifiedAt: DateTime.now(),
+          createdAt: DateTime.now(),
+          version: 1,
+        );
+      });
+      when(() => localAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateSyncMetadata(any(), any())).thenAnswer((_) async {});
+      when(() => localAdapter.saveLastSyncResult(any(), any())).thenAnswer((_) async {});
+      when(() => localAdapter.watchAll(userId: any(named: 'userId'), includeInitialData: any(named: 'includeInitialData'))).thenAnswer((_) => Stream.value([]));
+      when(() => localAdapter.watchById(any(), userId: any(named: 'userId'))).thenAnswer((_) => Stream.value(null));
+      when(() => localAdapter.watchAllPaginated(any(), userId: any(named: 'userId'))).thenAnswer((_) => Stream.value(const PaginatedResult(items: [], totalCount: 0, currentPage: 1, totalPages: 0, hasMore: false)));
+      when(() => localAdapter.watchQuery(any(), userId: any(named: 'userId'))).thenAnswer((_) => Stream.value([]));
+      when(() => localAdapter.watchRelated<Post>(any(), any(), any())).thenAnswer((_) => Stream.value(<Post>[]));
+      when(() => localAdapter.watchStorageSize(userId: any(named: 'userId'))).thenAnswer((_) => Stream.value(0));
+      when(() => localAdapter.checkHealth()).thenAnswer((_) async => AdapterHealthStatus.healthy);
+      when(() => remoteAdapter.checkHealth()).thenAnswer((_) async => AdapterHealthStatus.healthy);
+      when(() => remoteAdapter.readAll(userId: any(named: 'userId'), scope: any(named: 'scope'))).thenAnswer((_) async => []);
+      when(() => remoteAdapter.query(any(), userId: any(named: 'userId'))).thenAnswer((_) async => []);
     });
 
     tearDown(() async {
@@ -643,8 +703,14 @@ void main() {
     });
 
     test('returns true after successful initialization', () async {
+      // Arrange: Ensure clean state
+      if (Datum.instanceOrNull != null) {
+        await Datum.instance.dispose();
+        Datum.resetForTesting();
+      }
+
       // Act
-      await Datum.initialize(
+      final result = await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
         connectivityChecker: mockConnectivity,
         registrations: [
@@ -655,7 +721,8 @@ void main() {
         ],
       );
 
-      // Assert
+      // Assert: Check that initialization succeeded
+      expect(result.isSuccess(), isTrue);
       expect(Datum.isInitialized, isTrue);
     });
 
@@ -680,7 +747,7 @@ void main() {
       expect(Datum.isInitialized, isFalse);
     });
 
-    test('remains true after dispose (instance still exists)', () async {
+    test('returns false after dispose', () async {
       // Arrange: Initialize first
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
@@ -697,8 +764,8 @@ void main() {
       // Act: Dispose
       await Datum.instance.dispose();
 
-      // Assert: Instance still exists after dispose, just cleaned up
-      expect(Datum.isInitialized, isTrue);
+      // Assert: Instance is set to null after dispose, so isInitialized returns false
+      expect(Datum.isInitialized, isFalse);
     });
   });
 
@@ -711,6 +778,7 @@ void main() {
       Datum.resetForTesting();
       mockConnectivity = MockConnectivityChecker();
       when(() => mockConnectivity.isConnected).thenAnswer((_) async => true);
+      when(() => mockConnectivity.onStatusChange).thenAnswer((_) => Stream.value(true));
       localAdapter = MockLocalAdapter<TestEntity>();
       remoteAdapter = MockRemoteAdapter<TestEntity>();
       when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 0);
@@ -724,6 +792,17 @@ void main() {
       when(() => localAdapter.getAllUserIds()).thenAnswer((_) async => ['user1']);
       when(() => localAdapter.readAll(userId: 'user1')).thenAnswer((_) async => []);
       when(() => localAdapter.getStorageSize(userId: 'user1')).thenAnswer((_) async => 0);
+      when(() => localAdapter.patch(id: any(named: 'id'), delta: any(named: 'delta'), userId: any(named: 'userId'))).thenAnswer((_) async {
+        return TestEntity(
+          id: 'patched',
+          userId: 'default-user',
+          name: 'patched',
+          value: 1,
+          modifiedAt: DateTime.now(),
+          createdAt: DateTime.now(),
+          version: 1,
+        );
+      });
     });
 
     tearDown(() async {
@@ -1039,6 +1118,7 @@ void main() {
 
       final mockConnectivity = MockConnectivityChecker();
       when(() => mockConnectivity.isConnected).thenAnswer((_) async => true);
+      when(() => mockConnectivity.onStatusChange).thenAnswer((_) => Stream.value(true));
 
       // Create mock adapters for the mixin entities
       final nonRelationalLocalAdapter = MockLocalAdapter<_NonRelationalMixinEntity>();

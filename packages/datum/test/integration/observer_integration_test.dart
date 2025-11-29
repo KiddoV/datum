@@ -70,6 +70,7 @@ void main() {
         remoteAdapter: remoteAdapter,
         conflictResolver: LastWriteWinsResolver<TestEntity>(),
         datumConfig: const DatumConfig(
+          deleteBehavior: DeleteBehavior.hardDelete,
           errorRecoveryStrategy: DatumErrorRecoveryStrategy(
             maxRetries: 0,
             shouldRetry: _alwaysRetry,
@@ -174,16 +175,16 @@ void main() {
 
         await manager.delete(id: entity.id, userId: 'user1');
 
+        // First verify the delete was called and returned false
+        verify(
+          () => localAdapter.delete(entity.id, userId: 'user1'),
+        ).called(1);
+
+        // Then verify onDeleteEnd was called with success: false
         verify(
           () => mockObserver.onDeleteEnd(entity.id, success: false),
         ).called(1);
       },
-    );
-
-    test(
-      'onOperationFailure is called for a failed sync op',
-      skip: 'onOperation* methods are not part of the public observer API.',
-      () async {},
     );
 
     test('onConflictDetected and onConflictResolved are called', () async {
@@ -481,11 +482,5 @@ void _stubDefaultBehaviors(
     () => localAdapter.getLastSyncResult(any()),
   ).thenAnswer((_) async => null);
 
-  // Delete
-  when(
-    () => localAdapter.delete(any(), userId: any(named: 'userId')),
-  ).thenAnswer((_) async => true);
-  when(
-    () => remoteAdapter.delete(any(), userId: any(named: 'userId')),
-  ).thenAnswer((_) async {});
+  // Delete - not stubbed by default since individual tests stub as needed
 }

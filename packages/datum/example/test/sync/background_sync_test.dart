@@ -17,13 +17,21 @@ void main() {
   group('Background Sync', () {
     late Datum datum;
     late MockRemoteAdapter<Task> remoteAdapter;
+    late MockConnectivityChecker connectivityChecker;
 
     setUp(() async {
       await setUpTestHive();
       remoteAdapter = MockRemoteAdapter<Task>();
+      connectivityChecker = MockConnectivityChecker();
+
+      // Stub the connectivity checker methods
+      when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+      when(() => connectivityChecker.onStatusChange)
+          .thenAnswer((_) => Stream.value(true));
+
       (await Datum.initialize(
         config: DatumConfig(),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: connectivityChecker,
         registrations: [
           DatumRegistration<Task>(
             localAdapter: HiveLocalAdapter<Task>(

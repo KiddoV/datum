@@ -29,6 +29,7 @@ void main() {
     setUp(() {
       connectivityChecker = MockConnectivityChecker();
       when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+      when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
     });
 
     tearDown(() {

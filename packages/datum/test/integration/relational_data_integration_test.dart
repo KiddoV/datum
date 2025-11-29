@@ -1,4 +1,5 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import 'package:datum/datum.dart';
@@ -83,6 +84,17 @@ class User extends RelationalDatumEntity {
     }
 
     return diff.isEmpty ? null : diff;
+  }
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
   }
 
   @override
@@ -267,6 +279,18 @@ class Post extends RelationalDatumEntity {
   int get hashCode {
     return id.hashCode ^ userId.hashCode ^ title.hashCode ^ modifiedAt.hashCode ^ createdAt.hashCode ^ version.hashCode ^ isDeleted.hashCode;
   }
+
+  factory Post.fromJson(Map<String, dynamic> json) {
+    return Post(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      title: json['title'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 }
 
 /// A Tag entity for the many-to-many relationship.
@@ -365,6 +389,18 @@ class Tag extends RelationalDatumEntity {
   int get hashCode {
     return id.hashCode ^ userId.hashCode ^ name.hashCode ^ modifiedAt.hashCode ^ createdAt.hashCode ^ version.hashCode ^ isDeleted.hashCode;
   }
+
+  factory Tag.fromJson(Map<String, dynamic> json) {
+    return Tag(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      name: json['name'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 }
 
 /// The pivot entity for the Post-Tag many-to-many relationship.
@@ -451,6 +487,16 @@ class PostTag extends RelationalDatumEntity {
       createdAt: createdAt,
     );
   }
+
+  factory PostTag.fromJson(Map<String, dynamic> json) {
+    return PostTag(
+      id: json['id'] as String,
+      postId: json['postId'] as String,
+      tagId: json['tagId'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+    );
+  }
 }
 
 /// A Profile entity that "belongs to" a User.
@@ -533,6 +579,18 @@ class Profile extends RelationalDatumEntity {
 
     return diff.isEmpty ? null : diff;
   }
+
+  factory Profile.fromJson(Map<String, dynamic> json) {
+    return Profile(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      bio: json['bio'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 }
 
 void main() {
@@ -598,20 +656,24 @@ void main() {
 
     setUp(() async {
       // Create all mock adapters first, providing related adapters where needed.
-      final userAdapter = MockLocalAdapter<User>();
-      final profileAdapter = MockLocalAdapter<Profile>();
-      final postTagAdapter = MockLocalAdapter<PostTag>();
+      final userAdapter = MockLocalAdapter<User>(fromJson: User.fromJson);
+      final profileAdapter = MockLocalAdapter<Profile>(fromJson: Profile.fromJson);
+      final postTagAdapter = MockLocalAdapter<PostTag>(fromJson: PostTag.fromJson);
       final postAdapter = MockLocalAdapter<Post>(
+        fromJson: Post.fromJson,
         relatedAdapters: {PostTag: postTagAdapter},
       );
       final tagAdapter = MockLocalAdapter<Tag>(
+        fromJson: Tag.fromJson,
         relatedAdapters: {PostTag: postTagAdapter},
       );
-
+      final connectivityChecker = MockConnectivityChecker();
+      when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
+      when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
       Datum.resetForTesting();
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: connectivityChecker,
         registrations: [
           DatumRegistration<User>(
             localAdapter: userAdapter,
@@ -969,7 +1031,7 @@ void main() {
         await postManager.push(item: post2, userId: testUser.id);
 
         // Act: Delete one of the posts.
-        await postManager.delete(id: testPost.id, userId: testUser.id);
+        await postManager.delete(id: testPost.id, userId: testUser.id, behavior: DeleteBehavior.hardDelete);
 
         // Assert: Fetch the 'posts' for the user again.
         final posts = await userManager.fetchRelated<Post>(testUser, 'posts');
@@ -991,7 +1053,7 @@ void main() {
         expect(initialAuthors, isNotEmpty);
 
         // Act: Delete the user (the "parent" in the belongsTo relationship).
-        await userManager.delete(id: testUser.id, userId: testUser.id);
+        await userManager.delete(id: testUser.id, userId: testUser.id, behavior: DeleteBehavior.hardDelete);
 
         // Assert: Fetching the author for the post should now return an empty list.
         final authorsAfterDelete = await postManager.fetchRelated<User>(testPost, 'author');
@@ -1014,7 +1076,7 @@ void main() {
         expect(initialTags, hasLength(2));
 
         // Act: Delete one of the pivot table entries (the link between post and tag).
-        await postTagManager.delete(id: postTag1.id, userId: postTag1.userId);
+        await postTagManager.delete(id: postTag1.id, userId: postTag1.userId, behavior: DeleteBehavior.hardDelete);
 
         // Assert: Fetching the tags for the post should now only return one tag.
         final tagsAfterDelete = await postManager.fetchRelated<Tag>(testPost, 'tags');

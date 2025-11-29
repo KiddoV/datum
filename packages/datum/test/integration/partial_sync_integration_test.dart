@@ -1,4 +1,5 @@
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/models/datum_either.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
@@ -63,6 +64,7 @@ void main() {
     remoteAdapter = MockRemoteAdapter<TestEntity>();
 
     when(() => mockConnectivity.isConnected).thenAnswer((_) async => true);
+    when(() => mockConnectivity.onStatusChange).thenAnswer((_) => Stream.value(true));
     when(() => localAdapter.getStoredSchemaVersion()).thenAnswer((_) async => 0);
     when(() => localAdapter.initialize()).thenAnswer((_) async {});
     when(() => remoteAdapter.initialize()).thenAnswer((_) async {});
@@ -79,7 +81,7 @@ void main() {
   });
 
   tearDown(() async {
-    if (Datum.instanceOrNull != null) {
+    if (Datum.isInitialized) {
       await Datum.instance.dispose();
     }
     Datum.resetForTesting();
@@ -115,7 +117,7 @@ void main() {
         return mockData;
       });
 
-      await Datum.initialize(
+      final result = await Datum.initialize(
         config: const DatumConfig(enableLogging: true),
         connectivityChecker: mockConnectivity,
         registrations: [
@@ -125,6 +127,10 @@ void main() {
           ),
         ],
       );
+
+      if (result case Failure(value: final e, stackTrace: final s)) {
+        fail('Datum initialization failed: $e\n$s');
+      }
     });
 
     test('Use Case 1: Query incomplete tasks (completed filter)', () async {

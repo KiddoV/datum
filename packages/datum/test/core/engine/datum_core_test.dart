@@ -33,6 +33,7 @@ void main() {
     remoteAdapter = MockRemoteAdapter<TestEntity>();
     connectivityChecker = MockConnectivityChecker();
     when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+    when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
 
     // Initialize Datum with TestEntity registration
     await Datum.initialize(
@@ -47,8 +48,10 @@ void main() {
     );
   });
 
-  tearDown(() {
-    Datum.instance.dispose();
+  tearDown(() async {
+    if (Datum.instanceOrNull != null) {
+      await Datum.instance.dispose();
+    }
     Datum.resetForTesting();
   });
 
@@ -108,19 +111,36 @@ void main() {
     });
 
     test('getRemoteSyncMetadata throws when entity type not registered', () async {
+      print('Test start: getRemoteSyncMetadata throws when entity type not registered');
       // Reset Datum to test error case
-      Datum.instance.dispose();
+      print('Disposing existing instance...');
+      await Datum.instanceOrNull?.dispose();
+      print('Resetting for testing...');
       Datum.resetForTesting();
 
       // Initialize without TestEntity registration
-      await Datum.initialize(
+      print('Initializing Datum...');
+      print('Initializing Datum...');
+      final initResult = await Datum.initialize(
         config: const DatumConfig(schemaVersion: 0),
         connectivityChecker: connectivityChecker,
         registrations: [], // No registrations
       );
+      print('Datum.initialize returned: $initResult');
+      print('Is Success? ${initResult.isSuccess()}');
+      if (initResult.isFailure()) {
+        final (error, stackTrace) = initResult.getError();
+        print('Failure value: $error');
+        print('Failure stack: $stackTrace');
+      }
+      print('Datum initialized. Instance is null? ${Datum.instanceOrNull == null}');
 
+      print('Expect throwsStateError...');
       expect(
-        () => Datum.instance.getRemoteSyncMetadata<TestEntity>('user'),
+        () {
+          print('Calling getRemoteSyncMetadata...');
+          return Datum.instance.getRemoteSyncMetadata<TestEntity>('user');
+        },
         throwsStateError,
       );
     });

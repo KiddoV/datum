@@ -1,4 +1,6 @@
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/models/datum_either.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 import 'package:fake_async/fake_async.dart';
 
@@ -53,13 +55,18 @@ void main() {
         relatedAdapters: {PostTag: postTagAdapter},
       );
 
+      // Create and stub connectivity checker
+      final connectivityChecker = MockConnectivityChecker();
+      when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
+      when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+
       Datum.resetForTesting();
-      await Datum.initialize(
+      final result = await Datum.initialize(
         config: const DatumConfig(
           enableLogging: false,
           autoStartSync: false, // Disable auto-sync to prevent timers in fakeAsync.
         ),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: connectivityChecker,
         registrations: [
           DatumRegistration<User>(
             localAdapter: userAdapter,
@@ -83,6 +90,11 @@ void main() {
           ),
         ],
       );
+
+      if (result case Failure(value: final e, stackTrace: final s)) {
+        fail('Datum initialization failed: $e\n$s');
+      }
+
       userManager = Datum.manager<User>();
       postManager = Datum.manager<Post>();
       tagManager = Datum.manager<Tag>();
@@ -115,8 +127,10 @@ void main() {
 
     tearDown(() async {
       // It's good practice to make tearDown async and await the disposal.
-      await userManager.dispose();
-      await postManager.dispose();
+      if (Datum.isInitialized) {
+        await userManager.dispose();
+        await postManager.dispose();
+      }
       Datum.resetForTesting();
     });
 
@@ -159,7 +173,7 @@ void main() {
       );
 
       // Act: Delete one of the posts, which should trigger the stream.
-      await postManager.delete(id: testPost.id, userId: testUser.id);
+      await postManager.delete(id: testPost.id, userId: testUser.id, behavior: DeleteBehavior.hardDelete);
     });
 
     test(
@@ -181,7 +195,7 @@ void main() {
         );
 
         // Act: Delete the user the post belongs to.
-        await userManager.delete(id: testUser.id, userId: testUser.id);
+        await userManager.delete(id: testUser.id, userId: testUser.id, behavior: DeleteBehavior.hardDelete);
       },
     );
 
@@ -259,7 +273,7 @@ void main() {
 
         // Act: Delete the link in the pivot table. This should trigger the
         // stream to emit an empty list.
-        await postTagManager.delete(id: postTag.id, userId: postTag.userId);
+        await postTagManager.delete(id: postTag.id, userId: postTag.userId, behavior: DeleteBehavior.hardDelete);
       },
     );
 
@@ -305,7 +319,7 @@ void main() {
         async.flushMicrotasks(); // Process the create event.
         profileManager.push(item: updatedProfile, userId: testUser.id);
         async.flushMicrotasks(); // Process the update event.
-        profileManager.delete(id: testProfile.id, userId: testUser.id);
+        profileManager.delete(id: testProfile.id, userId: testUser.id, behavior: DeleteBehavior.hardDelete);
         async.flushMicrotasks(); // Process the delete event.
       });
     });

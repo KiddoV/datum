@@ -7,6 +7,14 @@ import '../mocks/mock_connectivity_checker.dart';
 
 import 'relational_data_test.dart';
 
+// Helper function to create a properly stubbed MockConnectivityChecker
+MockConnectivityChecker createMockConnectivityChecker() {
+  final checker = MockConnectivityChecker();
+  when(() => checker.isConnected).thenAnswer((_) async => true);
+  when(() => checker.onStatusChange).thenAnswer((_) => Stream.value(true));
+  return checker;
+}
+
 void main() {
   group("Direct Relational Test", () {
     late MockDatumManager<User> mockUserManager;
@@ -163,7 +171,7 @@ void main() {
       test('getRelatedManager returns correct manager', () async {
         await Datum.initialize(
           config: const DatumConfig(enableLogging: false),
-          connectivityChecker: MockConnectivityChecker(),
+          connectivityChecker: createMockConnectivityChecker(),
           registrations: [
             DatumRegistration<User>(
               localAdapter: MockLocalAdapter<User>()..addLocalItem(testUser.id, testUser),
@@ -233,7 +241,7 @@ void main() {
       test('getRelatedManager returns correct manager', () async {
         await Datum.initialize(
           config: const DatumConfig(enableLogging: false),
-          connectivityChecker: MockConnectivityChecker(),
+          connectivityChecker: createMockConnectivityChecker(),
           registrations: [
             DatumRegistration<Post>(
               localAdapter: MockLocalAdapter<Post>()..addLocalItem(testUser.id, testPost),
@@ -299,7 +307,7 @@ void main() {
       test('getRelatedManager returns correct manager', () async {
         await Datum.initialize(
           config: const DatumConfig(enableLogging: false),
-          connectivityChecker: MockConnectivityChecker(),
+          connectivityChecker: createMockConnectivityChecker(),
           registrations: [
             DatumRegistration<Profile>(
               localAdapter: MockLocalAdapter<Profile>()..addLocalItem(testUser.id, testProfile),
@@ -383,7 +391,7 @@ void main() {
       test('getRelatedManager returns correct manager', () async {
         await Datum.initialize(
           config: const DatumConfig(enableLogging: false),
-          connectivityChecker: MockConnectivityChecker(),
+          connectivityChecker: createMockConnectivityChecker(),
           registrations: [
             DatumRegistration<Post>(
               localAdapter: MockLocalAdapter<Post>()..addLocalItem(testUser.id, testPost),

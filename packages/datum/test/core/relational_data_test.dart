@@ -7,6 +7,14 @@ import '../mocks/mock_connectivity_checker.dart';
 
 import 'non_relational_test_entity.dart';
 
+// Helper function to create a properly stubbed MockConnectivityChecker
+MockConnectivityChecker createMockConnectivityChecker() {
+  final checker = MockConnectivityChecker();
+  when(() => checker.isConnected).thenAnswer((_) async => true);
+  when(() => checker.onStatusChange).thenAnswer((_) => Stream.value(true));
+  return checker;
+}
+
 class MockDatumManager<T extends DatumEntityInterface> extends Mock implements DatumManager<T> {}
 
 /// A simple User entity for testing relationships.
@@ -624,7 +632,7 @@ void main() {
       // Initialize Datum for this test
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: createMockConnectivityChecker(),
         registrations: [
           DatumRegistration<User>(
             localAdapter: MockLocalAdapter<User>()..addLocalItem(testUser.id, testUser),
@@ -661,7 +669,7 @@ void main() {
 
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: createMockConnectivityChecker(),
         registrations: [
           DatumRegistration<User>(
             localAdapter: MockLocalAdapter<User>()..addLocalItem(testUser.id, testUser),
@@ -695,7 +703,7 @@ void main() {
     test('fetches a "hasOne" related entity successfully', () async {
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: createMockConnectivityChecker(),
         registrations: [
           DatumRegistration<User>(
             localAdapter: MockLocalAdapter<User>()..addLocalItem(testUser.id, testUser),
@@ -726,7 +734,7 @@ void main() {
     test('returns an empty list if related entity does not exist', () async {
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: createMockConnectivityChecker(),
         registrations: [
           DatumRegistration<User>(
             localAdapter: MockLocalAdapter<User>(), // Empty user adapter
@@ -751,7 +759,7 @@ void main() {
     test('throws an exception for an invalid relation name', () async {
       await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: createMockConnectivityChecker(),
         registrations: [
           DatumRegistration<User>(
             localAdapter: MockLocalAdapter<User>(), // Not needed for this test
@@ -785,7 +793,7 @@ void main() {
         // Arrange: Initialize Datum before using it.
         await Datum.initialize(
           config: const DatumConfig(enableLogging: false),
-          connectivityChecker: MockConnectivityChecker(),
+          connectivityChecker: createMockConnectivityChecker(),
         );
         // Arrange: Initialize with a non-relational entity type.
         await Datum.instance.register(
@@ -812,7 +820,7 @@ void main() {
         // Arrange: Initialize a fresh Datum instance with the special adapter.
         await Datum.initialize(
           config: const DatumConfig(enableLogging: false),
-          connectivityChecker: MockConnectivityChecker(),
+          connectivityChecker: createMockConnectivityChecker(),
           registrations: [
             DatumRegistration<Post>(
               localAdapter: _UnimplementedLocalAdapter<Post>(),
@@ -845,7 +853,7 @@ void main() {
         // Arrange: Initialize a fresh Datum instance with the special adapter.
         await Datum.initialize(
           config: const DatumConfig(enableLogging: false),
-          connectivityChecker: MockConnectivityChecker(),
+          connectivityChecker: createMockConnectivityChecker(),
           registrations: [
             DatumRegistration<Post>(
               localAdapter: _UnimplementedLocalAdapter<Post>(),

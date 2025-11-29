@@ -91,6 +91,7 @@ void main() {
       ).thenAnswer((_) async => {});
 
       when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+      when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
       when(() => localAdapter.initialize()).thenAnswer((_) async {});
       when(() => remoteAdapter.initialize()).thenAnswer((_) async {});
       when(

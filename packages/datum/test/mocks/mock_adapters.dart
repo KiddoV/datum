@@ -117,7 +117,7 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
     String? userId,
   }) async {
     if (fromJson == null) {
-      throw StateError('MockLocalAdapter needs fromJson to handle patch.');
+      throw StateError('MockLocalAdapter needs $T.fromJson to handle patch.');
     }
     final existing = _storage[userId ?? '']?[id];
     if (existing == null) {

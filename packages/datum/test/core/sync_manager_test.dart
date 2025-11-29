@@ -139,6 +139,7 @@ void main() async {
       when(() => localAdapter.clearUserData(any())).thenAnswer((_) async => {});
       when(() => localAdapter.create(any())).thenAnswer((_) async {});
       when(() => localAdapter.update(any())).thenAnswer((_) async {});
+
       when(() => localAdapter.dispose()).thenAnswer((_) async {});
       when(
         () => localAdapter.read(any(), userId: any(named: 'userId')),
@@ -1061,6 +1062,8 @@ void main() async {
           when(
             () => localAdapter.delete(entity.id, userId: userId),
           ).thenAnswer((_) async => true);
+          // Mock patch for soft delete behavior (even though test should use hard delete by default)
+          when(() => localAdapter.patch(id: any(named: 'id'), delta: any(named: 'delta'), userId: any(named: 'userId'))).thenAnswer((_) async => entity);
           when(
             () => localAdapter.addPendingOperation(any(), any()),
           ).thenAnswer((_) async {});
@@ -1330,6 +1333,16 @@ void main() async {
         });
 
         test('handles concurrent deleteSync calls correctly', () async {
+          // Use hardDelete to match the mocks which expect delete() calls
+          manager = DatumManager<TestEntity>(
+            localAdapter: localAdapter,
+            remoteAdapter: remoteAdapter,
+            connectivity: connectivityChecker,
+            logger: TestLogger(),
+            datumConfig: const DatumConfig(
+              deleteBehavior: DeleteBehavior.hardDelete,
+            ),
+          );
           await manager.initialize();
           // Arrange
           final entities = List.generate(

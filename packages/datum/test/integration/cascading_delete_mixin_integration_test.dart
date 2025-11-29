@@ -1,7 +1,9 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import 'package:datum/datum.dart';
+import 'package:datum/source/core/models/datum_either.dart';
 
 import '../mocks/mock_adapters.dart';
 import '../mocks/mock_connectivity_checker.dart';
@@ -934,10 +936,15 @@ void main() {
       final blogPostAdapter = MockLocalAdapter<BlogPostMixin>();
       final ecommerceProductAdapter = MockLocalAdapter<EcommerceProductMixin>();
 
+      // Create and stub connectivity checker
+      final connectivityChecker = MockConnectivityChecker();
+      when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
+      when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+
       Datum.resetForTesting();
-      await Datum.initialize(
+      final result = await Datum.initialize(
         config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
+        connectivityChecker: connectivityChecker,
         registrations: [
           DatumRegistration<UserMixin>(
             localAdapter: userAdapter,
@@ -981,6 +988,11 @@ void main() {
           ),
         ],
       );
+
+      if (result case Failure(value: final e, stackTrace: final s)) {
+        fail('Datum initialization failed: $e\n$s');
+      }
+
       userManager = Datum.manager<UserMixin>();
       postManager = Datum.manager<PostMixin>();
       profileManager = Datum.manager<ProfileMixin>();
@@ -992,7 +1004,9 @@ void main() {
     });
 
     tearDown(() {
-      Datum.resetForTesting();
+      if (Datum.isInitialized) {
+        Datum.resetForTesting();
+      }
     });
 
     test('cascadeDelete successfully deletes user and all related entities with mixins', () async {

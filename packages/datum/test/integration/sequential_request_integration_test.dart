@@ -45,6 +45,7 @@ void main() {
 
       // Stub default behaviors
       when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+      when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
       when(() => localAdapter.initialize()).thenAnswer((_) async {});
       when(() => remoteAdapter.initialize()).thenAnswer((_) async {});
       when(() => localAdapter.dispose()).thenAnswer((_) async {});
@@ -66,7 +67,7 @@ void main() {
     });
 
     tearDown(() async {
-      if (Datum.instanceOrNull != null) {
+      if (Datum.isInitialized) {
         await Datum.instance.dispose();
         Datum.resetForTesting();
       }

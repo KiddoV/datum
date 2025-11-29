@@ -63,7 +63,7 @@ void main() {
 
       await manager.push(item: entity1, userId: 'user1');
       await manager.push(item: entity2, userId: 'user1');
-      await manager.delete(id: entity1.id, userId: 'user1');
+      await manager.delete(id: entity1.id, userId: 'user1', behavior: DeleteBehavior.hardDelete);
 
       final allEvents = await completer.future;
 
@@ -95,7 +95,7 @@ void main() {
 
       await manager.push(item: entity, userId: 'user1');
       await manager.push(item: updatedEntity, userId: 'user1');
-      await manager.delete(id: entity.id, userId: 'user1');
+      await manager.delete(id: entity.id, userId: 'user1', behavior: DeleteBehavior.hardDelete);
 
       final allEvents = await completer.future;
 
@@ -129,7 +129,7 @@ void main() {
       await manager.push(item: entities[0], userId: 'user1');
       await manager.push(item: entities[1], userId: 'user1');
       await manager.push(item: entities[2], userId: 'user1');
-      await manager.delete(id: entities[0].id, userId: 'user1');
+      await manager.delete(id: entities[0].id, userId: 'user1', behavior: DeleteBehavior.hardDelete);
 
       final allEvents = await completer.future;
 

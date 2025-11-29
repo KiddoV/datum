@@ -873,11 +873,15 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   }
 
   /// Deletes an entity by its ID from all local and remote adapters.
+  ///
+  /// The [behavior] parameter allows overriding the global [DatumConfig.deleteBehavior]
+  /// for this specific delete operation. If null, the global config value is used.
   Future<bool> delete({
     required String id,
     required String userId,
     DataSource source = DataSource.local,
     bool forceRemoteSync = false,
+    DeleteBehavior? behavior,
   }) async {
     _ensureInitialized();
     // Check for user switch before proceeding.
@@ -898,29 +902,31 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     for (final weakObserver in _globalObservers) {
       weakObserver.target?.onDeleteStart(id);
     }
-    // Use the configured delete behavior
-    if (config.deleteBehavior == DeleteBehavior.softDelete) {
-      // Soft delete: mark the entity as deleted
-      await localAdapter.patch(
-        id: id,
-        delta: {'isDeleted': true, 'modifiedAt': DateTime.now().toIso8601String()},
-        userId: userId,
-      );
-    } else {
-      // Hard delete: physically remove the entity
-      final deleted = await localAdapter.delete(id, userId: userId);
-      if (!deleted) {
-        _logger.warn('Local adapter failed to delete entity $id');
-        // Notify observers of the failure before returning.
-        for (final weakObserver in _localObservers) {
-          weakObserver.target?.onDeleteEnd(id, success: false);
-        }
-        for (final weakObserver in _globalObservers) {
-          weakObserver.target?.onDeleteEnd(id, success: false);
-        }
-        return false;
+  // Use the provided behavior or fall back to the configured delete behavior
+  final effectiveBehavior = behavior ?? config.deleteBehavior;
+  T entityForEvent = existing;
+  if (effectiveBehavior == DeleteBehavior.softDelete) {
+    // Soft delete: mark the entity as deleted
+    entityForEvent = await localAdapter.patch(
+      id: id,
+      delta: {'isDeleted': true, 'modifiedAt': DateTime.now().toIso8601String()},
+      userId: userId,
+    );
+  } else {
+    // Hard delete: physically remove the entity
+    final deleted = await localAdapter.delete(id, userId: userId);
+    if (!deleted) {
+      _logger.warn('Local adapter failed to delete entity $id');
+      // Notify observers of the failure before returning.
+      for (final weakObserver in _localObservers) {
+        weakObserver.target?.onDeleteEnd(id, success: false);
       }
+      for (final weakObserver in _globalObservers) {
+        weakObserver.target?.onDeleteEnd(id, success: false);
+      }
+      return false;
     }
+  }
 
     _logger.debug('Notifying observers of onDeleteEnd for $id');
     for (final weakObserver in _localObservers) {
@@ -945,14 +951,14 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     _eventController.add(
       DataChangeEvent<T>(
         userId: userId,
-        data: existing,
+        data: entityForEvent,
         changeType: ChangeType.deleted,
         source: source,
       ),
     );
 
     // Invalidate caches for the deleted entity
-    _invalidateCachesForEntity(existing);
+    _invalidateCachesForEntity(entityForEvent);
 
     return true;
   }
@@ -962,15 +968,19 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// This is useful for ensuring a delete operation is persisted to the remote
   /// server as soon as possible.
   ///
+  /// The [behavior] parameter allows overriding the global [DatumConfig.deleteBehavior]
+  /// for this specific delete operation. If null, the global config value is used.
+  ///
   /// Returns a tuple containing a boolean indicating if the local delete was
   /// successful and the result of the subsequent synchronization.
   Future<(bool, DatumSyncResult<T>)> deleteAndSync({
     required String id,
     required String userId,
     DatumSyncOptions<T>? syncOptions,
+    DeleteBehavior? behavior,
   }) async {
     _ensureInitialized();
-    final wasDeleted = await delete(id: id, userId: userId);
+    final wasDeleted = await delete(id: id, userId: userId, behavior: behavior);
     final syncResult = await synchronize(userId, options: syncOptions);
     return (wasDeleted, syncResult);
   }

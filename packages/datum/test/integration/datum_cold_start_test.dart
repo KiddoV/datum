@@ -1,6 +1,8 @@
 import 'package:datum/datum.dart';
 import 'package:datum/source/core/models/cold_start_strategy.dart';
+import 'package:datum/source/core/models/datum_either.dart';
 import 'package:fake_async/fake_async.dart';
+import 'package:mocktail/mocktail.dart';
 import 'package:test/test.dart';
 
 import '../mocks/mock_adapters.dart';
@@ -11,15 +13,19 @@ void main() {
   group('Datum Cold Start Facade Tests', () {
     late MockLocalAdapter<TestEntity> localAdapter;
     late MockRemoteAdapter<TestEntity> remoteAdapter;
-    late DatumConnectivityChecker connectivity;
+    late MockConnectivityChecker connectivity;
 
     setUp(() async {
       localAdapter = MockLocalAdapter<TestEntity>();
       remoteAdapter = MockRemoteAdapter<TestEntity>();
       connectivity = MockConnectivityChecker();
 
+      // Stub connectivity checker methods
+      when(() => connectivity.onStatusChange).thenAnswer((_) => Stream.value(true));
+      when(() => connectivity.isConnected).thenAnswer((_) async => true);
+
       // Initialize Datum for testing
-      await Datum.initialize(
+      final result = await Datum.initialize(
         config: const DatumConfig(
           coldStartConfig: ColdStartConfig(strategy: ColdStartStrategy.fullSync),
         ),
@@ -32,10 +38,16 @@ void main() {
         ],
         logger: DatumLogger(enabled: false),
       );
+
+      if (result case Failure(value: final e, stackTrace: final s)) {
+        fail('Datum initialization failed: $e\n$s');
+      }
     });
 
     tearDown(() async {
-      await Datum.instance.dispose();
+      if (Datum.isInitialized) {
+        await Datum.instance.dispose();
+      }
       Datum.resetForTesting();
     });
 

@@ -1,11 +1,13 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
 import 'package:datum/source/core/cascade_delete.dart';
 import 'package:test/test.dart';
+import 'package:mocktail/mocktail.dart';
 
 import 'package:datum/datum.dart';
 
 import '../mocks/mock_adapters.dart';
 import '../mocks/mock_connectivity_checker.dart';
+import 'package:datum/source/core/models/datum_either.dart';
 
 /// A simple User entity for testing cascading delete relationships.
 class User extends RelationalDatumEntity {
@@ -33,11 +35,24 @@ class User extends RelationalDatumEntity {
   }) : userId = id; // For users, userId is often the same as id
 
   @override
-  Map<String, Relation> get relations => {
-        'posts': HasMany<Post>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-        'profile': HasOne<Profile>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-        'comments': HasMany<Comment>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.restrict),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          'posts': HasMany<Post>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+          'profile': HasOne<Profile>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+          'comments': HasMany<Comment>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.restrict),
+        }
+      : {};
+
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -127,10 +142,23 @@ class Post extends RelationalDatumEntity {
   });
 
   @override
-  Map<String, Relation> get relations => {
-        'author': BelongsTo<User>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-        'comments': HasMany<Comment>(this, 'postId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          'comments': HasMany<Comment>(this, 'postId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+        }
+      : {};
+
+  factory Post.fromJson(Map<String, dynamic> json) {
+    return Post(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      title: json['title'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -226,9 +254,24 @@ class Profile extends RelationalDatumEntity {
   });
 
   @override
-  Map<String, Relation> get relations => {
-        'user': BelongsTo<User>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          'subcategories': HasMany<Category>(this, 'parentId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+          'products': HasMany<Product>(this, 'categoryId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+        }
+      : {};
+
+  factory Profile.fromJson(Map<String, dynamic> json) {
+    return Profile(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      bio: json['bio'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -311,9 +354,20 @@ class Comment extends RelationalDatumEntity {
   });
 
   @override
-  Map<String, Relation> get relations => {
-        'post': BelongsTo<Post>(this, 'postId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-      };
+  Map<String, Relation> get relations => const {};
+
+  factory Comment.fromJson(Map<String, dynamic> json) {
+    return Comment(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      postId: json['postId'] as String,
+      content: json['content'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -398,11 +452,25 @@ class Category extends RelationalDatumEntity {
   });
 
   @override
-  Map<String, Relation> get relations => {
-        'parent': BelongsTo<Category>(this, 'parentId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-        'subcategories': HasMany<Category>(this, 'parentId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-        'products': HasMany<Product>(this, 'categoryId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          'subcategories': HasMany<Category>(this, 'parentId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+          'products': HasMany<Product>(this, 'categoryId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+        }
+      : {};
+
+  factory Category.fromJson(Map<String, dynamic> json) {
+    return Category(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      name: json['name'] as String,
+      parentId: json['parentId'] as String?,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -463,7 +531,7 @@ class Category extends RelationalDatumEntity {
 }
 
 /// A Product entity that belongs to a Category.
-class Product extends RelationalDatumEntity {
+class Product extends RelationalDatumEntity with Categorized, Reviewable, Taggable {
   @override
   final String id;
   @override
@@ -492,12 +560,19 @@ class Product extends RelationalDatumEntity {
     this.isDeleted = false,
   });
 
-  @override
-  Map<String, Relation> get relations => {
-        'category': BelongsTo<Category>(this, 'categoryId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-        'reviews': HasMany<Review>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-        'tags': HasMany<Tag>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-      };
+  factory Product.fromJson(Map<String, dynamic> json) {
+    return Product(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      name: json['name'] as String,
+      categoryId: json['categoryId'] as String,
+      price: (json['price'] as num).toDouble(),
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -590,9 +665,21 @@ class Review extends RelationalDatumEntity {
   });
 
   @override
-  Map<String, Relation> get relations => {
-        'product': BelongsTo<Product>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-      };
+  Map<String, Relation> get relations => const {};
+
+  factory Review.fromJson(Map<String, dynamic> json) {
+    return Review(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      productId: json['productId'] as String,
+      rating: json['rating'] as int,
+      comment: json['comment'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -683,9 +770,20 @@ class Tag extends RelationalDatumEntity {
   });
 
   @override
-  Map<String, Relation> get relations => {
-        'product': BelongsTo<Product>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-      };
+  Map<String, Relation> get relations => const {};
+
+  factory Tag.fromJson(Map<String, dynamic> json) {
+    return Tag(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      name: json['name'] as String,
+      productId: json['productId'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -744,37 +842,45 @@ class Tag extends RelationalDatumEntity {
 /// Mixin for entities that can be commented on.
 mixin Commentable on RelationalDatumEntity {
   @override
-  Map<String, Relation> get relations => {
-        ...super.relations,
-        'comments': HasMany<Comment>(this, 'postId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          ...super.relations,
+          'comments': HasMany<Comment>(this, 'postId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+        }
+      : {};
 }
 
 /// Mixin for entities that can be tagged.
 mixin Taggable on RelationalDatumEntity {
   @override
-  Map<String, Relation> get relations => {
-        ...super.relations,
-        'tags': HasMany<Tag>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          ...super.relations,
+          'tags': HasMany<Tag>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+        }
+      : {};
 }
 
 /// Mixin for entities that can be reviewed.
 mixin Reviewable on RelationalDatumEntity {
   @override
-  Map<String, Relation> get relations => {
-        ...super.relations,
-        'reviews': HasMany<Review>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          ...super.relations,
+          'reviews': HasMany<Review>(this, 'productId', cascadeDeleteBehavior: CascadeDeleteBehavior.cascade),
+        }
+      : {};
 }
 
 /// Mixin for entities that belong to categories.
 mixin Categorized on RelationalDatumEntity {
   @override
-  Map<String, Relation> get relations => {
-        ...super.relations,
-        'category': BelongsTo<Category>(this, 'categoryId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-      };
+  Map<String, Relation> get relations => Datum.isInitialized
+      ? {
+          ...super.relations,
+          'category': BelongsTo<Category>(this, 'categoryId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
+        }
+      : {};
 }
 
 /// A BlogPost entity that uses mixins for relationships.
@@ -805,11 +911,18 @@ class BlogPost extends RelationalDatumEntity with Commentable {
     this.isDeleted = false,
   });
 
-  @override
-  Map<String, Relation> get relations => {
-        ...super.relations, // This includes the Commentable mixin relations
-        'author': BelongsTo<User>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-      };
+  factory BlogPost.fromJson(Map<String, dynamic> json) {
+    return BlogPost(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      title: json['title'] as String,
+      content: json['content'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -901,11 +1014,20 @@ class EcommerceProduct extends RelationalDatumEntity with Categorized, Reviewabl
     this.isDeleted = false,
   });
 
-  @override
-  Map<String, Relation> get relations => {
-        ...super.relations, // This includes all mixin relations
-        'seller': BelongsTo<User>(this, 'userId', cascadeDeleteBehavior: CascadeDeleteBehavior.none),
-      };
+  factory EcommerceProduct.fromJson(Map<String, dynamic> json) {
+    return EcommerceProduct(
+      id: json['id'] as String,
+      userId: json['userId'] as String,
+      name: json['name'] as String,
+      categoryId: json['categoryId'] as String,
+      price: (json['price'] as num).toDouble(),
+      description: json['description'] as String,
+      modifiedAt: DateTime.parse(json['modifiedAt'] as String),
+      createdAt: DateTime.parse(json['createdAt'] as String),
+      version: json['version'] as int? ?? 1,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+    );
+  }
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {
@@ -974,6 +1096,8 @@ class EcommerceProduct extends RelationalDatumEntity with Categorized, Reviewabl
 }
 
 void main() {
+  // Global storage for mock adapters to simulate database
+
   group('Cascading Delete Integration Tests', () {
     late DatumManager<User> userManager;
     late DatumManager<Post> postManager;
@@ -983,6 +1107,92 @@ void main() {
     late DatumManager<Product> productManager;
     late DatumManager<Review> reviewManager;
     late DatumManager<Tag> tagManager;
+
+    setUp(() async {
+      // Create mock adapters for all entity types
+      final userAdapter = MockLocalAdapter<User>(fromJson: User.fromJson);
+      final postAdapter = MockLocalAdapter<Post>(fromJson: Post.fromJson);
+      final profileAdapter = MockLocalAdapter<Profile>(fromJson: Profile.fromJson);
+      final commentAdapter = MockLocalAdapter<Comment>(fromJson: Comment.fromJson);
+      final categoryAdapter = MockLocalAdapter<Category>(fromJson: Category.fromJson);
+      final productAdapter = MockLocalAdapter<Product>(fromJson: Product.fromJson);
+      final reviewAdapter = MockLocalAdapter<Review>(fromJson: Review.fromJson);
+      final tagAdapter = MockLocalAdapter<Tag>(fromJson: Tag.fromJson);
+      final blogPostAdapter = MockLocalAdapter<BlogPost>(fromJson: BlogPost.fromJson);
+      final ecommerceProductAdapter = MockLocalAdapter<EcommerceProduct>(fromJson: EcommerceProduct.fromJson);
+
+      // Create mock connectivity checker and stub required methods
+      final connectivityChecker = MockConnectivityChecker();
+      when(() => connectivityChecker.onStatusChange).thenAnswer((_) => Stream.value(true));
+      when(() => connectivityChecker.isConnected).thenAnswer((_) async => true);
+
+      // Reset and initialize Datum with all entity registrations
+      Datum.resetForTesting();
+      final initResult = await Datum.initialize(
+        config: const DatumConfig(enableLogging: false),
+        connectivityChecker: connectivityChecker,
+        registrations: [
+          DatumRegistration<User>(
+            localAdapter: userAdapter,
+            remoteAdapter: MockRemoteAdapter<User>(),
+          ),
+          DatumRegistration<Post>(
+            localAdapter: postAdapter,
+            remoteAdapter: MockRemoteAdapter<Post>(),
+          ),
+          DatumRegistration<Profile>(
+            localAdapter: profileAdapter,
+            remoteAdapter: MockRemoteAdapter<Profile>(),
+          ),
+          DatumRegistration<Comment>(
+            localAdapter: commentAdapter,
+            remoteAdapter: MockRemoteAdapter<Comment>(),
+          ),
+          DatumRegistration<Category>(
+            localAdapter: categoryAdapter,
+            remoteAdapter: MockRemoteAdapter<Category>(),
+          ),
+          DatumRegistration<Product>(
+            localAdapter: productAdapter,
+            remoteAdapter: MockRemoteAdapter<Product>(),
+          ),
+          DatumRegistration<Review>(
+            localAdapter: reviewAdapter,
+            remoteAdapter: MockRemoteAdapter<Review>(),
+          ),
+          DatumRegistration<Tag>(
+            localAdapter: tagAdapter,
+            remoteAdapter: MockRemoteAdapter<Tag>(),
+          ),
+          DatumRegistration<BlogPost>(
+            localAdapter: blogPostAdapter,
+            remoteAdapter: MockRemoteAdapter<BlogPost>(),
+          ),
+          DatumRegistration<EcommerceProduct>(
+            localAdapter: ecommerceProductAdapter,
+            remoteAdapter: MockRemoteAdapter<EcommerceProduct>(),
+          ),
+        ],
+      );
+
+      if (initResult case Failure(value: final e, stackTrace: final s)) {
+        fail('Datum initialization failed: $e\n$s');
+      }
+
+      // Get manager instances from Datum
+      userManager = Datum.manager<User>();
+      postManager = Datum.manager<Post>();
+      profileManager = Datum.manager<Profile>();
+      commentManager = Datum.manager<Comment>();
+      categoryManager = Datum.manager<Category>();
+      productManager = Datum.manager<Product>();
+      reviewManager = Datum.manager<Review>();
+      tagManager = Datum.manager<Tag>();
+    });
+
+    tearDown(() {
+      Datum.resetForTesting();
+    });
 
     final testUser = User(
       id: 'user-1',
@@ -1032,80 +1242,6 @@ void main() {
       modifiedAt: DateTime(2023),
       createdAt: DateTime(2023),
     );
-
-    setUp(() async {
-      // Create mock adapters for all entity types
-      final userAdapter = MockLocalAdapter<User>();
-      final postAdapter = MockLocalAdapter<Post>();
-      final profileAdapter = MockLocalAdapter<Profile>();
-      final commentAdapter = MockLocalAdapter<Comment>();
-      final categoryAdapter = MockLocalAdapter<Category>();
-      final productAdapter = MockLocalAdapter<Product>();
-      final reviewAdapter = MockLocalAdapter<Review>();
-      final tagAdapter = MockLocalAdapter<Tag>();
-      final blogPostAdapter = MockLocalAdapter<BlogPost>();
-      final ecommerceProductAdapter = MockLocalAdapter<EcommerceProduct>();
-
-      Datum.resetForTesting();
-      await Datum.initialize(
-        config: const DatumConfig(enableLogging: false),
-        connectivityChecker: MockConnectivityChecker(),
-        registrations: [
-          DatumRegistration<User>(
-            localAdapter: userAdapter,
-            remoteAdapter: MockRemoteAdapter<User>(),
-          ),
-          DatumRegistration<Post>(
-            localAdapter: postAdapter,
-            remoteAdapter: MockRemoteAdapter<Post>(),
-          ),
-          DatumRegistration<Profile>(
-            localAdapter: profileAdapter,
-            remoteAdapter: MockRemoteAdapter<Profile>(),
-          ),
-          DatumRegistration<Comment>(
-            localAdapter: commentAdapter,
-            remoteAdapter: MockRemoteAdapter<Comment>(),
-          ),
-          DatumRegistration<Category>(
-            localAdapter: categoryAdapter,
-            remoteAdapter: MockRemoteAdapter<Category>(),
-          ),
-          DatumRegistration<Product>(
-            localAdapter: productAdapter,
-            remoteAdapter: MockRemoteAdapter<Product>(),
-          ),
-          DatumRegistration<Review>(
-            localAdapter: reviewAdapter,
-            remoteAdapter: MockRemoteAdapter<Review>(),
-          ),
-          DatumRegistration<Tag>(
-            localAdapter: tagAdapter,
-            remoteAdapter: MockRemoteAdapter<Tag>(),
-          ),
-          DatumRegistration<BlogPost>(
-            localAdapter: blogPostAdapter,
-            remoteAdapter: MockRemoteAdapter<BlogPost>(),
-          ),
-          DatumRegistration<EcommerceProduct>(
-            localAdapter: ecommerceProductAdapter,
-            remoteAdapter: MockRemoteAdapter<EcommerceProduct>(),
-          ),
-        ],
-      );
-      userManager = Datum.manager<User>();
-      postManager = Datum.manager<Post>();
-      profileManager = Datum.manager<Profile>();
-      commentManager = Datum.manager<Comment>();
-      categoryManager = Datum.manager<Category>();
-      productManager = Datum.manager<Product>();
-      reviewManager = Datum.manager<Review>();
-      tagManager = Datum.manager<Tag>();
-    });
-
-    tearDown(() {
-      Datum.resetForTesting();
-    });
 
     test('cascadeDelete successfully deletes user and all related entities', () async {
       // Arrange: Create a complete user with posts, profile, and comments
@@ -1209,7 +1345,7 @@ void main() {
       await postManager.push(item: testPost1, userId: testUser.id);
 
       // Act: Use regular delete (not cascade)
-      final deleted = await userManager.delete(id: testUser.id, userId: testUser.id);
+      final deleted = await userManager.delete(id: testUser.id, userId: testUser.id, behavior: DeleteBehavior.hardDelete);
 
       // Assert: Only the user was deleted, related entities remain
       expect(deleted, isTrue);
@@ -2897,3 +3033,5 @@ void main() {
     });
   });
 }
+
+/// Helper function to apply all default stubs to a set of mocks.

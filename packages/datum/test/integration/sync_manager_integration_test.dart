@@ -379,9 +379,6 @@ void main() {
     });
 
     test('returns null when entity does not exist', () async {
-      when(
-        () => localAdapter.read('nonexistent', userId: 'user1'),
-      ).thenAnswer((_) async => null);
       // Act
       final retrieved = await manager.read('nonexistent', userId: 'user1');
 
@@ -737,6 +734,24 @@ void _stubDefaultBehaviors(
   // Core Local Operations
   when(() => localAdapter.create(any())).thenAnswer((_) async {});
   when(() => localAdapter.update(any())).thenAnswer((_) async {});
+  when(
+    () => localAdapter.patch(id: any(named: 'id'), delta: any(named: 'delta'), userId: any(named: 'userId')),
+  ).thenAnswer((inv) async {
+    final id = inv.namedArguments[#id] as String;
+    final delta = inv.namedArguments[#delta] as Map<String, dynamic>;
+    final userId = inv.namedArguments[#userId] as String?;
+    // Return a TestEntity with the delta applied
+    return TestEntity(
+      id: id,
+      userId: userId ?? 'user1',
+      name: 'Test Item',
+      value: 0,
+      modifiedAt: delta['modifiedAt'] != null ? DateTime.parse(delta['modifiedAt']) : DateTime.now(),
+      createdAt: DateTime.now(),
+      version: 1,
+      isDeleted: delta['isDeleted'] ?? false,
+    );
+  });
   when(
     () => localAdapter.read(any(), userId: any(named: 'userId')),
   ).thenAnswer((_) async => null);
