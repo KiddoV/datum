@@ -902,31 +902,31 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     for (final weakObserver in _globalObservers) {
       weakObserver.target?.onDeleteStart(id);
     }
-  // Use the provided behavior or fall back to the configured delete behavior
-  final effectiveBehavior = behavior ?? config.deleteBehavior;
-  T entityForEvent = existing;
-  if (effectiveBehavior == DeleteBehavior.softDelete) {
-    // Soft delete: mark the entity as deleted
-    entityForEvent = await localAdapter.patch(
-      id: id,
-      delta: {'isDeleted': true, 'modifiedAt': DateTime.now().toIso8601String()},
-      userId: userId,
-    );
-  } else {
-    // Hard delete: physically remove the entity
-    final deleted = await localAdapter.delete(id, userId: userId);
-    if (!deleted) {
-      _logger.warn('Local adapter failed to delete entity $id');
-      // Notify observers of the failure before returning.
-      for (final weakObserver in _localObservers) {
-        weakObserver.target?.onDeleteEnd(id, success: false);
+    // Use the provided behavior or fall back to the configured delete behavior
+    final effectiveBehavior = behavior ?? config.deleteBehavior;
+    T entityForEvent = existing;
+    if (effectiveBehavior == DeleteBehavior.softDelete) {
+      // Soft delete: mark the entity as deleted
+      entityForEvent = await localAdapter.patch(
+        id: id,
+        delta: {'isDeleted': true, 'modifiedAt': DateTime.now().toIso8601String()},
+        userId: userId,
+      );
+    } else {
+      // Hard delete: physically remove the entity
+      final deleted = await localAdapter.delete(id, userId: userId);
+      if (!deleted) {
+        _logger.warn('Local adapter failed to delete entity $id');
+        // Notify observers of the failure before returning.
+        for (final weakObserver in _localObservers) {
+          weakObserver.target?.onDeleteEnd(id, success: false);
+        }
+        for (final weakObserver in _globalObservers) {
+          weakObserver.target?.onDeleteEnd(id, success: false);
+        }
+        return false;
       }
-      for (final weakObserver in _globalObservers) {
-        weakObserver.target?.onDeleteEnd(id, success: false);
-      }
-      return false;
     }
-  }
 
     _logger.debug('Notifying observers of onDeleteEnd for $id');
     for (final weakObserver in _localObservers) {
