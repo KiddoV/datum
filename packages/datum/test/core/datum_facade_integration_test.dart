@@ -443,7 +443,7 @@ void main() {
         when(() => localAdapter1.read('e1', userId: 'u1')).thenAnswer((_) async => entity1);
 
         // Act
-        await Datum.instance.delete<TestEntity>(id: 'e1', userId: 'u1');
+        await Datum.instance.delete<TestEntity>(id: 'e1', userId: 'u1', behavior: DeleteBehavior.softDelete);
 
         // Assert
         // Delete uses soft-delete by default, which patches the entity with isDeleted: true
@@ -580,7 +580,7 @@ void main() {
         );
 
         // Act
-        final (wasDeleted, syncResult) = await Datum.instance.deleteAndSync<TestEntity>(id: 'e1', userId: 'u1');
+        final (wasDeleted, syncResult) = await Datum.instance.deleteAndSync<TestEntity>(id: 'e1', userId: 'u1', behavior: DeleteBehavior.softDelete);
 
         // Assert
         // 1. Delete was called (soft-delete uses patch)

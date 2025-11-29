@@ -117,7 +117,7 @@ void main() {
       expect(localItems.first.id, 'delete-test-entity');
 
       // Delete while offline - this should be queued
-      final deleted = await Datum.manager<TestEntity>().delete(id: entity.id, userId: userId);
+      final deleted = await Datum.manager<TestEntity>().delete(id: entity.id, userId: userId, behavior: DeleteBehavior.softDelete);
       expect(deleted, true);
 
       // Verify item is marked as deleted locally but still exists
@@ -289,7 +289,7 @@ void main() {
       await Datum.manager<TestEntity>().push(item: entity2, userId: userId);
 
       // Delete the second item while offline
-      await Datum.manager<TestEntity>().delete(id: entity2.id, userId: userId);
+      await Datum.manager<TestEntity>().delete(id: entity2.id, userId: userId, behavior: DeleteBehavior.softDelete);
 
       // Verify we have pending operations (create, update, create, delete = 4 operations)
       final pendingCount = await Datum.manager<TestEntity>().getPendingCount(userId);

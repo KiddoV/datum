@@ -172,7 +172,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// Determines how the system handles sync when the app is fully closed and reopened.
   final ColdStartConfig coldStartConfig;
 
-  /// Defines the behavior for delete operations. Defaults to [DeleteBehavior.softDelete].
+  /// Defines the behavior for delete operations. Defaults to [DeleteBehavior.hardDelete].
   final DeleteBehavior deleteBehavior;
 
   const DatumConfig({
@@ -208,7 +208,7 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     this.logSamplers = const {},
     this.syncDirectionResolver,
     this.coldStartConfig = const ColdStartConfig(),
-    this.deleteBehavior = DeleteBehavior.softDelete,
+    this.deleteBehavior = DeleteBehavior.hardDelete,
   });
 
   /// A default configuration with sensible production values.
