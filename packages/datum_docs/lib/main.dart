@@ -93,30 +93,8 @@ void main() {
             title: 'Datum',
             subtitle: "Data, Seamlessly Synced",
             logo: '/images/logo.webp',
-            items: [
-              // Link back to the main marketing site.
-              a(
-                href: '/',
-                target: Target.self,
-                styles: Styles.combine([
-                  Styles(
-                    display: Display.flex,
-                    alignItems: AlignItems.center,
-                  ),
-                  Styles(
-                    fontSize: 0.875.rem,
-                    fontWeight: FontWeight.w500,
-                    textDecoration: TextDecoration.none,
-                  ),
-                  Styles(
-                    padding: Spacing.symmetric(vertical: 0.5.rem, horizontal: 0.75.rem),
-                    radius: BorderRadius.all(Radius.circular(6.px)),
-                  ),
-                ]),
-                [
-                  HomeIcon(size: 16),
-                ],
-              ),
+            includeSearch: true,
+            navigationItems: [
               // Enables switching between light and dark mode.
               EnhancedThemeToggle(),
               // Shows github stats.

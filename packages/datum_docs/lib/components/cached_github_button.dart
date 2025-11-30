@@ -69,7 +69,7 @@ final class CachedGitHubButton extends StatefulComponent {
     css('@media (max-width: 640px)', [
       css('.github-button', [
         css('&').styles(
-          padding: Padding.symmetric(horizontal: 0.5.rem, vertical: 0.3.rem),
+          padding: Padding.symmetric(horizontal: 2.rem, vertical: 0.3.rem),
           gap: Gap(column: .3.rem),
           fontSize: 0.65.rem,
         ),
