@@ -156,6 +156,14 @@ class TypeSafeManagerRegistry {
 
   /// Retrieves a type-safe manager for the specified entity type.
   DatumManager<T> get<T extends DatumEntityInterface>() {
+    // Prevent using DatumEntityInterface directly as it is the base interface
+    if (T == DatumEntityInterface) {
+      throw ArgumentError(
+        'Cannot use DatumEntityInterface directly. You must use a concrete entity type that implements DatumEntityInterface. '
+        'For example: Datum.manager<MyEntity>() instead of Datum.manager<DatumEntityInterface>().',
+      );
+    }
+
     final manager = _managers[T];
     if (manager == null) {
       throw StateError('Entity type $T is not registered.');
@@ -166,6 +174,13 @@ class TypeSafeManagerRegistry {
 
   /// Retrieves a manager by Type, returning the base type.
   DatumManager<DatumEntityInterface> getByType(Type type) {
+    // Prevent using DatumEntityInterface directly as it is the base interface
+    if (type == DatumEntityInterface) {
+      throw ArgumentError(
+        'Cannot use DatumEntityInterface directly. You must use a concrete entity type that implements DatumEntityInterface.',
+      );
+    }
+
     final manager = _managers[type];
     if (manager == null) {
       throw StateError('Entity type $type is not registered.');
@@ -738,6 +753,14 @@ class Datum {
 
   /// Provides access to the specific manager for an entity type.
   static DatumManager<T> manager<T extends DatumEntityInterface>() {
+    // Prevent using DatumEntityInterface directly as it is the base interface
+    if (T == DatumEntityInterface) {
+      throw ArgumentError(
+        'Cannot use DatumEntityInterface directly. You must use a concrete entity type that implements DatumEntityInterface. '
+        'For example: Datum.manager<MyEntity>() instead of Datum.manager<DatumEntityInterface>().',
+      );
+    }
+
     final manager = instance._managers[T];
     if (manager == null) {
       throw StateError('Entity type $T is not registered.');
@@ -747,6 +770,13 @@ class Datum {
 
   /// Provides access to a manager for a given entity [Type].
   static DatumManager<DatumEntityInterface> managerByType(Type type) {
+    // Prevent using DatumEntityInterface directly as it is the base interface
+    if (type == DatumEntityInterface) {
+      throw ArgumentError(
+        'Cannot use DatumEntityInterface directly. You must use a concrete entity type that implements DatumEntityInterface.',
+      );
+    }
+
     final manager = instance._managers[type];
     if (manager != null) {
       return manager as DatumManager<DatumEntityInterface>;

@@ -560,6 +560,73 @@ void main() {
       );
     });
 
+    test('Datum.manager throws ArgumentError when using DatumEntityInterface directly', () async {
+      // Act & Assert: Should throw ArgumentError when trying to use DatumEntityInterface directly
+      expect(
+        () => Datum.manager<DatumEntityInterface>(),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Cannot use DatumEntityInterface directly'),
+          ).having(
+            (e) => e.message,
+            'message',
+            contains('You must use a concrete entity type that implements DatumEntityInterface'),
+          ),
+        ),
+      );
+    });
+
+    test('Datum.managerByType throws ArgumentError when using DatumEntityInterface directly', () async {
+      // Act & Assert: Should throw ArgumentError when trying to use DatumEntityInterface directly
+      expect(
+        () => Datum.managerByType(DatumEntityInterface),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Cannot use DatumEntityInterface directly'),
+          ).having(
+            (e) => e.message,
+            'message',
+            contains('You must use a concrete entity type that implements DatumEntityInterface'),
+          ),
+        ),
+      );
+    });
+
+    test('Datum.watchAll throws ArgumentError when using DatumEntityInterface directly', () async {
+      // Act & Assert: Should throw ArgumentError when trying to use DatumEntityInterface directly
+      expect(
+        () => Datum.instance.watchAll<DatumEntityInterface>(userId: 'user1'),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Cannot use DatumEntityInterface directly'),
+          ),
+        ),
+      );
+    });
+
+    test('Datum.query throws ArgumentError when using DatumEntityInterface directly', () async {
+      // Arrange
+      final query = DatumQueryBuilder<DatumEntityInterface>().build();
+
+      // Act & Assert: Should throw ArgumentError when trying to use DatumEntityInterface directly
+      expect(
+        () => Datum.instance.query<DatumEntityInterface>(query, source: DataSource.local, userId: 'user1'),
+        throwsA(
+          isA<ArgumentError>().having(
+            (e) => e.message,
+            'message',
+            contains('Cannot use DatumEntityInterface directly'),
+          ),
+        ),
+      );
+    });
+
     test('Datum.startAutoSync calls startAutoSync on all managers', () async {
       // Act: Call startAutoSync
       expect(() => Datum.instance.startAutoSync('user1'), returnsNormally);
