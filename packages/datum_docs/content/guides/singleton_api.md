@@ -446,7 +446,7 @@ print('Found ${tasks.length} tasks');
 
 Current API Status: <Badge variant="success">Stable</Badge>
 
-Available in: <Badge variant="info">v1.0.1+</Badge>
+Available in: <Badge variant="info">v1.0.2+</Badge>
 
 ## Component Showcase
 

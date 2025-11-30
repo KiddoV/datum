@@ -5,6 +5,26 @@ description: Version history and release notes for Datum.
 
 # Changelog
 
+## 1.0.2
+
+### 🐛 Bug Fixes
+
+- **core**: prevent direct usage of DatumEntityInterface
+  - add checks to prevent using DatumEntityInterface directly in manager and query methods
+  - throw ArgumentError with a descriptive message if DatumEntityInterface is used directly
+  - add test cases to ensure ArgumentError is thrown when using DatumEntityInterface directly
+
+- **datum-manager**: add error handling to post-fetch transforms
+  - Prevent entire read/watch operations from failing when individual entity transforms throw errors. Log errors and use original entities instead, improving robustness in DatumManager methods like readAll, watchAll, watchById, and watchQuery.
+
+### ✨ Features
+
+- **adapter**: add realtime watch methods for Supabase adapter
+  - Implement watchAll and watchById methods to enable real-time data watching via Supabase RealtimeChannel. These methods allow subscribing to changes in the table, fetching initial data, and emitting updates on changes, improving data synchronization for user-specific or all records. Includes proper error handling, logging, and channel management
+
+- **hive_adapter**: add reactive user change support to watchAll method
+  - Add optional userChangeStream parameter to HiveLocalAdapter constructor and enhance watchAll method to emit updated data when the active user changes. This enables reactive queries that filter and refresh data based on user ID switches, improving app responsiveness in multi-user environments. Includes error handling and proper stream management.
+
 ## 1.0.1
 
 ### ✨ Features

@@ -230,7 +230,7 @@ void main() {
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.025.em,
                             ),
-                            [text('v1.0.1')],
+                            [text('v1.0.2')],
                           ),
                           div(
                             styles: Styles(
