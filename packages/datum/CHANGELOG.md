@@ -12,6 +12,15 @@
 
 ## ✨ Features
 
+- **core**: add refreshStreams method to Datum singleton
+  - Add refreshStreams() method to Datum.instance that clears caches and forces all reactive streams across all managers to re-evaluate their data. This ensures streams show the most current data after external state changes like user switches. Includes proper logging and error handling.
+
+- **datum-manager**: add refreshStreams method to DatumManager
+  - Add refreshStreams() method to DatumManager that clears internal caches (query, relationship, entity existence) and forces reactive streams to emit fresh data. Useful for cache invalidation when external systems modify data that Datum isn't aware of. Includes proper logging and cache management.
+
+- **core**: add userChangeStream to Datum singleton
+  - Add userChangeStream property to Datum.instance that emits when the active user changes. This enables reactive queries and UI updates when users switch in multi-tenant applications. The stream emits the new user ID or null when logging out.
+
 - **adapter**: add realtime watch methods for Supabase adapter
   - Implement watchAll and watchById methods to enable real-time data watching via Supabase RealtimeChannel. These methods allow subscribing to changes in the table, fetching initial data, and emitting updates on changes, improving data synchronization for user-specific or all records. Includes proper error handling, logging, and channel management
 

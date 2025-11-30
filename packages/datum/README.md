@@ -4,7 +4,7 @@
 
 # 🧠 **Datum** — Offline-First Data Synchronization Framework for Dart & Flutter
 
-<a href="https://pub.dev/packages/datum"><img src="https://img.shields.io/pub/v/datum.svg" alt="Pub"></a> <a href="https://github.com/shreemanarjun/datum/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a> <img src="https://img.shields.io/badge/coverage-92%25-brightgreen" alt="Code Coverage"> <img src="https://img.shields.io/badge/tests-400%2B-brightgreen" alt="Tests">
+<a href="https://pub.dev/packages/datum"><img src="https://img.shields.io/pub/v/datum.svg" alt="Pub"></a> <a href="https://github.com/shreemanarjun/datum/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a> <img src="https://img.shields.io/badge/coverage-92%25-brightgreen" alt="Code Coverage"> <img src="https://img.shields.io/badge/tests-1000%2B-brightgreen" alt="Tests"> <img src="https://img.shields.io/badge/version-1.0.2-blue" alt="Version">
 
 > **Smart ⚡ Reactive 🔄 Universal 🌍**
 >
@@ -29,6 +29,8 @@ Datum is built around a few core concepts:
     - **`RemoteAdapter`**: Communicates with your backend (e.g., REST API, Supabase, Firestore).
 - **`DatumManager`**: The main entry point for interacting with your data. It provides methods for CRUD operations, queries, and synchronization.
 - **`DatumRegistration`**: A class that holds the local and remote adapters for a specific `DatumEntity`.
+- **`refreshStreams()`**: Force all reactive streams to re-evaluate their data, useful for cache invalidation when external systems modify data.
+- **`userChangeStream`**: Reactive stream that emits when the active user changes, enabling automatic UI updates in multi-user applications.
 - **Offline-First:** All CRUD operations are performed on the local database first, ensuring a snappy user experience even without a network connection. Datum then automatically syncs the data with the remote backend when the connection is available.
 
 ---
@@ -41,7 +43,7 @@ Add this to your package's `pubspec.yaml` file:
 
 ```yaml
 dependencies:
-  datum: ^1.0.0
+  datum: ^1.0.2
 ```
 
 Then run `flutter pub get`.
