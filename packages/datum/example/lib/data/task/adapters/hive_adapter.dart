@@ -349,9 +349,8 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
             final filteredMaps = allValues.where(
               (map) => userId == null || map['userId'] == userId,
             );
-            final entities = filteredMaps
-                .map((map) => fromMap(_normalizeMap(map)))
-                .toList();
+            final entities =
+                filteredMaps.map((map) => fromMap(_normalizeMap(map))).toList();
             controller.add(entities);
           } catch (e) {
             controller.addError(e);
@@ -396,9 +395,8 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
           final filteredMaps = allValues.where(
             (map) => userId == null || map['userId'] == userId,
           );
-          final entities = filteredMaps
-              .map((map) => fromMap(_normalizeMap(map)))
-              .toList();
+          final entities =
+              filteredMaps.map((map) => fromMap(_normalizeMap(map))).toList();
           controller.add(entities);
         } catch (e) {
           controller.addError(e);
@@ -509,9 +507,9 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
               // When user changes, re-evaluate query for the new user
               try {
                 this.query(query, userId: newUserId).then(
-                  (entities) => controller.add(entities),
-                  onError: (error) => controller.addError(error),
-                );
+                      (entities) => controller.add(entities),
+                      onError: (error) => controller.addError(error),
+                    );
               } catch (e) {
                 controller.addError(e);
               }
@@ -534,9 +532,9 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
         try {
           // Re-evaluate the query on any change
           this.query(query, userId: userId).then(
-            (entities) => controller.add(entities),
-            onError: (error) => controller.addError(error),
-          );
+                (entities) => controller.add(entities),
+                onError: (error) => controller.addError(error),
+              );
         } catch (e) {
           controller.addError(e);
         }
@@ -548,6 +546,4 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
 
     return controller.stream;
   }
-
-
 }

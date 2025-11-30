@@ -292,7 +292,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Stream<List<T>>? watchAll({String? userId, DatumSyncScope? scope}) {
-    talker.info("👀 [Adapter] watchAll called for table: $tableName, userId: $userId");
+    talker.info(
+        "👀 [Adapter] watchAll called for table: $tableName, userId: $userId");
 
     if (!_isAuthenticated) {
       talker.warning("Cannot watch table '$tableName': user not authenticated");
@@ -304,14 +305,18 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
     Future<void> fetchAndEmit() async {
       try {
-        talker.debug("🔄 [Adapter] Fetching current data for watchAll on table: $tableName");
+        talker.debug(
+            "🔄 [Adapter] Fetching current data for watchAll on table: $tableName");
         final items = await readAll(userId: userId, scope: scope);
         if (!controller.isClosed) {
           controller.add(items);
-          talker.debug("✅ [Adapter] Emitted ${items.length} items for watchAll on table: $tableName");
+          talker.debug(
+              "✅ [Adapter] Emitted ${items.length} items for watchAll on table: $tableName");
         }
       } catch (e, stackTrace) {
-        talker.error("❌ [Adapter] Failed to fetch data for watchAll on table '$tableName': $e", stackTrace);
+        talker.error(
+            "❌ [Adapter] Failed to fetch data for watchAll on table '$tableName': $e",
+            stackTrace);
         if (!controller.isClosed) {
           controller.addError(e);
         }
@@ -321,16 +326,16 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     void setupRealtimeSubscription() {
       final channelName = 'watchAll:$tableName:${userId ?? 'all'}';
 
-      talker.debug("📡 [Adapter] Setting up realtime subscription for watchAll on table: $tableName");
+      talker.debug(
+          "📡 [Adapter] Setting up realtime subscription for watchAll on table: $tableName");
 
-      channel = _client
-          .channel(channelName)
-          .onPostgresChanges(
+      channel = _client.channel(channelName).onPostgresChanges(
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: tableName,
             callback: (payload) {
-              talker.info('📡 [Adapter] Change detected for watchAll on table: $tableName - ${payload.eventType}');
+              talker.info(
+                  '📡 [Adapter] Change detected for watchAll on table: $tableName - ${payload.eventType}');
 
               // For watchAll, we need to re-fetch all data when any change occurs
               // In a production app, you might want to be more selective about when to re-fetch
@@ -340,14 +345,17 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
       channel?.subscribe(
         (status, error) {
-          talker.debug("📡 [Adapter] watchAll subscription status for table '$tableName': $status");
+          talker.debug(
+              "📡 [Adapter] watchAll subscription status for table '$tableName': $status");
           if (error != null) {
-            talker.error("❌ [Adapter] watchAll subscription error for table '$tableName': $error");
+            talker.error(
+                "❌ [Adapter] watchAll subscription error for table '$tableName': $error");
             if (!controller.isClosed) {
               controller.addError(error);
             }
           } else if (status == RealtimeSubscribeStatus.subscribed) {
-            talker.info("✅ [Adapter] Successfully subscribed to watchAll for table: $tableName");
+            talker.info(
+                "✅ [Adapter] Successfully subscribed to watchAll for table: $tableName");
           }
         },
       );
@@ -359,14 +367,16 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
     controller = StreamController<List<T>>.broadcast(
       onListen: () {
-        talker.debug("👂 [Adapter] watchAll stream listened for table: $tableName");
+        talker.debug(
+            "👂 [Adapter] watchAll stream listened for table: $tableName");
         // Fetch initial data
         fetchAndEmit();
         // Setup realtime subscription
         setupRealtimeSubscription();
       },
       onCancel: () async {
-        talker.debug("🚫 [Adapter] watchAll stream cancelled for table: $tableName");
+        talker.debug(
+            "🚫 [Adapter] watchAll stream cancelled for table: $tableName");
         if (channel != null) {
           await _client.removeChannel(channel!);
           _relatedChannels.remove('watchAll:$tableName:${userId ?? 'all'}');
@@ -379,7 +389,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Stream<T?>? watchById(String id, {String? userId}) {
-    talker.info("👀 [Adapter] watchById called for table: $tableName, id: $id, userId: $userId");
+    talker.info(
+        "👀 [Adapter] watchById called for table: $tableName, id: $id, userId: $userId");
 
     if (!_isAuthenticated) {
       talker.warning("Cannot watch table '$tableName': user not authenticated");
@@ -391,14 +402,18 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
     Future<void> fetchAndEmit() async {
       try {
-        talker.debug("🔄 [Adapter] Fetching current data for watchById on table: $tableName, id: $id");
+        talker.debug(
+            "🔄 [Adapter] Fetching current data for watchById on table: $tableName, id: $id");
         final item = await read(id, userId: userId);
         if (!controller.isClosed) {
           controller.add(item);
-          talker.debug("✅ [Adapter] Emitted item for watchById on table: $tableName, id: $id (found: ${item != null})");
+          talker.debug(
+              "✅ [Adapter] Emitted item for watchById on table: $tableName, id: $id (found: ${item != null})");
         }
       } catch (e, stackTrace) {
-        talker.error("❌ [Adapter] Failed to fetch data for watchById on table '$tableName', id '$id': $e", stackTrace);
+        talker.error(
+            "❌ [Adapter] Failed to fetch data for watchById on table '$tableName', id '$id': $e",
+            stackTrace);
         if (!controller.isClosed) {
           controller.addError(e);
         }
@@ -408,11 +423,10 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     void setupRealtimeSubscription() {
       final channelName = 'watchById:$tableName:$id';
 
-      talker.debug("📡 [Adapter] Setting up realtime subscription for watchById on table: $tableName, id: $id");
+      talker.debug(
+          "📡 [Adapter] Setting up realtime subscription for watchById on table: $tableName, id: $id");
 
-      channel = _client
-          .channel(channelName)
-          .onPostgresChanges(
+      channel = _client.channel(channelName).onPostgresChanges(
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: tableName,
@@ -422,13 +436,15 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
               value: id,
             ),
             callback: (payload) {
-              talker.info('📡 [Adapter] Change detected for watchById on table: $tableName, id: $id - ${payload.eventType}');
+              talker.info(
+                  '📡 [Adapter] Change detected for watchById on table: $tableName, id: $id - ${payload.eventType}');
 
               // For watchById, we emit the updated item or null for deletes
               if (payload.eventType == PostgresChangeEvent.delete) {
                 if (!controller.isClosed) {
                   controller.add(null);
-                  talker.debug("✅ [Adapter] Emitted null for deleted item in watchById on table: $tableName, id: $id");
+                  talker.debug(
+                      "✅ [Adapter] Emitted null for deleted item in watchById on table: $tableName, id: $id");
                 }
               } else {
                 // For insert/update, fetch and emit the current item
@@ -439,14 +455,17 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
       channel?.subscribe(
         (status, error) {
-          talker.debug("📡 [Adapter] watchById subscription status for table '$tableName', id '$id': $status");
+          talker.debug(
+              "📡 [Adapter] watchById subscription status for table '$tableName', id '$id': $status");
           if (error != null) {
-            talker.error("❌ [Adapter] watchById subscription error for table '$tableName', id '$id': $error");
+            talker.error(
+                "❌ [Adapter] watchById subscription error for table '$tableName', id '$id': $error");
             if (!controller.isClosed) {
               controller.addError(error);
             }
           } else if (status == RealtimeSubscribeStatus.subscribed) {
-            talker.info("✅ [Adapter] Successfully subscribed to watchById for table: $tableName, id: $id");
+            talker.info(
+                "✅ [Adapter] Successfully subscribed to watchById for table: $tableName, id: $id");
           }
         },
       );
@@ -458,14 +477,16 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
     controller = StreamController<T?>.broadcast(
       onListen: () {
-        talker.debug("👂 [Adapter] watchById stream listened for table: $tableName, id: $id");
+        talker.debug(
+            "👂 [Adapter] watchById stream listened for table: $tableName, id: $id");
         // Fetch initial data
         fetchAndEmit();
         // Setup realtime subscription
         setupRealtimeSubscription();
       },
       onCancel: () async {
-        talker.debug("🚫 [Adapter] watchById stream cancelled for table: $tableName, id: $id");
+        talker.debug(
+            "🚫 [Adapter] watchById stream cancelled for table: $tableName, id: $id");
         if (channel != null) {
           await _client.removeChannel(channel!);
           _relatedChannels.remove('watchById:$tableName:$id');
@@ -478,7 +499,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Stream<List<T>>? watchQuery(DatumQuery query, {String? userId}) {
-    talker.info("👀 [Adapter] watchQuery called for table: $tableName, userId: $userId");
+    talker.info(
+        "👀 [Adapter] watchQuery called for table: $tableName, userId: $userId");
 
     if (!_isAuthenticated) {
       talker.warning("Cannot watch table '$tableName': user not authenticated");
@@ -490,14 +512,18 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
     Future<void> fetchAndEmit() async {
       try {
-        talker.debug("🔄 [Adapter] Fetching current data for watchQuery on table: $tableName");
+        talker.debug(
+            "🔄 [Adapter] Fetching current data for watchQuery on table: $tableName");
         final items = await this.query(query, userId: userId);
         if (!controller.isClosed) {
           controller.add(items);
-          talker.debug("✅ [Adapter] Emitted ${items.length} items for watchQuery on table: $tableName");
+          talker.debug(
+              "✅ [Adapter] Emitted ${items.length} items for watchQuery on table: $tableName");
         }
       } catch (e, stackTrace) {
-        talker.error("❌ [Adapter] Failed to fetch data for watchQuery on table '$tableName': $e", stackTrace);
+        talker.error(
+            "❌ [Adapter] Failed to fetch data for watchQuery on table '$tableName': $e",
+            stackTrace);
         if (!controller.isClosed) {
           controller.addError(e);
         }
@@ -507,16 +533,16 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     void setupRealtimeSubscription() {
       final channelName = 'watchQuery:$tableName:${userId ?? 'all'}';
 
-      talker.debug("📡 [Adapter] Setting up realtime subscription for watchQuery on table: $tableName");
+      talker.debug(
+          "📡 [Adapter] Setting up realtime subscription for watchQuery on table: $tableName");
 
-      channel = _client
-          .channel(channelName)
-          .onPostgresChanges(
+      channel = _client.channel(channelName).onPostgresChanges(
             event: PostgresChangeEvent.all,
             schema: 'public',
             table: tableName,
             callback: (payload) {
-              talker.info('📡 [Adapter] Change detected for watchQuery on table: $tableName - ${payload.eventType}');
+              talker.info(
+                  '📡 [Adapter] Change detected for watchQuery on table: $tableName - ${payload.eventType}');
 
               // For watchQuery, we need to re-evaluate the query when any change occurs
               // In a production app, you might want to be more selective about when to re-fetch
@@ -527,14 +553,17 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
       channel?.subscribe(
         (status, error) {
-          talker.debug("📡 [Adapter] watchQuery subscription status for table '$tableName': $status");
+          talker.debug(
+              "📡 [Adapter] watchQuery subscription status for table '$tableName': $status");
           if (error != null) {
-            talker.error("❌ [Adapter] watchQuery subscription error for table '$tableName': $error");
+            talker.error(
+                "❌ [Adapter] watchQuery subscription error for table '$tableName': $error");
             if (!controller.isClosed) {
               controller.addError(error);
             }
           } else if (status == RealtimeSubscribeStatus.subscribed) {
-            talker.info("✅ [Adapter] Successfully subscribed to watchQuery for table: $tableName");
+            talker.info(
+                "✅ [Adapter] Successfully subscribed to watchQuery for table: $tableName");
           }
         },
       );
@@ -546,14 +575,16 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
     controller = StreamController<List<T>>.broadcast(
       onListen: () {
-        talker.debug("👂 [Adapter] watchQuery stream listened for table: $tableName");
+        talker.debug(
+            "👂 [Adapter] watchQuery stream listened for table: $tableName");
         // Fetch initial data
         fetchAndEmit();
         // Setup realtime subscription
         setupRealtimeSubscription();
       },
       onCancel: () async {
-        talker.debug("🚫 [Adapter] watchQuery stream cancelled for table: $tableName");
+        talker.debug(
+            "🚫 [Adapter] watchQuery stream cancelled for table: $tableName");
         if (channel != null) {
           await _client.removeChannel(channel!);
           _relatedChannels.remove('watchQuery:$tableName:${userId ?? 'all'}');

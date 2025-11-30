@@ -565,15 +565,17 @@ void main() {
       expect(
         () => Datum.manager<DatumEntityInterface>(),
         throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('Cannot use DatumEntityInterface directly'),
-          ).having(
-            (e) => e.message,
-            'message',
-            contains('You must use a concrete entity type that implements DatumEntityInterface'),
-          ),
+          isA<ArgumentError>()
+              .having(
+                (e) => e.message,
+                'message',
+                contains('Cannot use DatumEntityInterface directly'),
+              )
+              .having(
+                (e) => e.message,
+                'message',
+                contains('You must use a concrete entity type that implements DatumEntityInterface'),
+              ),
         ),
       );
     });
@@ -583,15 +585,17 @@ void main() {
       expect(
         () => Datum.managerByType(DatumEntityInterface),
         throwsA(
-          isA<ArgumentError>().having(
-            (e) => e.message,
-            'message',
-            contains('Cannot use DatumEntityInterface directly'),
-          ).having(
-            (e) => e.message,
-            'message',
-            contains('You must use a concrete entity type that implements DatumEntityInterface'),
-          ),
+          isA<ArgumentError>()
+              .having(
+                (e) => e.message,
+                'message',
+                contains('Cannot use DatumEntityInterface directly'),
+              )
+              .having(
+                (e) => e.message,
+                'message',
+                contains('You must use a concrete entity type that implements DatumEntityInterface'),
+              ),
         ),
       );
     });

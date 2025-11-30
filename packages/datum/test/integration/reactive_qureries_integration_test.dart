@@ -424,7 +424,8 @@ void main() {
 
       final subscription = stream?.listen((items) {
         receivedEvents.add(items);
-        if (receivedEvents.length == 6) { // Initial + 5 operations
+        if (receivedEvents.length == 6) {
+          // Initial + 5 operations
           completer.complete(receivedEvents);
         }
       });
@@ -449,7 +450,8 @@ void main() {
 
       final subscription = stream?.listen((items) {
         receivedEvents.add(items);
-        if (receivedEvents.length == 6) { // Initial + 5 operations
+        if (receivedEvents.length == 6) {
+          // Initial + 5 operations
           completer.complete(receivedEvents);
         }
       });
@@ -479,9 +481,7 @@ void main() {
       ];
 
       // Start with a query for high priority items (value > 5)
-      final highPriorityQuery = (DatumQueryBuilder<TestEntity>()
-            ..where('value', isGreaterThan: 5))
-          .build();
+      final highPriorityQuery = (DatumQueryBuilder<TestEntity>()..where('value', isGreaterThan: 5)).build();
 
       final stream = manager.watchQuery(highPriorityQuery, userId: 'user1');
       final receivedEvents = <List<TestEntity>>[];
@@ -501,7 +501,5 @@ void main() {
 
       await subscription?.cancel();
     });
-
-
   });
 }

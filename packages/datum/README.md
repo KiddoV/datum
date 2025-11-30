@@ -15,9 +15,9 @@
 
 # Documentation
 
-[Docs](https://datum.shreeman.dev/)
+[📚 Full Documentation](https://datum.shreeman.dev/)
 
- Currently documentation is in progress.
+Complete guides, API reference, and examples for building offline-first applications with Datum.
 
 ## Core Concepts
 
