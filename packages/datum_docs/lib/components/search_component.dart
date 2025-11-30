@@ -122,15 +122,59 @@ class AlgoliaDocSearch extends StatelessComponent {
 
     return '''
 (function() {
+  var attempts = 0;
+  var maxAttempts = 100; // 10 seconds max wait (100 * 100ms)
+  var container;
+
+  // Wait for DOM to be ready
+  function initWhenReady() {
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', startInitialization);
+    } else {
+      startInitialization();
+    }
+  }
+
+  function startInitialization() {
+    container = document.getElementById('$containerId');
+
+    // Show loading state initially
+    if (container) {
+      container.innerHTML = '<div style="padding: 8px 12px; color: #999; font-size: 14px;">Loading search...</div>';
+    }
+
+    initDocSearch();
+  }
+
   // Wait for DocSearch to load
   function initDocSearch() {
     if (typeof docsearch !== 'undefined') {
-      docsearch(${_jsonEncode(config)});
-    } else {
+      try {
+        // Clear loading state
+        if (container) {
+          container.innerHTML = '';
+        }
+        docsearch(${_jsonEncode(config)});
+      } catch (error) {
+        console.warn('Failed to initialize DocSearch:', error);
+        showSearchFallback();
+      }
+    } else if (attempts < maxAttempts) {
+      attempts++;
       setTimeout(initDocSearch, 100);
+    } else {
+      console.warn('DocSearch library failed to load within timeout');
+      showSearchFallback();
     }
   }
-  initDocSearch();
+
+  function showSearchFallback() {
+    if (container) {
+      container.innerHTML = '<div style="padding: 8px 12px; color: #666; font-size: 14px; border: 1px solid #ddd; border-radius: 4px; background: #f9f9f9;">Search temporarily unavailable</div>';
+    }
+  }
+
+  initWhenReady();
 })();
     ''';
   }
