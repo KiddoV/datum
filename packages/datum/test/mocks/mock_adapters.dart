@@ -252,7 +252,12 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
     final stream = externalChangeStream;
     if (stream == null) return null;
 
-    final updateStream = stream.where((event) => userId == null || event.userId == userId).asyncMap((_) => readAll(userId: userId));
+    // Handle refresh events specially - they should trigger for all user streams
+    final updateStream = stream.where((event) =>
+      userId == null ||
+      event.userId == userId ||
+      event.userId == '__REFRESH_STREAMS__' // Special refresh marker
+    ).asyncMap((_) => readAll(userId: userId));
 
     if (includeInitialData ?? true) {
       final initialDataStream = Stream.fromFuture(readAll(userId: userId));
@@ -647,6 +652,8 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
   ) async {
     _lastSyncResults[userId] = result;
   }
+
+
 }
 
 class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter<T> {

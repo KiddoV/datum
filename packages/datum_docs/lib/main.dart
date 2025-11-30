@@ -144,9 +144,9 @@ void main() {
                 ],
               ),
               SidebarGroup(
-                title: 'Coming Soon',
+                title: 'Troubleshooting',
                 links: [
-                  SidebarLink(text: "🔧 Troubleshooting Guide", href: '/troubleshooting'),
+                  SidebarLink(text: "🔧 Common Errors", href: '/troubleshooting/common_errors'),
                   SidebarLink(text: "⚡ Performance Issues", href: '/troubleshooting/performance'),
                   SidebarLink(text: "🔄 Migration Problems", href: '/troubleshooting/migration'),
                   SidebarLink(text: "🔌 Adapter Issues", href: '/troubleshooting/adapters'),

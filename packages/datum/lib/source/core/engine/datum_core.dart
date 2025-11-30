@@ -240,6 +240,10 @@ class Datum {
   final StreamController<DatumSyncEvent<DatumEntityInterface>> _eventController = StreamController.broadcast();
   Stream<DatumSyncEvent> get events => _eventController.stream;
 
+  // Shared user change stream for reactive queries
+  final StreamController<String?> _userChangeController = StreamController.broadcast();
+  Stream<String?> get userChangeStream => _userChangeController.stream;
+
   final BehaviorSubject<Map<String, DatumSyncStatusSnapshot>> _statusSubject = BehaviorSubject.seeded({});
   Stream<DatumSyncStatusSnapshot?> statusForUser(String userId) => _statusSubject.stream.map((map) => map[userId]);
 
@@ -689,6 +693,10 @@ class Datum {
           next = current.copyWith(failedSyncs: current.failedSyncs + 1);
         case UserSwitchedEvent():
           next = current.copyWith(userSwitchCount: current.userSwitchCount + 1);
+          // Also emit to the shared user change stream for reactive queries
+          if (!_userChangeController.isClosed) {
+            _userChangeController.add(event.newUserId);
+          }
         case ConflictResolvedEvent():
           next = current.copyWith(
             conflictsResolvedAutomatically: current.conflictsResolvedAutomatically + 1,
@@ -1360,6 +1368,7 @@ class Datum {
 
       await _connectivitySubscription?.cancel();
       await _eventController.close();
+      await _userChangeController.close();
       await _metricsSubject.close();
       await _statusSubject.close();
     }
@@ -1422,6 +1431,24 @@ class Datum {
     await Future.wait(
       _managers.allManagers.map((manager) => manager.resubscribeToRemoteChanges()),
     );
+  }
+
+  /// Refreshes all reactive streams across all registered managers.
+  ///
+  /// This method clears caches and forces all reactive streams to re-evaluate
+  /// their data. This is useful when external state changes (like user switches)
+  /// require all streams to refresh their data.
+  ///
+  /// This method:
+  /// - Clears internal caches in all managers
+  /// - Emits special refresh events to trigger stream re-evaluation
+  /// - Ensures all reactive streams show the most current data
+  Future<void> refreshStreams() async {
+    logger.debug('Refreshing all streams across all managers...');
+    await Future.wait(
+      _managers.allManagers.map((manager) => manager.refreshStreams()),
+    );
+    logger.debug('All streams refreshed successfully');
   }
 
   @visibleForTesting

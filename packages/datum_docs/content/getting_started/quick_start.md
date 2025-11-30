@@ -271,4 +271,14 @@ class _TaskListState extends State<TaskList> {
 - **[Sync Patterns](guides/sync_patterns)**: Master synchronization strategies
 - **[Advanced Features](guides/advanced_sync)**: Production-ready synchronization features
 
+## Common Issues
+
+If you encounter errors while following this guide:
+
+- **"Entity type DatumEntityInterface is not registered"**: Make sure you're using concrete entity types (like `Task`) instead of the base `DatumEntityInterface`
+- **Adapter initialization errors**: Ensure your local and remote adapters are properly implemented and registered
+- **Generic type errors**: Check that all your generic type parameters match correctly
+
+For detailed solutions to these and other common issues, see the **[Common Errors Guide](../troubleshooting/common_errors)**.
+
 This quick start gets you up and running with basic Datum functionality. As you build more complex features, explore the other guides for advanced patterns and best practices.

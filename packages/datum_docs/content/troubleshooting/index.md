@@ -12,6 +12,14 @@ description: Debug and resolve common Datum sync issues.
 
 Common issues and solutions for Datum synchronization problems.
 
+## Common Errors
+
+### Generic Type & Entity Registration Issues
+**Quick fixes for the most common errors:**
+- ["Entity type DatumEntityInterface is not registered"](./common_errors#entity-type-datumentityinterface-is-not-registered)
+- ["Cannot use DatumEntityInterface directly"](./common_errors#cannot-use-datumentityinterface-directly)
+- [Choosing the right database adapter](./common_errors#choosing-local-database-adapters)
+
 ## Sync Not Working
 
 ### Issue: Initial sync fails

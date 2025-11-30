@@ -688,15 +688,15 @@ void main() {
       test('handles rapid cache invalidation', () async {
         final user = TestUser(id: 'user-1', name: 'John', email: 'john@example.com', modifiedAt: DateTime.now(), createdAt: DateTime.now());
 
-        // Rapid create/update/delete cycle using localAdapter directly
-        await userAdapter.push(user);
+        // Rapid create/update/delete cycle using manager methods to ensure cache invalidation
+        await userManager.push(item: user, userId: 'user-1');
         await userManager.query(const DatumQuery(), source: DataSource.local, userId: 'user-1');
 
         final updatedUser = user.copyWith(name: 'Jane');
-        await userAdapter.push(updatedUser);
+        await userManager.push(item: updatedUser, userId: 'user-1');
 
         await userManager.query(const DatumQuery(), source: DataSource.local, userId: 'user-1');
-        await userAdapter.delete('user-1', userId: 'user-1');
+        await userManager.delete(id: 'user-1', userId: 'user-1');
 
         // Allow time for cache invalidation to process
         await Future<void>.delayed(const Duration(milliseconds: 10));

@@ -1,4 +1,5 @@
 // ignore_for_file: public_member_api_docs, sort_constructors_first
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:datum/datum.dart';
@@ -11,6 +12,10 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
 
   /// A factory function to create an instance of `T` from a `Map<String, dynamic>`.
   final T Function(Map<String, dynamic> map) fromMap;
+
+  /// Optional stream that emits when the active user changes.
+  /// Reactive queries will refresh their data when this stream emits a new user ID.
+  final Stream<String?>? userChangeStream;
 
   /// The Hive box for storing entities (`Map<String, dynamic>`).
   @protected
@@ -29,6 +34,7 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
     required this.entityBoxName,
     required this.fromMap,
     this.schemaVersion = 0,
+    this.userChangeStream,
   });
 
   @override
@@ -329,23 +335,219 @@ class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
   Stream<List<T>>? watchAll({String? userId, bool includeInitialData = true}) {
     final Stream<BoxEvent> eventMaps = entityBox.watch();
 
-    return eventMaps.asyncExpand(
-      (event) async* {
-        // 1. Await the values from the box. Use a local variable for clarity.
-        final allValues = entityBox.values;
+    // Create a broadcast stream controller
+    late final StreamController<List<T>> controller;
+    late final StreamSubscription<BoxEvent> subscription;
+    late final StreamSubscription<String?>? userChangeSubscription;
 
-        // 2. Filter the maps. The '?? []' handles the case where 'values' is null.
-        final filteredMaps = (allValues).where(
-          (map) => userId == null || map['userId'] == userId,
-        );
+    controller = StreamController<List<T>>.broadcast(
+      onListen: () async {
+        // Emit initial data if requested
+        if (includeInitialData) {
+          try {
+            final allValues = entityBox.values;
+            final filteredMaps = allValues.where(
+              (map) => userId == null || map['userId'] == userId,
+            );
+            final entities = filteredMaps
+                .map((map) => fromMap(_normalizeMap(map)))
+                .toList();
+            controller.add(entities);
+          } catch (e) {
+            controller.addError(e);
+          }
+        }
 
-        // 3. Transform the filtered maps into your entity objects.
-        final entities =
-            filteredMaps.map((map) => fromMap(_normalizeMap(map))).toList();
-
-        // 4. Yield the complete list as a single event on the stream.
-        yield entities;
+        // Listen to user changes if stream is provided
+        if (userChangeStream != null) {
+          userChangeSubscription = userChangeStream!.listen(
+            (newUserId) {
+              // When user changes, emit data for the new user
+              try {
+                final allValues = entityBox.values;
+                final filteredMaps = allValues.where(
+                  (map) => newUserId == null || map['userId'] == newUserId,
+                );
+                final entities = filteredMaps
+                    .map((map) => fromMap(_normalizeMap(map)))
+                    .toList();
+                controller.add(entities);
+              } catch (e) {
+                controller.addError(e);
+              }
+            },
+            onError: (error) {
+              controller.addError(error);
+            },
+          );
+        }
+      },
+      onCancel: () {
+        subscription.cancel();
+        userChangeSubscription?.cancel();
       },
     );
+
+    // Listen to box changes and emit updated data
+    subscription = eventMaps.listen(
+      (event) {
+        try {
+          final allValues = entityBox.values;
+          final filteredMaps = allValues.where(
+            (map) => userId == null || map['userId'] == userId,
+          );
+          final entities = filteredMaps
+              .map((map) => fromMap(_normalizeMap(map)))
+              .toList();
+          controller.add(entities);
+        } catch (e) {
+          controller.addError(e);
+        }
+      },
+      onError: (error) {
+        controller.addError(error);
+      },
+    );
+
+    return controller.stream;
   }
+
+  @override
+  Stream<T?>? watchById(String id, {String? userId}) {
+    // Create a broadcast stream controller
+    late final StreamController<T?> controller;
+    late final StreamSubscription<BoxEvent> subscription;
+    late final StreamSubscription<String?>? userChangeSubscription;
+
+    controller = StreamController<T?>.broadcast(
+      onListen: () async {
+        // Emit initial data
+        try {
+          final entity = await read(id, userId: userId);
+          controller.add(entity);
+        } catch (e) {
+          controller.addError(e);
+        }
+
+        // Listen to user changes if stream is provided
+        if (userChangeStream != null) {
+          userChangeSubscription = userChangeStream!.listen(
+            (newUserId) async {
+              // When user changes, emit data for the new user
+              try {
+                final entity = await read(id, userId: newUserId);
+                controller.add(entity);
+              } catch (e) {
+                controller.addError(e);
+              }
+            },
+            onError: (error) {
+              controller.addError(error);
+            },
+          );
+        }
+      },
+      onCancel: () {
+        subscription.cancel();
+        userChangeSubscription?.cancel();
+      },
+    );
+
+    // Listen to box changes and emit updated data for this specific ID
+    subscription = entityBox.watch(key: id).listen(
+      (event) {
+        try {
+          if (event.deleted) {
+            controller.add(null);
+          } else {
+            final map = event.value;
+            if (map != null) {
+              final entity = fromMap(_normalizeMap(map));
+              // Check if userId matches (if specified)
+              if (userId == null || entity.userId == userId) {
+                controller.add(entity);
+              }
+            }
+          }
+        } catch (e) {
+          controller.addError(e);
+        }
+      },
+      onError: (error) {
+        controller.addError(error);
+      },
+    );
+
+    return controller.stream;
+  }
+
+  @override
+  Stream<List<T>>? watchQuery(DatumQuery query, {String? userId}) {
+    // For simplicity, we'll re-evaluate the query on any change
+    // A more optimized implementation could track specific keys that match the query
+    final Stream<BoxEvent> eventMaps = entityBox.watch();
+
+    // Create a broadcast stream controller
+    late final StreamController<List<T>> controller;
+    late final StreamSubscription<BoxEvent> subscription;
+    late final StreamSubscription<String?>? userChangeSubscription;
+
+    controller = StreamController<List<T>>.broadcast(
+      onListen: () async {
+        // Emit initial data
+        try {
+          final entities = await this.query(query, userId: userId);
+          controller.add(entities);
+        } catch (e) {
+          controller.addError(e);
+        }
+
+        // Listen to user changes if stream is provided
+        if (userChangeStream != null) {
+          userChangeSubscription = userChangeStream!.listen(
+            (newUserId) {
+              // When user changes, re-evaluate query for the new user
+              try {
+                this.query(query, userId: newUserId).then(
+                  (entities) => controller.add(entities),
+                  onError: (error) => controller.addError(error),
+                );
+              } catch (e) {
+                controller.addError(e);
+              }
+            },
+            onError: (error) {
+              controller.addError(error);
+            },
+          );
+        }
+      },
+      onCancel: () {
+        subscription.cancel();
+        userChangeSubscription?.cancel();
+      },
+    );
+
+    // Listen to box changes and re-evaluate query
+    subscription = eventMaps.listen(
+      (event) {
+        try {
+          // Re-evaluate the query on any change
+          this.query(query, userId: userId).then(
+            (entities) => controller.add(entities),
+            onError: (error) => controller.addError(error),
+          );
+        } catch (e) {
+          controller.addError(e);
+        }
+      },
+      onError: (error) {
+        controller.addError(error);
+      },
+    );
+
+    return controller.stream;
+  }
+
+
 }

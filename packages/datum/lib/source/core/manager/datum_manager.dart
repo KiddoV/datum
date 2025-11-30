@@ -145,6 +145,10 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   Stream<UserSwitchedEvent<T>> get onUserSwitched => eventStream.whereType<UserSwitchedEvent<T>>();
   Stream<DatumSyncErrorEvent<T>> get onSyncError => eventStream.whereType<DatumSyncErrorEvent<T>>();
 
+  /// A stream that emits when the active user changes for this manager.
+  /// Reactive queries can listen to this to refresh their data when users switch.
+  Stream<String?> get onUserChanged => onUserSwitched.map((event) => event.newUserId);
+
   /// A stream of the manager's current health status.
   Stream<DatumHealth> get health => _statusSubject.stream.map((s) => s.health);
 
@@ -191,6 +195,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     DatumSyncRequestStrategy? syncRequestStrategy,
     this.deviceId,
     this.persistence,
+    Stream<String?>? userChangeStream,
   })  : config = datumConfig ?? const DatumConfig(),
         _connectivity = connectivity,
         // The logger's enabled status should always respect the config.
@@ -214,6 +219,16 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     _localObservers.addAll((localObservers ?? []).map(_WeakObserver.new));
     _globalObservers.addAll((globalObservers ?? []).map(_WeakObserver.new));
     _middlewares.addAll(middlewares ?? []);
+
+    // If the local adapter supports user change streams, pass it along
+    if (userChangeStream != null) {
+      try {
+        // Try to set the userChangeStream property if it exists
+        (localAdapter as dynamic).userChangeStream = userChangeStream;
+      } catch (e) {
+        // Ignore if the adapter doesn't support user change streams
+      }
+    }
 
     _initializeInternalComponents();
   }
@@ -2283,6 +2298,33 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     };
   }
 
+  /// Refreshes all reactive streams by clearing caches and forcing streams to
+  /// re-evaluate their data. This is useful when external state changes
+  /// (like user switches) require all streams to refresh their data.
+  ///
+  /// This method clears internal caches and forces reactive streams to emit
+  /// fresh data on their next evaluation. For adapters with reactive streams,
+  /// this ensures that streams show the most current data after state changes.
+  Future<void> refreshStreams() async {
+    _ensureInitialized();
+
+    // Clear all caches to ensure fresh data
+    clearCaches();
+
+    // Emit a special refresh event that will be picked up by all streams
+    // We use a special marker to indicate this is a refresh event
+    _eventController.add(
+      DataChangeEvent<T>(
+        userId: '__REFRESH_STREAMS__', // Special marker for refresh
+        data: null,
+        changeType: ChangeType.updated,
+        source: DataSource.local,
+      ),
+    );
+
+    _logger.debug('Refreshed all streams for $T');
+  }
+
   /// Releases all resources held by the manager and its adapters.
   @override
   Future<void> dispose() async {
@@ -2326,6 +2368,16 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
         hadUnsyncedData: hadUnsynced,
       ),
     );
+
+    // Refresh all streams to ensure they show data for the new user
+    // Only call this if Datum is initialized (when using Datum singleton)
+    if (Datum.isInitialized) {
+      unawaited(Datum.instance.refreshStreams());
+    }
+
+    // Also emit to the shared user change stream for reactive queries
+    // This is a bit of a hack since we don't have direct access to Datum._userChangeController
+    // We'll emit through the event stream and let Datum handle it
   }
 
   Future<bool> _hasUnsyncedData(String? userId) async {

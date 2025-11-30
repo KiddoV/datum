@@ -329,5 +329,179 @@ void main() {
       await manager.push(item: user1Entity, userId: 'user1');
       await manager.push(item: user2Entity, userId: 'user2');
     });
+
+    test('refreshStreams clears caches and triggers stream refresh', () async {
+      final entity1 = TestEntity.create('entity1', 'user1', 'Item 1');
+      final entity2 = TestEntity.create('entity2', 'user1', 'Item 2');
+
+      // First, populate some data and cache
+      await manager.push(item: entity1, userId: 'user1');
+      await manager.push(item: entity2, userId: 'user1');
+
+      // Query to populate caches
+      final cachedResult = await manager.query(
+        const DatumQuery(),
+        source: DataSource.local,
+        userId: 'user1',
+      );
+      expect(cachedResult.length, 2);
+
+      // Verify caches are populated
+      final cacheStats = manager.getCacheStats();
+      expect(cacheStats['queries'], greaterThan(0));
+
+      final stream = manager.watchAll(userId: 'user1');
+
+      final completer = Completer<List<List<TestEntity>>>();
+      final receivedEvents = <List<TestEntity>>[];
+
+      final subscription = stream?.listen((items) {
+        receivedEvents.add(items);
+        // We expect 2 events: initial data + refresh event
+        if (receivedEvents.length == 2) {
+          completer.complete(receivedEvents);
+        }
+      });
+
+      // Wait a bit to ensure the initial data has been emitted
+      await Future.delayed(const Duration(milliseconds: 10));
+
+      // Call refreshStreams - this should clear caches and emit a refresh event
+      await manager.refreshStreams();
+
+      final allEvents = await completer.future.timeout(const Duration(seconds: 5));
+
+      // Should receive current data after refresh
+      expect(allEvents.length, 2);
+      expect(allEvents[0], hasLength(2));
+      expect(allEvents[1], hasLength(2)); // Refresh event should trigger re-evaluation
+
+      // Verify caches were cleared
+      final newCacheStats = manager.getCacheStats();
+      expect(newCacheStats['queries'], 0);
+
+      await subscription?.cancel();
+    });
+
+    test('userChangeStream emits when users switch', () async {
+      final entity1 = TestEntity.create('entity1', 'user1', 'User1 Item');
+      final entity2 = TestEntity.create('entity2', 'user2', 'User2 Item');
+
+      // Set up user change stream listening
+      final userChangeCompleter = Completer<String?>();
+      final userChanges = <String?>[];
+
+      final userChangeSubscription = manager.onUserChanged.listen((userId) {
+        userChanges.add(userId);
+        if (userChanges.length == 1) {
+          userChangeCompleter.complete(userId);
+        }
+      });
+
+      // Create entities for different users
+      await manager.push(item: entity1, userId: 'user1');
+      await manager.push(item: entity2, userId: 'user2');
+
+      // Switch user - this should emit on the user change stream
+      await manager.switchUser(oldUserId: 'user1', newUserId: 'user2');
+
+      final emittedUserId = await userChangeCompleter.future;
+      expect(emittedUserId, 'user2');
+      expect(userChanges, ['user2']);
+
+      await userChangeSubscription.cancel();
+    });
+
+    test('concurrent operations maintain stream consistency', () async {
+      final entities = List.generate(
+        5,
+        (i) => TestEntity.create('concurrent$i', 'user1', 'Concurrent Item $i'),
+      );
+
+      final stream = manager.watchAll(userId: 'user1');
+      final receivedEvents = <List<TestEntity>>[];
+      final completer = Completer<List<List<TestEntity>>>();
+
+      final subscription = stream?.listen((items) {
+        receivedEvents.add(items);
+        if (receivedEvents.length == 6) { // Initial + 5 operations
+          completer.complete(receivedEvents);
+        }
+      });
+
+      // Perform concurrent operations
+      final futures = entities.map((entity) => manager.push(item: entity, userId: 'user1'));
+      await Future.wait(futures);
+
+      final allEvents = await completer.future.timeout(const Duration(seconds: 10));
+
+      // Should have received all events
+      expect(allEvents.length, 6);
+      expect(allEvents.last.length, 5); // Final state should have all entities
+
+      await subscription?.cancel();
+    });
+
+    test('rapid successive operations are handled correctly', () async {
+      final stream = manager.watchAll(userId: 'user1');
+      final receivedEvents = <List<TestEntity>>[];
+      final completer = Completer<List<List<TestEntity>>>();
+
+      final subscription = stream?.listen((items) {
+        receivedEvents.add(items);
+        if (receivedEvents.length == 6) { // Initial + 5 operations
+          completer.complete(receivedEvents);
+        }
+      });
+
+      // Rapid fire operations
+      await Future.wait([
+        manager.push(item: TestEntity.create('rapid1', 'user1', 'Rapid 1'), userId: 'user1'),
+        manager.push(item: TestEntity.create('rapid2', 'user1', 'Rapid 2'), userId: 'user1'),
+        manager.push(item: TestEntity.create('rapid3', 'user1', 'Rapid 3'), userId: 'user1'),
+        manager.push(item: TestEntity.create('rapid4', 'user1', 'Rapid 4'), userId: 'user1'),
+        manager.push(item: TestEntity.create('rapid5', 'user1', 'Rapid 5'), userId: 'user1'),
+      ]);
+
+      final allEvents = await completer.future.timeout(const Duration(seconds: 10));
+
+      expect(allEvents.length, 6);
+      expect(allEvents.last.length, 5); // All entities should be present
+
+      await subscription?.cancel();
+    });
+
+    test('query streams handle dynamic filter changes', () async {
+      final entities = [
+        TestEntity.create('filter1', 'user1', 'High Priority').copyWith(value: 10),
+        TestEntity.create('filter2', 'user1', 'Medium Priority').copyWith(value: 5),
+        TestEntity.create('filter3', 'user1', 'Low Priority').copyWith(value: 1),
+      ];
+
+      // Start with a query for high priority items (value > 5)
+      final highPriorityQuery = (DatumQueryBuilder<TestEntity>()
+            ..where('value', isGreaterThan: 5))
+          .build();
+
+      final stream = manager.watchQuery(highPriorityQuery, userId: 'user1');
+      final receivedEvents = <List<TestEntity>>[];
+
+      final subscription = stream?.listen((items) => receivedEvents.add(items));
+
+      // Add entities
+      for (final entity in entities) {
+        await manager.push(item: entity, userId: 'user1');
+      }
+
+      await Future.delayed(const Duration(milliseconds: 50)); // Allow stream to settle
+
+      // Should only see the high priority item
+      expect(receivedEvents.last.length, 1);
+      expect(receivedEvents.last.first.value, 10);
+
+      await subscription?.cancel();
+    });
+
+
   });
 }

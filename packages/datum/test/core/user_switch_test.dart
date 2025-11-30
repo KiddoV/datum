@@ -124,6 +124,44 @@ void main() {
       when(
         () => remoteAdapter.getSyncMetadata(any()),
       ).thenAnswer((_) => Future.value(null));
+      when(
+        () => localAdapter.getPendingOperations(any()),
+      ).thenAnswer((_) async => []);
+      when(
+        () => localAdapter.patch(id: any(named: 'id'), delta: any(named: 'delta'), userId: any(named: 'userId')),
+      ).thenAnswer((_) async {
+        return TestEntity.create('patched', 'patched', 'patched');
+      });
+      when(
+        () => localAdapter.transaction(any()),
+      ).thenAnswer((invocation) async {
+        final action = invocation.positionalArguments[0] as Future<dynamic> Function();
+        return await action();
+      } as dynamic);
+      when(
+        () => localAdapter.getStorageSize(userId: any(named: 'userId')),
+      ).thenAnswer((_) async => 0);
+      when(
+        () => localAdapter.delete(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async => true);
+      when(
+        () => remoteAdapter.delete(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async => true);
+      when(
+        () => localAdapter.getAllUserIds(),
+      ).thenAnswer((_) async => []);
+      when(
+        () => remoteAdapter.read(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async => null);
+      when(
+        () => remoteAdapter.patch(id: any(named: 'id'), delta: any(named: 'delta'), userId: any(named: 'userId')),
+      ).thenAnswer((_) async => TestEntity.create('patched', 'patched', 'patched'));
+      when(
+        () => remoteAdapter.unsubscribeFromChanges(),
+      ).thenAnswer((_) async {});
+      when(
+        () => remoteAdapter.resubscribeToChanges(),
+      ).thenAnswer((_) async {});
     });
 
     Future<DatumManager<TestEntity>> createManager({

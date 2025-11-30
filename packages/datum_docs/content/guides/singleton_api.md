@@ -138,6 +138,119 @@ final syncResult = await Datum.instance.synchronize('user123');
 print('Synced ${syncResult.syncedCount} items across all entities');
 ```
 
+## User Change Streams
+
+Datum provides reactive user change streams that automatically update data when users switch. This is particularly useful for multi-tenant applications where different users have separate data.
+
+### Using Datum.userChangeStream
+
+Listen to global user changes across all entity types:
+
+```dart
+// Listen to global user changes
+final subscription = Datum.instance.userChangeStream.listen((userId) {
+  print('User changed to: $userId');
+  // Automatically refresh UI or data
+});
+
+// Emit user changes when authentication state changes
+Datum.instance._userChangeController.add('new-user-id');
+```
+
+### Using Manager.onUserChanged
+
+Listen to user changes for specific entity types:
+
+```dart
+// Get a specific manager
+final taskManager = Datum.manager<Task>();
+
+// Listen to user changes for this entity type
+final userSubscription = taskManager.onUserChanged.listen((userId) {
+  print('User changed for tasks: $userId');
+  // Tasks will automatically refresh for the new user
+});
+```
+
+### Integration with Authentication
+
+```dart
+class AuthService {
+  void login(String userId) {
+    // Update Datum's user change stream
+    Datum.instance._userChangeController.add(userId);
+
+    // Your authentication logic here
+    // ...
+  }
+
+  void logout() {
+    // Clear user (null indicates no user)
+    Datum.instance._userChangeController.add(null);
+  }
+
+  void switchUser(String newUserId) {
+    // Switch to different user
+    Datum.instance._userChangeController.add(newUserId);
+  }
+}
+```
+
+### Reactive UI Updates
+
+```dart
+class TaskListWidget extends StatefulWidget {
+  @override
+  _TaskListWidgetState createState() => _TaskListWidgetState();
+}
+
+class _TaskListWidgetState extends State<TaskListWidget> {
+  late StreamSubscription<String?> _userSubscription;
+  List<Task> _tasks = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Listen to user changes and refresh data
+    _userSubscription = Datum.manager<Task>().onUserChanged.listen((userId) {
+      _loadTasks();
+    });
+
+    _loadTasks(); // Initial load
+  }
+
+  Future<void> _loadTasks() async {
+    final tasks = await Datum.manager<Task>().readAll();
+    setState(() => _tasks = tasks);
+  }
+
+  @override
+  void dispose() {
+    _userSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      itemCount: _tasks.length,
+      itemBuilder: (context, index) {
+        return ListTile(title: Text(_tasks[index].title));
+      },
+    );
+  }
+}
+```
+
+### Benefits
+
+- **Automatic Data Isolation**: Each user's data is kept separate
+- **Reactive Updates**: UI automatically refreshes when users switch
+- **Memory Management**: Old user's data is cleaned up automatically
+- **Performance**: Only active user's data is loaded in memory
+- **Security**: Prevents data leakage between users
+
 ## Reactive Operations
 
 Watch for real-time data changes:

@@ -74,6 +74,7 @@ class AdapterPairImpl<T extends DatumEntityInterface> implements AdapterPair {
       logger: datum.logger,
       syncRequestStrategy: syncRequestStrategy,
       persistence: datum.persistence,
+      userChangeStream: datum.userChangeStream,
     );
     return manager;
   }
