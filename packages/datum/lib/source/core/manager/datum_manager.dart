@@ -730,7 +730,18 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   Future<List<T>> readAll({String? userId}) async {
     _ensureInitialized();
     final entities = await localAdapter.readAll(userId: userId);
-    return Future.wait(entities.map(_applyPostFetchTransforms));
+    final transformedEntities = <T>[];
+    for (final entity in entities) {
+      try {
+        final transformed = await _applyPostFetchTransforms(entity);
+        transformedEntities.add(transformed);
+      } catch (e, stack) {
+        _logger.error('Failed to apply post-fetch transforms to entity ${entity.id}: $e', stack);
+        // Continue with other entities instead of failing the entire operation
+        transformedEntities.add(entity); // Use original entity if transform fails
+      }
+    }
+    return transformedEntities;
   }
 
   /// Watches all entities from the local adapter, emitting a new list on any change.
@@ -741,18 +752,55 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// Returns null if the adapter does not support reactive queries.
   Stream<List<T>>? watchAll({String? userId, bool includeInitialData = true}) {
     _ensureInitialized();
-    return localAdapter.watchAll(userId: userId, includeInitialData: includeInitialData)?.asyncMap((list) => Future.wait(list.map(_applyPostFetchTransforms)));
+    final adapterStream = localAdapter.watchAll(userId: userId, includeInitialData: includeInitialData);
+    if (adapterStream == null) return null;
+
+    return adapterStream.asyncMap((list) async {
+      try {
+        // Apply post-fetch transforms with error handling
+        final transformedList = <T>[];
+        for (final entity in list) {
+          try {
+            final transformed = await _applyPostFetchTransforms(entity);
+            transformedList.add(transformed);
+          } catch (e, stack) {
+            _logger.error('Failed to apply post-fetch transforms to entity ${entity.id}: $e', stack);
+            // Continue with other entities instead of failing the entire stream
+            transformedList.add(entity); // Use original entity if transform fails
+          }
+        }
+        return transformedList;
+      } catch (e, stack) {
+        _logger.error('Failed to transform entity list in watchAll: $e', stack);
+        // Return the original list if transformation fails completely
+        return list;
+      }
+    }).handleError((error, stack) {
+      _logger.error('Error in watchAll stream for $T: $error', stack);
+      // Don't rethrow - let the stream continue
+    });
   }
 
   /// Watches a single entity by its ID, emitting the item on change or null if deleted.
   /// Returns null if the adapter does not support reactive queries.
   Stream<T?>? watchById(String id, String? userId) {
     _ensureInitialized();
-    return localAdapter.watchById(id, userId: userId)?.asyncMap((item) {
+    final adapterStream = localAdapter.watchById(id, userId: userId);
+    if (adapterStream == null) return null;
+
+    return adapterStream.asyncMap((item) async {
       if (item == null) {
-        return Future.value(null);
+        return null;
       }
-      return _applyPostFetchTransforms(item);
+      try {
+        return await _applyPostFetchTransforms(item);
+      } catch (e, stack) {
+        _logger.error('Failed to apply post-fetch transforms to entity $id: $e', stack);
+        return item; // Return original entity if transform fails
+      }
+    }).handleError((error, stack) {
+      _logger.error('Error in watchById stream for $T:$id: $error', stack);
+      // Don't rethrow - let the stream continue
     });
   }
 
@@ -770,7 +818,33 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// Returns null if the adapter does not support reactive queries.
   Stream<List<T>>? watchQuery(DatumQuery query, {String? userId}) {
     _ensureInitialized();
-    return localAdapter.watchQuery(query, userId: userId)?.asyncMap((list) => Future.wait(list.map(_applyPostFetchTransforms)));
+    final adapterStream = localAdapter.watchQuery(query, userId: userId);
+    if (adapterStream == null) return null;
+
+    return adapterStream.asyncMap((list) async {
+      try {
+        // Apply post-fetch transforms with error handling
+        final transformedList = <T>[];
+        for (final entity in list) {
+          try {
+            final transformed = await _applyPostFetchTransforms(entity);
+            transformedList.add(transformed);
+          } catch (e, stack) {
+            _logger.error('Failed to apply post-fetch transforms to entity ${entity.id}: $e', stack);
+            // Continue with other entities instead of failing the entire stream
+            transformedList.add(entity); // Use original entity if transform fails
+          }
+        }
+        return transformedList;
+      } catch (e, stack) {
+        _logger.error('Failed to transform entity list in watchQuery: $e', stack);
+        // Return the original list if transformation fails completely
+        return list;
+      }
+    }).handleError((error, stack) {
+      _logger.error('Error in watchQuery stream for $T: $error', stack);
+      // Don't rethrow - let the stream continue
+    });
   }
 
   /// Executes a one-time query against the specified data source.
