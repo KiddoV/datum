@@ -882,7 +882,19 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       _cacheQuery(cacheKey, entities);
     }
 
-    return Future.wait(entities.map(_applyPostFetchTransforms));
+    // Apply post-fetch transforms with error handling
+    final transformedEntities = <T>[];
+    for (final entity in entities) {
+      try {
+        final transformed = await _applyPostFetchTransforms(entity);
+        transformedEntities.add(transformed);
+      } catch (e, stack) {
+        _logger.error('Failed to apply post-fetch transforms to entity ${entity.id}: $e', stack);
+        // Continue with other entities instead of failing the entire operation
+        transformedEntities.add(entity); // Use original entity if transform fails
+      }
+    }
+    return transformedEntities;
   }
 
   Future<void> _fetchAndStitchRelations(List<T> entities, List<String> relations, DataSource source, String? userId) async {
