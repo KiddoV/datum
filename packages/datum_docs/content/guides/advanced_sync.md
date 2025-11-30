@@ -403,6 +403,53 @@ await Datum.instance.unsubscribeAllFromRemoteChanges();
 await Datum.instance.resubscribeAllToRemoteChanges();
 ```
 
+### Stream Management
+
+#### Refreshing Streams
+
+Force all reactive streams to re-evaluate their data when external state changes require cache invalidation:
+
+```dart
+// Refresh all streams for a specific manager
+await manager.refreshStreams();
+
+// This will:
+// - Clear internal caches (query, relationship, entity existence)
+// - Force reactive streams to emit fresh data
+// - Ensure streams show the most current data after state changes
+```
+
+#### Use Cases
+
+- **User Switching**: When switching between users, refresh streams to clear user-specific caches
+- **External Data Changes**: When external systems modify data that Datum isn't aware of
+- **Cache Invalidation**: When you need to ensure all streams have the latest data
+- **Testing**: In test scenarios where you need to reset stream state
+
+#### Automatic Refresh
+
+Streams are automatically refreshed in certain scenarios:
+- When users switch (via `onUserChanged` streams)
+- After certain sync operations
+- When the system detects state inconsistencies
+
+#### Cache Management
+
+```dart
+// Clear specific caches
+manager.clearCaches(); // Clear all caches
+manager.clearRelationshipCacheForType(User); // Clear relationship caches for User type
+
+// Get cache statistics
+final stats = manager.getCacheStats();
+print('Query cache size: ${stats['queries']}');
+print('Relationship cache size: ${stats['relationship_queries']}');
+```
+
+<Warning>
+**Performance Consideration**: `refreshStreams()` clears all internal caches, which may impact performance. Use sparingly and only when necessary.
+</Warning>
+
 ## Monitoring and Observers
 
 ### Global Observers

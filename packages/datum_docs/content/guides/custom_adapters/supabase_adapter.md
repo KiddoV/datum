@@ -1323,23 +1323,35 @@ Create the necessary tables in your Supabase database:
 
 ```sql
 -- Tasks table
-CREATE TABLE
+CREATE TABLE tasks (
+  id TEXT PRIMARY KEY,
+  title TEXT NOT NULL,
+  description TEXT,
+  completed BOOLEAN DEFAULT FALSE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  modified_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-</final_file_content>
+-- Sync metadata table
+CREATE TABLE sync_metadata (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  last_sync_time TIMESTAMP WITH TIME ZONE,
+  schema_version INTEGER DEFAULT 1,
+  device_id TEXT,
+  total_pending_changes INTEGER DEFAULT 0,
+  conflict_count INTEGER DEFAULT 0,
+  sync_status TEXT DEFAULT 'never_synced',
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
 
-IMPORTANT: For any future changes to this file, use the final_file_content shown above as your reference. This content reflects the current state of the file, including any auto-formatting (e.g., if you used single quotes but the formatter converted them to double quotes). Always base your SEARCH/REPLACE operations on this final version to ensure accuracy.
+-- Create indexes for better performance
+CREATE INDEX idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX idx_tasks_modified_at ON tasks(modified_at);
+CREATE INDEX idx_sync_metadata_user_id ON sync_metadata(user_id);
 
-<environment_details>
-# Visual Studio Code Visible Files
-packages/datum_docs/content/guides/custom_adapters/supabase_adapter.md
-
-# Visual Studio Code Open Tabs
-packages/datum_docs/content/guides/singleton_api.md
-packages/datum_docs/content/guides/custom_adapters/supabase_adapter.md
-
-# Recently Modified Files
-These files have been modified since you last accessed them (file was just edited so you may need to re-read it before editing):
-packages/datum_docs/content/guides/custom_adapters/supabase_adapter.md
-
-# Current Time
-11/30
+-- Enable Row Level Security
+ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
+ALTER TABLE sync_metadata ENABLE ROW LEVEL SECURITY;

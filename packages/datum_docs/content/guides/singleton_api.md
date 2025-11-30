@@ -251,6 +251,222 @@ class _TaskListWidgetState extends State<TaskListWidget> {
 - **Performance**: Only active user's data is loaded in memory
 - **Security**: Prevents data leakage between users
 
+## Stream Management
+
+### Refreshing Streams
+
+Datum provides a `refreshStreams()` method to force all reactive streams to re-evaluate their data. This is particularly useful when external state changes require all streams to refresh their data.
+
+```dart
+// Refresh all streams across all managers
+await Datum.instance.refreshStreams();
+
+// This will:
+// - Clear internal caches in all managers
+// - Force reactive streams to emit fresh data
+// - Ensure streams show the most current data after state changes
+```
+
+### Use Cases
+
+- **User Switching**: When switching between users, refresh streams to show the new user's data
+- **External Data Changes**: When external systems modify data that Datum isn't aware of
+- **Cache Invalidation**: When you need to ensure all streams have the latest data
+- **Testing**: In test scenarios where you need to reset stream state
+
+### Manager-Level Refresh
+
+You can also refresh streams for specific entity types:
+
+```dart
+// Refresh streams for a specific entity type
+final taskManager = Datum.manager<Task>();
+await taskManager.refreshStreams();
+```
+
+### Automatic Refresh
+
+Streams are automatically refreshed in certain scenarios:
+- When users switch (via `onUserChanged` streams)
+- After certain sync operations
+- When the system detects state inconsistencies
+
+### Performance Considerations
+
+- `refreshStreams()` clears all internal caches, which may impact performance
+- Use sparingly and only when necessary
+- Consider using targeted cache invalidation for better performance when possible
+
+### Combining onUserChanged and refreshStreams
+
+For optimal user switching behavior, combine `onUserChanged` with `refreshStreams`:
+
+```dart
+class UserManager {
+  StreamSubscription<String?>? _userSubscription;
+
+  void initialize() {
+    // Listen to user changes and refresh streams
+    _userSubscription = Datum.manager<Task>().onUserChanged.listen((userId) {
+      print('User changed to: $userId');
+
+      // Refresh streams to clear user-specific caches
+      Datum.instance.refreshStreams();
+
+      // Additional user switch logic
+      _onUserSwitched(userId);
+    });
+  }
+
+  void _onUserSwitched(String? userId) {
+    if (userId == null) {
+      // User logged out - clear any user-specific state
+      _clearUserState();
+    } else {
+      // User logged in - load user preferences, update UI, etc.
+      _loadUserPreferences(userId);
+      _updateUIForUser(userId);
+    }
+  }
+
+  void dispose() {
+    _userSubscription?.cancel();
+  }
+}
+```
+
+### Advanced User Switching Pattern
+
+```dart
+class AdvancedUserSwitcher {
+  final StreamController<String?> _userController = StreamController.broadcast();
+
+  // Expose user change stream for other components
+  Stream<String?> get onUserChanged => _userController.stream;
+
+  Future<void> switchToUser(String newUserId) async {
+    final currentUserId = await _getCurrentUserId();
+
+    // 1. Validate user switch (check permissions, etc.)
+    if (!await _canSwitchToUser(newUserId)) {
+      throw Exception('Cannot switch to user: insufficient permissions');
+    }
+
+    // 2. Pre-switch cleanup
+    if (currentUserId != null) {
+      await _cleanupUserData(currentUserId);
+    }
+
+    // 3. Perform the switch
+    await _performUserSwitch(currentUserId, newUserId);
+
+    // 4. Emit user change event
+    _userController.add(newUserId);
+
+    // 5. Refresh all streams to clear caches
+    await Datum.instance.refreshStreams();
+
+    // 6. Post-switch initialization
+    await _initializeUserData(newUserId);
+  }
+
+  Future<void> logout() async {
+    final currentUserId = await _getCurrentUserId();
+    if (currentUserId != null) {
+      await _cleanupUserData(currentUserId);
+    }
+
+    // Clear user and refresh streams
+    _userController.add(null);
+    await Datum.instance.refreshStreams();
+
+    // Clear authentication state
+    await _clearAuthState();
+  }
+}
+```
+
+### Reactive UI with User Switching
+
+```dart
+class MultiUserApp extends StatefulWidget {
+  @override
+  _MultiUserAppState createState() => _MultiUserAppState();
+}
+
+class _MultiUserAppState extends State<MultiUserApp> {
+  late StreamSubscription<String?> _userSubscription;
+  String? _currentUserId;
+  List<Task> _tasks = [];
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Listen to user changes
+    _userSubscription = Datum.manager<Task>().onUserChanged.listen((userId) {
+      setState(() => _currentUserId = userId);
+
+      if (userId != null) {
+        // Load user's tasks when they switch in
+        _loadUserTasks(userId);
+      } else {
+        // Clear tasks when user logs out
+        setState(() => _tasks = []);
+      }
+    });
+
+    // Initial load
+    _loadCurrentUser();
+  }
+
+  Future<void> _loadUserTasks(String userId) async {
+    final tasks = await Datum.manager<Task>().readAll(userId: userId);
+    if (mounted) {
+      setState(() => _tasks = tasks);
+    }
+  }
+
+  Future<void> _loadCurrentUser() async {
+    // Get current user from your auth system
+    final userId = await _getCurrentUserId();
+    setState(() => _currentUserId = userId);
+
+    if (userId != null) {
+      await _loadUserTasks(userId);
+    }
+  }
+
+  @override
+  void dispose() {
+    _userSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(_currentUserId != null
+          ? 'Tasks for User $_currentUserId'
+          : 'Please log in'),
+      ),
+      body: _currentUserId == null
+        ? Center(child: Text('No user logged in'))
+        : TaskList(tasks: _tasks, userId: _currentUserId!),
+    );
+  }
+}
+```
+
+### Benefits of Combined Usage
+
+- **Automatic Cache Management**: `refreshStreams()` ensures no stale data from previous user
+- **Reactive UI Updates**: `onUserChanged` triggers immediate UI updates
+- **Data Isolation**: Each user's data is properly separated and cached
+- **Performance**: Targeted cache clearing prevents memory leaks
+- **Consistency**: All reactive streams show correct data for current user
+
 ## Reactive Operations
 
 Watch for real-time data changes:
