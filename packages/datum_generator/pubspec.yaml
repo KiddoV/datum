@@ -1,10 +1,24 @@
 name: datum_generator
 description: Code generator for the Datum framework.
-publish_to: none
 version: 1.0.0
 resolution: workspace
-# repository: https://github.com/my_org/my_repo
+homepage: https://www.shreeman.dev
+repository: https://github.com/Shreemanarjun/datum
+issue_tracker: https://github.com/Shreemanarjun/datum/issues
+documentation: https://datum.shreeman.dev/
+funding:
+  - https://buymeacoffee.com/shreemanarjun
 
+screenshots:
+  - description: 'LOGO Datum'
+    path: logo/datum.webp
+
+topics:
+  - offline-first
+  - synchronization
+  - database
+  - flutter
+  - supabase
 environment:
   sdk: ^3.10.4
 
@@ -14,9 +28,6 @@ dependencies:
   build: ">=3.0.0 <5.0.0"
   source_gen: ">=3.0.0 <5.0.0"
   meta: ^1.11.0
-  # circular dependency if datum depends on generator.
-  # datum:
-  #   path: ../datum
 
 dev_dependencies:
   build_runner: ^2.10.3

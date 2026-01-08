@@ -1,45 +1,42 @@
 # Datum Generator
 
-A code generation package for the [Datum](https://pub.dev/packages/datum) framework that automatically generates boilerplate code for your Datum entities, including serialization, deserialization, diff tracking, and copy methods.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/Shreemanarjun/datum/refs/heads/main/packages/datum/logo/datum.webp" alt="Datum Logo" width="200"/>
+</p>
+
+A powerful code generation package for the [Datum](https://pub.dev/packages/datum) framework. It automates the generation of boilerplate code for your `DatumEntity` and `RelationalDatumEntity` classes, including serialization, diff tracking, recursive relationships, and more.
 
 ## Features
 
-- **Automatic Serialization**: Generates `toDatumMap()` methods for converting entities to maps
-- **Smart Deserialization**: Creates `fromMap()` factory constructors with type-safe parsing
-- **Diff Tracking**: Automatically generates `diff()` methods to track changes between entity versions
-- **Copy Methods**: Generates both `copyWith()` and `copyWithAll()` methods with automatic version incrementing
-- **Equality & HashCode**: Creates `datumEquals()` and `datumHashCode` for proper equality comparisons
-- **Type-Specific Handling**: Built-in support for `DateTime`, `Color`, `Offset`, `List<Offset>`, and other complex types
-- **Custom Field Mapping**: Use annotations to customize field names and exclude fields from serialization
-- **Snake Case Conversion**: Automatically converts camelCase field names to snake_case for database compatibility
+- **🚀 Zero Boilerplate**: Use `generateMixin: true` to automatically implement all required `DatumEntity` methods.
+- **🔗 Automated Relationships**: Define relationships using annotations (`@HasManyRelation`, `@BelongsToRelation`, etc.).
+- **🔄 Smart Serialization**: Generates optimized `toDatumMap()` and type-safe `fromMap()` implementations.
+- **📈 Diff Tracking**: Automatic `diff()` generation for efficient partial updates during synchronization.
+- **💎 Type-Safe Queries**: Generates a type-safe query builder for every entity.
+- **✨ Metadata Management**: Handles automatic version incrementing and metadata updates in `copyWith`.
+- **🎨 Platform Ready**: Built-in support for Flutter-specific types like `Color` and `Offset`.
 
-## Getting Started
+## Installation
 
-### 1. Add Dependencies
-
-Add `datum_generator` as both a regular dependency (for annotations) and a dev dependency (for the builder):
+Add `datum_generator` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  datum: ^1.0.0
+  datum: ^1.0.2
+  # Required for annotations
   datum_generator: ^1.0.0
 
 dev_dependencies:
   build_runner: ^2.4.0
+  # Required for the code generator
   datum_generator: ^1.0.0
 ```
 
-### 2. Run `pub get`
+## Basic Usage
 
-```bash
-flutter pub get
-```
+### The Modern Way (Recommended)
 
-## Usage
-
-### Basic Example
-
-1. **Annotate your entity class** with `@DatumSerializable`:
+Use `generateMixin: true` to let the generator handle all the heavy lifting.
 
 ```dart
 import 'package:datum/datum.dart';
@@ -47,247 +44,122 @@ import 'package:datum_generator/datum_generator.dart';
 
 part 'user.g.dart';
 
-@DatumSerializable(tableName: 'users')
-class User extends DatumEntity {
+@DatumSerializable(generateMixin: true)
+class User extends DatumEntity with _$UserMixin {
   @override
   final String id;
-
   @override
   final String userId;
 
   final String name;
-  final int age;
-  final String email;
+  final String? email;
 
+  // Metadata properties are handled by the mixin
   @override
   final DateTime createdAt;
-
   @override
   final DateTime modifiedAt;
-
   @override
   final int version;
-
   @override
   final bool isDeleted;
 
-  const User({
+  User({
     required this.id,
     required this.userId,
     required this.name,
-    required this.age,
-    required this.email,
+    this.email,
     required this.createdAt,
     required this.modifiedAt,
     this.version = 1,
     this.isDeleted = false,
   });
 
-  @override
-  Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) {
-    return datumDiff(oldVersion);
-  }
-
-  @override
-  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
-    return datumToMap(target: target);
-  }
-
-  factory User.fromMap(Map<String, dynamic> map) {
-    return _$UserFromMap(map);
-  }
-
-  @override
-  DatumEntity copyWith({
-    DateTime? modifiedAt,
-    int? version,
-    bool? isDeleted,
-  }) {
-    return copyWithAll(
-      modifiedAt: modifiedAt,
-      version: version,
-      isDeleted: isDeleted,
-    );
-  }
-
-  @override
-  bool operator ==(Object other) => other is User && datumEquals(other);
-
-  @override
-  int get hashCode => datumHashCode;
+  // That's it! Everything else is implemented in the mixin.
 }
 ```
 
-2. **Run the code generator**:
+## Relationships
 
-```bash
-flutter pub run build_runner build
-```
+Datum Generator makes defining relationships incredibly simple.
 
-Or for continuous generation during development:
-
-```bash
-flutter pub run build_runner watch
-```
-
-This will generate a `user.g.dart` file with all the boilerplate code.
-
-### Advanced Features
-
-#### Custom Field Names
-
-Use `@DatumField` to specify custom field names for database mapping:
+### Automated Relations
 
 ```dart
-@DatumSerializable()
-class Product extends DatumEntity {
-  final String id;
-
-  @DatumField('product_name')
-  final String name;
-
-  @DatumField('unit_price')
-  final double price;
-
-  // ... other fields
-}
-```
-
-#### Ignoring Fields
-
-Use `@DatumIgnore()` to exclude fields from serialization:
-
-```dart
-@DatumSerializable()
-class User extends DatumEntity {
-  final String id;
-  final String name;
-
-  @DatumIgnore()
-  final String temporaryToken; // Won't be serialized
-
-  // ... other fields
-}
-```
-
-#### Relational Entities
-
-For entities with relationships, extend `RelationalDatumEntity`:
-
-```dart
-@DatumSerializable(tableName: 'paint_canvases')
-class PaintCanvas extends RelationalDatumEntity {
+@DatumSerializable(generateMixin: true)
+class Post extends RelationalDatumEntity with _$PostMixin {
   @override
   final String id;
 
   final String title;
-  final int strokeCount;
 
-  // ... other fields
+  // Define relationship with a placeholder field and annotation
+  @HasManyRelation<Comment>('postId', cascadeDelete: 'cascade')
+  final List<Comment>? _comments = null;
 
-  @override
-  Map<String, Relation> get relations => {
-    'strokes': HasMany<PaintStroke>(
-      this,
-      'canvasId',
-      cascadeDeleteBehavior: CascadeDeleteBehavior.cascade,
-    ),
-  };
+  @BelongsToRelation<User>('authorId')
+  final User? _author = null;
+
+  // ... constructor and metadata
 }
 ```
 
-#### Complex Types
+Supported annotations:
+- `@BelongsToRelation<T>(foreignKey)`
+- `@HasManyRelation<T>(foreignKey)`
+- `@HasOneRelation<T>(foreignKey)`
+- `@ManyToManyRelation<T, P>(pivotEntity, thisForeignKey, otherForeignKey)`
 
-The generator handles complex types automatically:
+## Advanced Configuration
+
+### Custom Field Mapping
 
 ```dart
-@DatumSerializable()
-class DrawingEntity extends DatumEntity {
-  final Color color;              // Serialized as int (ARGB)
-  final List<Offset> points;      // Serialized as List<Map> with x, y
-  final double strokeWidth;       // Handled with proper type conversion
+class Product extends DatumEntity with _$ProductMixin {
+  @DatumField('product_sku')
+  final String sku;
 
-  // ... other fields
+  @DatumIgnore()
+  final String cachedToken;
 }
 ```
 
-### Generated Methods
+### Type-Safe Querying
 
-The generator creates the following extension methods on your class:
+The generator creates a static `Query` builder for your class:
 
-- **`datumToMap({MapTarget target})`**: Converts the entity to a map
-  - `MapTarget.local`: Uses millisecondsSinceEpoch for dates
-  - `MapTarget.remote`: Uses ISO8601 strings for dates
-
-- **`datumDiff(DatumEntityInterface oldVersion)`**: Returns a map of changed fields
-
-- **`copyWith({DateTime? modifiedAt, int? version, bool? isDeleted})`**: Creates a copy with updated metadata
-
-- **`copyWithAll({...})`**: Creates a copy with any field updated, auto-incrementing version
-
-- **`datumEquals(YourClass other)`**: Compares all fields for equality
-
-- **`datumHashCode`**: Generates a hash code from all fields
-
-And a top-level factory function:
-
-- **`_$YourClassFromMap(Map<String, dynamic> map)`**: Creates an instance from a map
-
-## Configuration
-
-### build.yaml
-
-The generator is pre-configured to work with the following directory structure:
-
-```yaml
-targets:
-  $default:
-    builders:
-      datum_generator|datumBuilder:
-        enabled: true
-        generate_for:
-          - lib/**
-          - test/**
+```dart
+final queriedData = await Datum.instance.query<TestEntity>(
+  mediumPriorityIncompleteQuery,
+  source: DataSource.local,
+  userId: 'test-user',
+);
 ```
 
-You can customize this in your package's `build.yaml` if needed.
+## Running the Generator
+
+Run the following command to generate the `.g.dart` files:
+
+```bash
+# Build once
+flutter pub run build_runner build --delete-conflicting-outputs
+
+# Watch for changes
+flutter pub run build_runner watch
+```
 
 ## Best Practices
 
-1. **Always include the part directive**: `part 'your_file.g.dart';`
-2. **Use const constructors** when possible for better performance
-3. **Implement `operator ==` and `hashCode`** using the generated methods
-4. **Run the generator** after making changes to your entity classes
-5. **Commit generated files** to version control for consistency
+1. **Use Mixins**: Always prefer `generateMixin: true` to keep your entity files clean and maintainable.
+2. **Private Placeholders**: For relationship fields, use a private field (e.g., `_comments`) with a `null` default value. The generator will create public getters and setters in the mixin.
+3. **Common Metadata**: Ensure your constructor includes all metadata fields (`id`, `userId`, `createdAt`, `modifiedAt`, `version`, `isDeleted`) as they are required for the offline-first sync engine.
 
-## Troubleshooting
+# Documentation
 
-### Generator not running?
+[📚 Full Documentation](https://datum.shreeman.dev/)
 
-Make sure you have:
-- Added the `part` directive to your file
-- Annotated your class with `@DatumSerializable`
-- Run `flutter pub run build_runner build`
+Complete guides, API reference, and examples for building offline-first applications with Datum.
 
-### Build errors?
+---
 
-Try cleaning the build cache:
-
-```bash
-flutter pub run build_runner clean
-flutter pub run build_runner build --delete-conflicting-outputs
-```
-
-### Type errors in generated code?
-
-Ensure all fields have explicit types and are not using `var` or `dynamic`.
-
-## Additional Information
-
-For more information about the Datum framework, visit:
-- [Datum Package](https://pub.dev/packages/datum)
-- [GitHub Repository](https://github.com/yourusername/datum)
-
-To report issues or contribute:
-- [Issue Tracker](https://github.com/yourusername/datum/issues)
-- [Contributing Guide](https://github.com/yourusername/datum/blob/main/CONTRIBUTING.md)
+Built with ❤️ by [Shreeman Arjun](https://www.shreeman.dev)
