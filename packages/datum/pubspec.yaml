@@ -46,12 +46,6 @@ dependencies:
   meta: ^1.16.0
   rxdart: ^0.28.0
   uuid: ^4.4.0
-  # Since DatumSerializable and DatumJsonUtils are now in datum_generator,
-  # and datum (this package) doesn't use them directly in runtime loop except possibly by user code,
-  # actually user code imports them.
-  # But if datum *is* the core, it shouldn't depend on the generator.
-  # However, if annotations are in datum_generator, users need datum_generator.
-  # datum_generator:  <-- NOT adding here as typical, but users must add it to THEIR dependencies.
 
 dev_dependencies:
   build_runner: ^2.4.0
