@@ -357,4 +357,8 @@ class DatumLogger {
       performanceThreshold: performanceThreshold ?? this.performanceThreshold,
     );
   }
+
+  /// Returns a logger instance suitable for use in worker isolates.
+  /// Override this if your logger implementation contains unsendable objects (like ReceivePorts).
+  DatumLogger getWorkerLogger() => this;
 }

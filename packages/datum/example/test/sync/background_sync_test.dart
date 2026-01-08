@@ -1,6 +1,6 @@
 import 'package:datum/datum.dart';
 
-import 'package:example/data/task/adapters/hive_adapter.dart';
+import 'package:example/features/tasks/data/adapters/hive_adapter.dart';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';

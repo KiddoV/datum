@@ -1,6 +1,6 @@
 import 'package:example/bootstrap.dart';
 import 'package:example/data/paint/entity/paint_stroke.dart';
-import 'package:example/data/user/adapters/supabase_adapter.dart';
+import 'package:example/features/auth/data/adapters/supabase_adapter.dart';
 
 class PaintStrokeSupabaseAdapter extends SupabaseRemoteAdapter<PaintStroke> {
   PaintStrokeSupabaseAdapter()

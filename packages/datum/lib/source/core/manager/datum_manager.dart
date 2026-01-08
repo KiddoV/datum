@@ -2106,8 +2106,13 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
             final conflictResolverCaptured = _conflictResolver;
             final queueManagerCaptured = _queueManager;
             final conflictDetectorCaptured = _conflictDetector;
-            final loggerCaptured = _logger;
-            final configCaptured = config;
+            final loggerCaptured = _logger.getWorkerLogger();
+            // Sanitize config to remove unsendable callbacks
+            final configCaptured = config.copyWith<T>(
+              initialUserId: _dummyInitialUserId,
+              onMigrationError: null,
+              syncDirectionResolver: null,
+            );
             final connectivityCaptured = _connectivity;
             final isolateHelperCaptured = _isolateHelper;
             final deviceIdCaptured = deviceId;
@@ -2116,41 +2121,21 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
             // Offload the entire sync process to a background isolate.
             // note: This requires Adapters and other dependencies to be sendable.
-            (result, events) = await Isolate.run(() async {
-              // Create dummy controllers for the isolated engine since we only care about the return values
-              // and the side effects on the adapters.
-              final dummyEventController = StreamController<DatumSyncEvent<T>>();
-              final dummyStatusSubject = BehaviorSubject<DatumSyncStatusSnapshot>.seeded(DatumSyncStatusSnapshot.initial(userId));
-              final dummyMetadataSubject = BehaviorSubject<DatumSyncMetadata>();
-
-              try {
-                final engine = DatumSyncEngine<T>(
-                  localAdapter: localAdapterCaptured,
-                  remoteAdapter: remoteAdapterCaptured,
-                  conflictResolver: conflictResolverCaptured,
-                  queueManager: queueManagerCaptured,
-                  conflictDetector: conflictDetectorCaptured,
-                  logger: loggerCaptured,
-                  config: configCaptured,
-                  connectivityChecker: connectivityCaptured,
-                  eventController: dummyEventController,
-                  statusSubject: dummyStatusSubject,
-                  metadataSubject: dummyMetadataSubject,
-                  isolateHelper: isolateHelperCaptured,
-                  deviceId: deviceIdCaptured,
-                );
-
-                return await engine.synchronize(
+            (result, events) = await Isolate.run(() => _runSyncInIsolate<T>(
                   userId,
-                  options: optionsCaptured,
-                  scope: scopeCaptured,
-                );
-              } finally {
-                dummyEventController.close();
-                dummyStatusSubject.close();
-                dummyMetadataSubject.close();
-              }
-            });
+                  localAdapterCaptured,
+                  remoteAdapterCaptured,
+                  conflictResolverCaptured,
+                  queueManagerCaptured,
+                  conflictDetectorCaptured,
+                  loggerCaptured,
+                  configCaptured,
+                  connectivityCaptured,
+                  isolateHelperCaptured,
+                  deviceIdCaptured,
+                  optionsCaptured,
+                  scopeCaptured,
+                ));
           } else {
             (result, events) = await _syncEngineInstance.synchronize(
               userId,
@@ -2768,5 +2753,58 @@ extension DatumManagerAutoSyncInfo<T extends DatumEntityInterface> on DatumManag
     final nextTime = await getNextSyncTime();
     if (nextTime == null) return null;
     return nextTime.difference(DateTime.now());
+  }
+}
+
+/// A dummy function for the initial user ID to avoid closure capture issues.
+Future<String?> _dummyInitialUserId() async => null;
+
+/// Executes the sync process in a separate isolate.
+Future<(DatumSyncResult<T>, List<DatumSyncEvent<T>>)> _runSyncInIsolate<T extends DatumEntityInterface>(
+  String userId,
+  LocalAdapter<T> localAdapter,
+  RemoteAdapter<T> remoteAdapter,
+  DatumConflictResolver<T> conflictResolver,
+  QueueManager<T> queueManager,
+  DatumConflictDetector<T> conflictDetector,
+  DatumLogger logger,
+  DatumConfig<T> config,
+  DatumConnectivityChecker connectivityChecker,
+  IsolateHelper isolateHelper,
+  String? deviceId,
+  DatumSyncOptions<T>? options,
+  DatumSyncScope? scope,
+) async {
+  // Create dummy controllers for the isolated engine since we only care about the return values
+  // and the side effects on the adapters.
+  final dummyEventController = StreamController<DatumSyncEvent<T>>();
+  final dummyStatusSubject = BehaviorSubject<DatumSyncStatusSnapshot>.seeded(DatumSyncStatusSnapshot.initial(userId));
+  final dummyMetadataSubject = BehaviorSubject<DatumSyncMetadata>();
+
+  try {
+    final engine = DatumSyncEngine<T>(
+        localAdapter: localAdapter,
+        remoteAdapter: remoteAdapter,
+        conflictResolver: conflictResolver,
+        queueManager: queueManager,
+        conflictDetector: conflictDetector,
+        logger: logger,
+        config: config,
+        connectivityChecker: connectivityChecker,
+        eventController: dummyEventController,
+        statusSubject: dummyStatusSubject,
+        metadataSubject: dummyMetadataSubject,
+        isolateHelper: isolateHelper,
+        deviceId: deviceId);
+
+    return await engine.synchronize(
+      userId,
+      options: options,
+      scope: scope,
+    );
+  } finally {
+    dummyEventController.close();
+    dummyStatusSubject.close();
+    dummyMetadataSubject.close();
   }
 }

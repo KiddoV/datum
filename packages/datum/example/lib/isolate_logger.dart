@@ -157,6 +157,11 @@ class IsolateLogger implements DatumLogger {
     );
   }
 
+  @override
+  DatumLogger getWorkerLogger() {
+    return createWorkerLogger();
+  }
+
   /// Disposes the logger and closes the receive port.
   void dispose() {
     _subscription?.cancel();
@@ -171,6 +176,9 @@ class IsolateWorkerLogger implements DatumLogger {
   final SendPort _mainSendPort;
 
   IsolateWorkerLogger(this._mainSendPort);
+
+  @override
+  DatumLogger getWorkerLogger() => this;
 
   @override
   bool get enabled =>

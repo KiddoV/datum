@@ -5,13 +5,13 @@ import 'package:example/const/secrets.dart';
 import 'package:example/custom_connectivity_checker.dart';
 import 'package:example/persistence/hive_datum_persistence.dart';
 import 'package:example/sync/isolate_stratergy.dart';
-import 'package:example/data/task/adapters/hive_isolate_adapter.dart';
+import 'package:example/features/tasks/data/adapters/hive_isolate_adapter.dart';
 import 'package:example/bootstrap.dart' as bootstrap;
-import 'package:example/data/task/entity/task.dart';
-import 'package:example/data/user/adapters/supabase_adapter.dart';
+import 'package:example/features/tasks/data/entities/task.dart';
+import 'package:example/features/auth/data/adapters/supabase_adapter.dart';
 import 'package:example/data/paint/entity/paint_stroke.dart';
 import 'package:example/data/paint/entity/paint_canvas.dart';
-import 'package:example/features/simple_datum/controller/simple_datum_provider.dart';
+import 'package:example/features/tasks/presentation/controllers/simple_datum_provider.dart';
 import 'package:example/my_datum_observer.dart';
 import 'package:example/shared/riverpod_ext/riverpod_observer/riverpod_obs.dart';
 import 'package:example/shared/riverpod_ext/riverpod_observer/talker_riverpod_settings.dart';
@@ -26,6 +26,21 @@ import 'package:example/core/local_storage/app_storage_pod.dart';
 import 'package:example/features/splash/controller/box_encryption_key_pod.dart';
 import 'package:example/init.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Top-level functions to avoid closure capture issues with Isolate
+Future<String?> _initialUserId() async {
+  try {
+    final currentUser = Supabase.instance.client.auth.currentUser;
+    return currentUser?.id;
+  } catch (e) {
+    talker.warning('Could not get current user for initialUserId: $e');
+    return null;
+  }
+}
+
+Future<void> _onMigrationError(Object error, StackTrace stackTrace) async {
+  talker.error(error, stackTrace);
+}
 
 final futureInitializerPod = FutureProvider<ProviderContainer>((
   ref,
@@ -59,16 +74,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
   final config = DatumConfig(
     enableLogging: true,
     autoStartSync: true, // Enable auto-start sync with reactive user ID
-    initialUserId: () async {
-      // Reactive initialUserId - get current user when needed
-      try {
-        final currentUser = Supabase.instance.client.auth.currentUser;
-        return currentUser?.id;
-      } catch (e) {
-        talker.warning('Could not get current user for initialUserId: $e');
-        return null;
-      }
-    }, // Reactive function to get current user ID
+    initialUserId: _initialUserId, // Use top-level function
     changeCacheDuration: Duration(seconds: 1),
     remoteEventDebounceTime: Duration(milliseconds: 100),
     autoSyncInterval: Duration(
@@ -81,9 +87,8 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     migrations: [],
     enablePerformanceLogging: false,
     logLevel: LogLevel.trace,
-    onMigrationError: (error, stackTrace) async {
-      talker.error(error, stackTrace);
-    },
+    onMigrationError: _onMigrationError, // Use top-level function
+
     // Cold start sync now runs in background - won't block app initialization
     coldStartConfig: const ColdStartConfig(
       strategy: ColdStartStrategy.adaptive, // Runs in background
@@ -104,7 +109,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       DatumRegistration<Task>(
         localAdapter: IsolatedHiveLocalAdapter<Task>(
           entityBoxName: "Task",
-          fromMap: (map) => Task.fromMap(map),
+          fromMap: Task.fromMap, // Use tear-off
           schemaVersion: 0,
         ),
         remoteAdapter: SupabaseRemoteAdapter<Task>(
@@ -115,7 +120,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       DatumRegistration<PaintStroke>(
         localAdapter: IsolatedHiveLocalAdapter<PaintStroke>(
           entityBoxName: "PaintStroke",
-          fromMap: (map) => PaintStroke.fromMap(map),
+          fromMap: PaintStroke.fromMap, // Use tear-off
           schemaVersion: 0,
         ),
         remoteAdapter: SupabaseRemoteAdapter<PaintStroke>(
@@ -126,7 +131,7 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       DatumRegistration<PaintCanvas>(
         localAdapter: IsolatedHiveLocalAdapter<PaintCanvas>(
           entityBoxName: "PaintCanvas",
-          fromMap: (map) => PaintCanvas.fromMap(map),
+          fromMap: PaintCanvas.fromMap, // Use tear-off
           schemaVersion: 0,
         ),
         remoteAdapter: SupabaseRemoteAdapter<PaintCanvas>(

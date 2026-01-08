@@ -165,6 +165,7 @@ class PaintStroke extends RelationalDatumEntity {
       'strokeWidth': strokeWidth,
       'order': order,
       'isDeleted': isDeleted,
+      'canvasId': canvasId,
       'version': version,
     };
 

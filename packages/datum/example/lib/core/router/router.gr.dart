@@ -10,13 +10,13 @@
 
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 import 'package:auto_route/auto_route.dart' as _i7;
+import 'package:example/features/auth/presentation/view/login_page.dart' as _i4;
 import 'package:example/features/counter/view/counter_page.dart'
     deferred as _i1;
-import 'package:example/features/home/view/feature_selection_page.dart' as _i2;
+import 'package:example/features/dashboard/dashboard_page.dart' as _i2;
 import 'package:example/features/home/view/home_page.dart' as _i3;
-import 'package:example/features/login/view/login_page.dart' as _i4;
 import 'package:example/features/paint/view/paint_page.dart' as _i5;
-import 'package:example/features/simple_datum/view/simple_datum_page.dart'
+import 'package:example/features/tasks/presentation/views/simple_datum_page.dart'
     as _i6;
 
 /// generated route for
@@ -36,17 +36,17 @@ class CounterRoute extends _i7.PageRouteInfo<void> {
 }
 
 /// generated route for
-/// [_i2.FeatureSelectionPage]
-class FeatureSelectionRoute extends _i7.PageRouteInfo<void> {
-  const FeatureSelectionRoute({List<_i7.PageRouteInfo>? children})
-      : super(FeatureSelectionRoute.name, initialChildren: children);
+/// [_i2.DashboardPage]
+class DashboardRoute extends _i7.PageRouteInfo<void> {
+  const DashboardRoute({List<_i7.PageRouteInfo>? children})
+      : super(DashboardRoute.name, initialChildren: children);
 
-  static const String name = 'FeatureSelectionRoute';
+  static const String name = 'DashboardRoute';
 
   static _i7.PageInfo page = _i7.PageInfo(
     name,
     builder: (data) {
-      return const _i2.FeatureSelectionPage();
+      return const _i2.DashboardPage();
     },
   );
 }

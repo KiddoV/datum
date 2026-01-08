@@ -176,4 +176,7 @@ class CustomDatumLogger implements DatumLogger {
 
     return buffer.toString();
   }
+
+  @override
+  DatumLogger getWorkerLogger() => this;
 }

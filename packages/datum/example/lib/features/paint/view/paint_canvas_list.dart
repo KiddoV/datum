@@ -3,42 +3,160 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:datum/datum.dart';
 import 'package:example/data/paint/entity/paint_canvas.dart';
 import 'package:example/bootstrap.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
-class PaintCanvasList extends ConsumerStatefulWidget {
+final paintCanvasesStreamProvider =
+    StreamProvider.autoDispose<List<PaintCanvas>>((ref) {
+  final userId = Supabase.instance.client.auth.currentUser?.id;
+  if (userId == null) return Stream.value([]);
+
+  return Datum.manager<PaintCanvas>()
+          .watchAll(userId: userId, includeInitialData: true)
+          ?.map((canvases) => canvases.where((c) => !c.isDeleted).toList()
+            ..sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt))) ??
+      Stream.value([]);
+});
+
+class PaintCanvasList extends ConsumerWidget {
   final Function(String) onCanvasSelected;
 
   const PaintCanvasList({super.key, required this.onCanvasSelected});
 
   @override
-  ConsumerState<PaintCanvasList> createState() => _PaintCanvasListState();
-}
+  Widget build(BuildContext context, WidgetRef ref) {
+    final canvasesAsync = ref.watch(paintCanvasesStreamProvider);
+    final theme = ShadTheme.of(context);
 
-class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
-  List<PaintCanvas> _canvases = [];
-  bool _isLoading = true;
-
-  @override
-  void initState() {
-    super.initState();
-    _loadCanvases();
+    return canvasesAsync.when(
+      data: (canvases) => _buildList(context, ref, canvases, theme),
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (err, stack) => Center(child: Text('Error: $err')),
+    );
   }
 
-  Future<void> _loadCanvases() async {
-    setState(() => _isLoading = true);
-    try {
-      final canvases = await Datum.manager<PaintCanvas>().readAll();
-      setState(() {
-        _canvases = canvases.where((c) => !c.isDeleted).toList()
-          ..sort((a, b) => b.modifiedAt.compareTo(a.modifiedAt));
-        _isLoading = false;
-      });
-    } catch (e) {
-      talker.error('Failed to load canvases: $e');
-      setState(() => _isLoading = false);
+  Widget _buildList(BuildContext context, WidgetRef ref,
+      List<PaintCanvas> canvases, ShadThemeData theme) {
+    if (canvases.isEmpty) {
+      return _buildEmptyState(context, ref, theme);
     }
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            children: [
+              Text(
+                '${canvases.length} Painting${canvases.length == 1 ? '' : 's'}',
+                style: theme.textTheme.h4,
+              ),
+              const Spacer(),
+              ShadButton.outline(
+                onPressed: () => _createNewCanvas(context, ref),
+                icon: const Icon(LucideIcons.plus, size: 16),
+                child: const Text('New Painting'),
+              ),
+            ],
+          ),
+        ),
+        Expanded(
+          child: ListView.builder(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            itemCount: canvases.length,
+            itemBuilder: (context, index) {
+              final canvas = canvases[index];
+              return ShadCard(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: EdgeInsets.zero,
+                child: ListTile(
+                  leading: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      LucideIcons.brush,
+                      color: theme.colorScheme.primary,
+                    ),
+                  ),
+                  title: Text(
+                    canvas.title,
+                    style:
+                        theme.textTheme.p.copyWith(fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: Text(
+                    '${canvas.strokeCount} strokes • Modified ${canvas.modifiedAt.toString().split(' ')[0]}',
+                    style: theme.textTheme.muted,
+                  ),
+                  trailing: _buildPopupMenu(context, ref, canvas, theme),
+                  onTap: () => onCanvasSelected(canvas.id),
+                ),
+              );
+            },
+          ),
+        ),
+      ],
+    );
   }
 
-  Future<void> _createNewCanvas() async {
+  Widget _buildEmptyState(
+      BuildContext context, WidgetRef ref, ShadThemeData theme) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            LucideIcons.palette,
+            size: 64,
+            color: theme.colorScheme.mutedForeground,
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'No paintings yet',
+            style: theme.textTheme.h3,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Create your first painting to get started!',
+            style: theme.textTheme.muted,
+          ),
+          const SizedBox(height: 24),
+          ShadButton(
+            onPressed: () => _createNewCanvas(context, ref),
+            icon: const Icon(LucideIcons.plus, size: 16),
+            child: const Text('Create New Painting'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPopupMenu(BuildContext context, WidgetRef ref,
+      PaintCanvas canvas, ShadThemeData theme) {
+    return PopupMenuButton<String>(
+      onSelected: (value) {
+        if (value == 'delete') {
+          _deleteCanvas(context, ref, canvas);
+        }
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'delete',
+          child: Row(
+            children: [
+              Icon(LucideIcons.trash2, color: Colors.red, size: 16),
+              SizedBox(width: 8),
+              Text('Delete'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _createNewCanvas(BuildContext context, WidgetRef ref) async {
     final titleController = TextEditingController(text: 'New Painting');
     final descriptionController = TextEditingController();
 
@@ -92,13 +210,7 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
         await Datum.manager<PaintCanvas>()
             .push(item: canvas, userId: canvas.userId);
 
-        setState(() {
-          _canvases.insert(0, canvas);
-        });
-
-        widget.onCanvasSelected(canvas.id);
-
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Created "${canvas.title}"'),
@@ -106,21 +218,16 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
             ),
           );
         }
+
+        onCanvasSelected(canvas.id);
       } catch (e) {
         talker.error('Failed to create canvas: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to create painting: $e'),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
       }
     }
   }
 
-  Future<void> _deleteCanvas(PaintCanvas canvas) async {
+  Future<void> _deleteCanvas(
+      BuildContext context, WidgetRef ref, PaintCanvas canvas) async {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -147,11 +254,7 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
         await Datum.manager<PaintCanvas>()
             .push(item: deletedCanvas, userId: deletedCanvas.userId);
 
-        setState(() {
-          _canvases.removeWhere((c) => c.id == canvas.id);
-        });
-
-        if (mounted) {
+        if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Deleted "${canvas.title}"'),
@@ -161,169 +264,7 @@ class _PaintCanvasListState extends ConsumerState<PaintCanvasList> {
         }
       } catch (e) {
         talker.error('Failed to delete canvas: $e');
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Failed to delete painting: $e'),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
       }
     }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    if (_isLoading) {
-      return const Center(
-        child: CircularProgressIndicator(),
-      );
-    }
-
-    if (_canvases.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              Icons.palette,
-              size: 64,
-              color: Colors.grey,
-            ),
-            const SizedBox(height: 16),
-            const Text(
-              'No paintings yet',
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.w500,
-                color: Colors.grey,
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Create your first painting to get started!',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.grey,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            ElevatedButton.icon(
-              onPressed: _createNewCanvas,
-              icon: const Icon(Icons.add),
-              label: const Text('Create New Painting'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.blue,
-                foregroundColor: Colors.white,
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return Column(
-      children: [
-        Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Text(
-                '${_canvases.length} Painting${_canvases.length == 1 ? '' : 's'}',
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              const Spacer(),
-              ElevatedButton.icon(
-                onPressed: _createNewCanvas,
-                icon: const Icon(Icons.add),
-                label: const Text('New'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                ),
-              ),
-            ],
-          ),
-        ),
-        Expanded(
-          child: ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: _canvases.length,
-            itemBuilder: (context, index) {
-              final canvas = _canvases[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                child: ListTile(
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: Colors.grey[200],
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.palette,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  title: Text(
-                    canvas.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (canvas.description != null &&
-                          canvas.description!.isNotEmpty)
-                        Text(
-                          canvas.description!,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      Text(
-                        '${canvas.strokeCount} stroke${canvas.strokeCount == 1 ? '' : 's'} • Modified ${canvas.modifiedAt.toString().split(' ')[0]}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-                    ],
-                  ),
-                  trailing: PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'delete') {
-                        _deleteCanvas(canvas);
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete, color: Colors.red),
-                            SizedBox(width: 8),
-                            Text('Delete'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  onTap: () => widget.onCanvasSelected(canvas.id),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
   }
 }

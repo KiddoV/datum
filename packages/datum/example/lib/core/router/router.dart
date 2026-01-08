@@ -9,35 +9,33 @@ class AppRouter extends RootStackRouter {
   @override
   late final List<AutoRoute> routes = [
     AutoRoute(
-      page: CounterRoute.page,
-      path: '/counter',
-    ),
-    AutoRoute(
       page: LoginRoute.page,
       path: '/login',
       guards: [LoginGuard()],
       initial: true,
     ),
     AutoRoute(
-      page: HomeRoute.page,
-      path: '/home',
-    ),
-    AutoRoute(
-      page: FeatureSelectionRoute.page,
-      path: '/features',
-    ),
-    AutoRoute(
-      page: SimpleDatumRoute.page,
-      path: '/simple_datum',
-      guards: [
-        AuthGuard(),
-      ],
-    ),
-    AutoRoute(
-      page: PaintRoute.page,
-      path: '/paint',
-      guards: [
-        AuthGuard(),
+      page: DashboardRoute.page,
+      path: '/dashboard',
+      guards: [AuthGuard()],
+      children: [
+        AutoRoute(
+          page: HomeRoute.page,
+          path: 'overview',
+          initial: true,
+        ),
+        AutoRoute(
+          page: SimpleDatumRoute.page,
+          path: 'tasks',
+        ),
+        AutoRoute(
+          page: PaintRoute.page,
+          path: 'paint',
+        ),
+        AutoRoute(
+          page: CounterRoute.page,
+          path: 'counter',
+        ),
       ],
     ),
   ];

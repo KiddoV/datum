@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:example/app/view/app.dart';
 import 'package:example/bootstrap.dart';
-import 'package:example/features/simple_datum/controller/datum_provider_with_lifecycle.dart';
+import 'package:example/features/tasks/presentation/controllers/datum_provider_with_lifecycle.dart';
 import 'package:example/features/splash/view/splash_view.dart';
 
 class Splasher extends StatelessWidget {

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:datum/datum.dart';
 import 'package:example/data/paint/entity/paint_stroke.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 // ============================================================================
 // PROVIDERS
@@ -42,51 +43,67 @@ class PaintCanvas extends ConsumerStatefulWidget {
 
 class _PaintCanvasState extends ConsumerState<PaintCanvas> {
   final List<PaintStroke> _redoStrokes = [];
-  List<Offset> _currentPoints = [];
+
+  /// High-performance notifier for the active stroke being drawn
+  final ValueNotifier<List<Offset>> _currentPointsNotifier = ValueNotifier([]);
+
+  /// Optimistic UI: Strokes that have "ended" but aren't yet reflected in the
+  /// reactive data stream from the database.
+  final List<PaintStroke> _optimisticStrokes = [];
+
   Color _selectedColor = Colors.black;
   double _strokeWidth = 2.0;
 
+  @override
+  void dispose() {
+    _currentPointsNotifier.dispose();
+    super.dispose();
+  }
+
   void _startStroke(Offset position) {
-    setState(() {
-      _currentPoints = [position];
-    });
+    _currentPointsNotifier.value = [position];
   }
 
   void _updateStroke(Offset position) {
-    setState(() {
-      _currentPoints.add(position);
-    });
+    _currentPointsNotifier.value = [..._currentPointsNotifier.value, position];
   }
 
   Future<void> _endStroke() async {
-    if (_currentPoints.isEmpty) return;
+    final points = _currentPointsNotifier.value;
+    if (points.isEmpty) return;
 
-    final userId = await Datum.instance.config.initialUserId?.call();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
 
-    // Get current strokes count for ordering
-    final strokesAsync = ref.read(paintStrokesStreamProvider(widget.canvasId));
-    final currentStrokes = strokesAsync.maybeWhen(
-      data: (strokes) => strokes,
-      orElse: () => <PaintStroke>[],
-    );
-
+    // 1. Create the stroke object
     final stroke = PaintStroke.create(
-      points: List.from(_currentPoints),
+      points: List<Offset>.from(points),
       color: _selectedColor,
       strokeWidth: _strokeWidth,
-      order: currentStrokes.length,
+      order: 0, // Simplified order for creation
       canvasId: widget.canvasId,
     );
 
+    // 2. Add to optimistic cache and clear the active drawing buffer
+    // This happens BEFORE we push to the database to ensure the line stays on screen.
     setState(() {
-      _currentPoints.clear();
+      _optimisticStrokes.add(stroke);
+      _currentPointsNotifier.value = [];
       _redoStrokes.clear();
     });
 
-    // Save to Datum - the UI will update reactively
-    await Datum.manager<PaintStroke>()
-        .push(item: stroke, userId: stroke.userId);
+    // 3. Save to Datum
+    try {
+      await Datum.manager<PaintStroke>().push(
+        item: stroke,
+        userId: userId,
+      );
+    } catch (e) {
+      talker.error('Error saving stroke: $e');
+      setState(() {
+        _optimisticStrokes.removeWhere((s) => s.id == stroke.id);
+      });
+    }
   }
 
   Future<void> _undo() async {
@@ -97,14 +114,12 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
     );
 
     if (strokes.isEmpty) return;
-
     final lastStroke = strokes.last;
 
     setState(() {
       _redoStrokes.add(lastStroke);
     });
 
-    // Mark as deleted in Datum - the UI will update reactively
     final deletedStroke = lastStroke.copyWith(isDeleted: true) as PaintStroke;
     await Datum.manager<PaintStroke>()
         .push(item: deletedStroke, userId: deletedStroke.userId);
@@ -114,15 +129,13 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
     if (_redoStrokes.isEmpty) return;
 
     final stroke = _redoStrokes.removeLast();
-
-    // Restore by updating isDeleted to false - the UI will update reactively
     final restoredStroke = stroke.copyWith(isDeleted: false) as PaintStroke;
     await Datum.manager<PaintStroke>()
         .push(item: restoredStroke, userId: restoredStroke.userId);
   }
 
   void _clearCanvas() async {
-    final userId = await Datum.instance.config.initialUserId?.call();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
 
     final strokesAsync = ref.read(paintStrokesStreamProvider(widget.canvasId));
@@ -131,7 +144,6 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
       orElse: () => <PaintStroke>[],
     );
 
-    // Mark all strokes as deleted
     for (final stroke in strokes) {
       final deletedStroke = stroke.copyWith(isDeleted: true) as PaintStroke;
       await Datum.manager<PaintStroke>().push(
@@ -142,280 +154,70 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
 
     setState(() {
       _redoStrokes.clear();
+      _optimisticStrokes.clear();
     });
   }
 
   Future<void> _syncToRemote() async {
-    final userId = await Datum.instance.config.initialUserId?.call();
+    final userId = Supabase.instance.client.auth.currentUser?.id;
     if (userId == null) return;
 
     try {
-      // Trigger manual sync for all data
       await Datum.instance.synchronize(userId);
-      // Show success feedback
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Paint synced to remote successfully!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
+        showSuccessSnack(child: const Text('Sync complete!'));
       }
     } catch (e) {
       talker.error(e);
-      // Show error feedback
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to sync: $e'),
-            duration: Duration(seconds: 3),
-          ),
-        );
+        showErrorSnack(child: Text('Failed to sync: $e'));
       }
     }
   }
 
-  Future<void> _createTestStroke() async {
-    final userId = await Datum.instance.config.initialUserId?.call();
-    if (userId == null) return;
+  void showSuccessSnack({required Widget child}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: child, backgroundColor: Colors.green),
+    );
+  }
 
-    try {
-      // Get current strokes count for ordering
-      final strokesAsync =
-          ref.read(paintStrokesStreamProvider(widget.canvasId));
-      final currentStrokes = strokesAsync.maybeWhen(
-        data: (strokes) => strokes,
-        orElse: () => <PaintStroke>[],
-      );
-
-      // Create a simple test stroke - a diagonal line
-      final testPoints = [
-        const Offset(100, 100),
-        const Offset(150, 150),
-        const Offset(200, 200),
-      ];
-
-      final stroke = PaintStroke.create(
-        points: testPoints,
-        color: Colors.purple, // Use a distinctive color for test strokes
-        strokeWidth: 5.0,
-        order: currentStrokes.length,
-        canvasId: widget.canvasId,
-      );
-
-      setState(() {
-        _redoStrokes.clear();
-      });
-
-      // Save to Datum - the UI will update reactively
-      await Datum.manager<PaintStroke>().push(
-        item: stroke,
-        userId: userId,
-      );
-
-      // Show success feedback
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Test stroke created and saved!'),
-            duration: Duration(seconds: 2),
-          ),
-        );
-      }
-    } catch (e) {
-      talker.error('Failed to create test stroke: $e');
-      // Show error feedback
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Failed to create test stroke: $e'),
-            duration: Duration(seconds: 3),
-          ),
-        );
-      }
-    }
+  void showErrorSnack({required Widget child}) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: child, backgroundColor: Colors.red),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final strokesAsync = ref.watch(paintStrokesStreamProvider(widget.canvasId));
+    final theme = ShadTheme.of(context);
 
     return Column(
       children: [
-        // Optimized Scrollable Toolbar
+        // Toolbar
         Container(
-          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-          color: Colors.grey[200],
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+          decoration: BoxDecoration(
+            color: theme.colorScheme.background,
+            border: Border(bottom: BorderSide(color: theme.colorScheme.border)),
+          ),
           child: SingleChildScrollView(
             scrollDirection: Axis.horizontal,
             child: Row(
               children: [
-                // Color picker section
-                ...[
-                  Colors.black,
-                  Colors.red,
-                  Colors.blue,
-                  Colors.green,
-                  Colors.yellow
-                ].map((color) => GestureDetector(
-                      onTap: () => setState(() => _selectedColor = color),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: color,
-                          shape: BoxShape.circle,
-                          border: _selectedColor == color
-                              ? Border.all(color: Colors.black, width: 2)
-                              : null,
-                        ),
-                      ),
-                    )),
-                // Divider
-                Container(
-                  width: 1,
-                  height: 24,
-                  color: Colors.grey[400],
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                // Stroke width section
-                ...[2.0, 5.0, 10.0].map((width) => GestureDetector(
-                      onTap: () => setState(() => _strokeWidth = width),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        margin: const EdgeInsets.symmetric(horizontal: 2),
-                        decoration: BoxDecoration(
-                          color: _strokeWidth == width
-                              ? Colors.blue
-                              : Colors.grey[300],
-                          shape: BoxShape.circle,
-                        ),
-                        child: Center(
-                          child: Text(
-                            width.toInt().toString(),
-                            style: TextStyle(
-                              color: _strokeWidth == width
-                                  ? Colors.white
-                                  : Colors.black,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ),
-                      ),
-                    )),
-                // Divider
-                Container(
-                  width: 1,
-                  height: 24,
-                  color: Colors.grey[400],
-                  margin: const EdgeInsets.symmetric(horizontal: 8),
-                ),
-                // Action buttons section
+                _buildColorPicker(theme),
+                _buildDivider(theme),
+                _buildWidthPicker(theme),
+                _buildDivider(theme),
                 strokesAsync.maybeWhen(
-                  data: (strokes) => Row(
-                    children: [
-                      IconButton(
-                        onPressed: strokes.isNotEmpty ? _undo : null,
-                        icon: Icon(
-                          Icons.undo,
-                          color: strokes.isNotEmpty
-                              ? Colors.black
-                              : Colors.grey[400],
-                        ),
-                        tooltip: 'Undo',
-                        iconSize: 24,
-                        padding: const EdgeInsets.all(8),
-                        constraints:
-                            const BoxConstraints(minWidth: 40, minHeight: 40),
-                      ),
-                      IconButton(
-                        onPressed: _redoStrokes.isNotEmpty ? _redo : null,
-                        icon: Icon(
-                          Icons.redo,
-                          color: _redoStrokes.isNotEmpty
-                              ? Colors.black
-                              : Colors.grey[400],
-                        ),
-                        tooltip: 'Redo',
-                        iconSize: 24,
-                        padding: const EdgeInsets.all(8),
-                        constraints:
-                            const BoxConstraints(minWidth: 40, minHeight: 40),
-                      ),
-                      IconButton(
-                        onPressed: strokes.isNotEmpty ? _clearCanvas : null,
-                        icon: Icon(
-                          Icons.clear,
-                          color: strokes.isNotEmpty
-                              ? Colors.black
-                              : Colors.grey[400],
-                        ),
-                        tooltip: 'Clear Canvas',
-                        iconSize: 24,
-                        padding: const EdgeInsets.all(8),
-                        constraints:
-                            const BoxConstraints(minWidth: 40, minHeight: 40),
-                      ),
-                    ],
-                  ),
-                  orElse: () => const Row(
-                    children: [
-                      IconButton(
-                        onPressed: null,
-                        icon: Icon(Icons.undo, color: Colors.grey),
-                        tooltip: 'Undo',
-                        iconSize: 24,
-                        padding: EdgeInsets.all(8),
-                        constraints:
-                            BoxConstraints(minWidth: 40, minHeight: 40),
-                      ),
-                      IconButton(
-                        onPressed: null,
-                        icon: Icon(Icons.redo, color: Colors.grey),
-                        tooltip: 'Redo',
-                        iconSize: 24,
-                        padding: EdgeInsets.all(8),
-                        constraints:
-                            BoxConstraints(minWidth: 40, minHeight: 40),
-                      ),
-                      IconButton(
-                        onPressed: null,
-                        icon: Icon(Icons.clear, color: Colors.grey),
-                        tooltip: 'Clear Canvas',
-                        iconSize: 24,
-                        padding: EdgeInsets.all(8),
-                        constraints:
-                            BoxConstraints(minWidth: 40, minHeight: 40),
-                      ),
-                    ],
-                  ),
+                  data: (strokes) => _buildActions(strokes, theme),
+                  orElse: () => _buildDisabledActions(theme),
                 ),
-                IconButton(
+                _buildDivider(theme),
+                ShadButton.ghost(
                   onPressed: _syncToRemote,
-                  icon: const Icon(
-                    Icons.cloud_upload,
-                    color: Colors.blue,
-                  ),
-                  tooltip: 'Sync to Remote',
-                  iconSize: 24,
-                  padding: const EdgeInsets.all(8),
-                  constraints:
-                      const BoxConstraints(minWidth: 40, minHeight: 40),
-                ),
-                IconButton(
-                  onPressed: _createTestStroke,
-                  icon: const Icon(
-                    Icons.add_circle,
-                    color: Colors.green,
-                  ),
-                  tooltip: 'Create Test Stroke',
-                  iconSize: 24,
-                  padding: const EdgeInsets.all(8),
-                  constraints:
-                      const BoxConstraints(minWidth: 40, minHeight: 40),
+                  child: Icon(LucideIcons.cloudUpload,
+                      size: 20, color: theme.colorScheme.primary),
                 ),
               ],
             ),
@@ -426,28 +228,155 @@ class _PaintCanvasState extends ConsumerState<PaintCanvas> {
           child: Container(
             color: Colors.white,
             child: strokesAsync.when(
-              data: (strokes) => GestureDetector(
-                onPanStart: (details) => _startStroke(details.localPosition),
-                onPanUpdate: (details) => _updateStroke(details.localPosition),
-                onPanEnd: (details) => _endStroke(),
-                child: CustomPaint(
-                  painter: _CanvasPainter(
-                    strokes: strokes,
-                    currentPoints: _currentPoints,
-                    currentColor: _selectedColor,
-                    currentStrokeWidth: _strokeWidth,
+              data: (strokes) {
+                // Sync optimistic cache: Remove strokes that have now safely
+                // arrived in the stream.
+                if (_optimisticStrokes.isNotEmpty) {
+                  final strokeIds = strokes.map((s) => s.id).toSet();
+                  _optimisticStrokes
+                      .removeWhere((s) => strokeIds.contains(s.id));
+                }
+
+                // Combine stream data with remaining optimistic strokes
+                final combinedStrokes = [...strokes, ..._optimisticStrokes];
+
+                return RepaintBoundary(
+                  child: GestureDetector(
+                    onPanStart: (details) =>
+                        _startStroke(details.localPosition),
+                    onPanUpdate: (details) =>
+                        _updateStroke(details.localPosition),
+                    onPanEnd: (details) => _endStroke(),
+                    child: ValueListenableBuilder<List<Offset>>(
+                      valueListenable: _currentPointsNotifier,
+                      builder: (context, currentPoints, _) {
+                        return CustomPaint(
+                          painter: _CanvasPainter(
+                            strokes: combinedStrokes,
+                            currentPoints: currentPoints,
+                            currentColor: _selectedColor,
+                            currentStrokeWidth: _strokeWidth,
+                          ),
+                          size: Size.infinite,
+                        );
+                      },
+                    ),
                   ),
-                  size: Size.infinite,
-                ),
-              ),
+                );
+              },
               loading: () => const Center(child: CircularProgressIndicator()),
-              error: (error, stack) => Center(
-                child: Text('Error loading strokes: $error'),
-              ),
+              error: (error, stack) => Center(child: Text('Error: $error')),
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildColorPicker(ShadThemeData theme) {
+    final colors = [
+      Colors.black,
+      Colors.red,
+      Colors.blue,
+      Colors.green,
+      Colors.orange,
+      Colors.purple
+    ];
+    return Row(
+      children: colors.map((color) {
+        final isSelected = _selectedColor == color;
+        return GestureDetector(
+          onTap: () => setState(() => _selectedColor = color),
+          child: Container(
+            width: 28,
+            height: 28,
+            margin: const EdgeInsets.symmetric(horizontal: 4),
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+              border: Border.all(
+                color:
+                    isSelected ? theme.colorScheme.primary : Colors.transparent,
+                width: 2,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildWidthPicker(ShadThemeData theme) {
+    final widths = [2.0, 4.0, 8.0];
+    return Row(
+      children: widths.map((w) {
+        final isSelected = _strokeWidth == w;
+        return Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: ShadButton.ghost(
+            width: 36,
+            height: 36,
+            padding: EdgeInsets.zero,
+            backgroundColor: isSelected ? theme.colorScheme.accent : null,
+            onPressed: () => setState(() => _strokeWidth = w),
+            child: Container(
+              width: w + 2,
+              height: w + 2,
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? theme.colorScheme.accentForeground
+                    : theme.colorScheme.mutedForeground,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildActions(List<PaintStroke> strokes, ShadThemeData theme) {
+    return Row(
+      children: [
+        ShadButton.ghost(
+          onPressed: (strokes.isNotEmpty || _optimisticStrokes.isNotEmpty)
+              ? _undo
+              : null,
+          child: const Icon(LucideIcons.undo2, size: 20),
+        ),
+        ShadButton.ghost(
+          onPressed: _redoStrokes.isNotEmpty ? _redo : null,
+          child: const Icon(LucideIcons.redo2, size: 20),
+        ),
+        ShadButton.ghost(
+          onPressed: (strokes.isNotEmpty || _optimisticStrokes.isNotEmpty)
+              ? _clearCanvas
+              : null,
+          child: const Icon(LucideIcons.trash2, size: 20),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDisabledActions(ShadThemeData theme) {
+    return Row(
+      children: [
+        ShadButton.ghost(
+            enabled: false, child: const Icon(LucideIcons.undo2, size: 20)),
+        ShadButton.ghost(
+            enabled: false, child: const Icon(LucideIcons.redo2, size: 20)),
+        ShadButton.ghost(
+            enabled: false, child: const Icon(LucideIcons.trash2, size: 20)),
+      ],
+    );
+  }
+
+  Widget _buildDivider(ShadThemeData theme) {
+    return Container(
+      width: 1,
+      height: 24,
+      color: theme.colorScheme.border,
+      margin: const EdgeInsets.symmetric(horizontal: 12),
     );
   }
 }
@@ -467,14 +396,23 @@ class _CanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // Draw completed strokes
-    for (final stroke in strokes.where((s) => !s.isDeleted)) {
+    final paintBase = Paint()
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round
+      ..style = PaintingStyle.stroke
+      ..isAntiAlias = true;
+
+    // 1. Draw all completed (and optimistic) strokes
+    for (final stroke in strokes) {
       final paint = Paint()
         ..color = stroke.color
         ..strokeWidth = stroke.strokeWidth
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true
         ..style = PaintingStyle.stroke;
+
+      if (stroke.points.isEmpty) continue;
 
       if (stroke.points.length == 1) {
         canvas.drawPoints(ui.PointMode.points, stroke.points, paint);
@@ -488,13 +426,14 @@ class _CanvasPainter extends CustomPainter {
       }
     }
 
-    // Draw current stroke being drawn
+    // 2. Draw the stroke currently being drawn
     if (currentPoints.isNotEmpty) {
       final paint = Paint()
         ..color = currentColor
         ..strokeWidth = currentStrokeWidth
         ..strokeCap = StrokeCap.round
         ..strokeJoin = StrokeJoin.round
+        ..isAntiAlias = true
         ..style = PaintingStyle.stroke;
 
       if (currentPoints.length == 1) {
@@ -511,10 +450,5 @@ class _CanvasPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_CanvasPainter oldDelegate) {
-    return oldDelegate.strokes != strokes ||
-        oldDelegate.currentPoints != currentPoints ||
-        oldDelegate.currentColor != currentColor ||
-        oldDelegate.currentStrokeWidth != currentStrokeWidth;
-  }
+  bool shouldRepaint(_CanvasPainter oldDelegate) => true;
 }

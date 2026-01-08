@@ -1,161 +1,10 @@
 import 'package:auto_route/auto_route.dart';
-import 'package:example/core/router/router.gr.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:example/features/simple_datum/view/sync_dashboard_widget.dart';
 import 'package:responsive_framework/responsive_framework.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-
-/// Animated test features button with entrance and interaction animations
-class AnimatedTestFeaturesButton extends StatefulWidget {
-  const AnimatedTestFeaturesButton({super.key});
-
-  @override
-  State<AnimatedTestFeaturesButton> createState() =>
-      _AnimatedTestFeaturesButtonState();
-}
-
-class _AnimatedTestFeaturesButtonState extends State<AnimatedTestFeaturesButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _animationController;
-  late Animation<double> _scaleAnimation;
-  late Animation<double> _opacityAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _animationController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.elasticOut,
-      ),
-    );
-
-    _opacityAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeIn),
-      ),
-    );
-
-    // Start the entrance animation
-    _animationController.forward();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _animationController,
-      builder: (context, child) {
-        return Transform.scale(
-          scale: _scaleAnimation.value,
-          child: Opacity(
-            opacity: _opacityAnimation.value,
-            child: SizedBox(
-              width: ResponsiveValue<double>(
-                context,
-                conditionalValues: [
-                  const Condition.equals(name: MOBILE, value: 200),
-                  const Condition.equals(name: TABLET, value: 240),
-                  const Condition.equals(name: DESKTOP, value: 280),
-                  const Condition.equals(name: '4K', value: 320),
-                ],
-                defaultValue: 220,
-              ).value,
-              height: ResponsiveValue<double>(
-                context,
-                conditionalValues: [
-                  const Condition.equals(name: MOBILE, value: 55),
-                  const Condition.equals(name: TABLET, value: 65),
-                  const Condition.equals(name: DESKTOP, value: 75),
-                  const Condition.equals(name: '4K', value: 85),
-                ],
-                defaultValue: 65,
-              ).value,
-              child: ElevatedButton(
-                onPressed: () {
-                  // Add press animation
-                  _animationController.reverse().then((_) {
-                    AutoRouter.of(context).push(const FeatureSelectionRoute());
-                    _animationController.forward();
-                  });
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 8,
-                  shadowColor: Colors.blue.withValues(alpha: 0.3),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.explore,
-                      size: ResponsiveValue<double>(
-                        context,
-                        conditionalValues: [
-                          const Condition.equals(name: MOBILE, value: 20),
-                          const Condition.equals(name: TABLET, value: 24),
-                          const Condition.equals(name: DESKTOP, value: 28),
-                          const Condition.equals(name: '4K', value: 32),
-                        ],
-                        defaultValue: 26,
-                      ).value,
-                    ),
-                    SizedBox(
-                      width: ResponsiveValue<double>(
-                        context,
-                        conditionalValues: [
-                          const Condition.equals(name: MOBILE, value: 6),
-                          const Condition.equals(name: TABLET, value: 8),
-                          const Condition.equals(name: DESKTOP, value: 10),
-                          const Condition.equals(name: '4K', value: 12),
-                        ],
-                        defaultValue: 8,
-                      ).value,
-                    ),
-                    Text(
-                      'Test Features',
-                      style: TextStyle(
-                        fontSize: ResponsiveValue<double>(
-                          context,
-                          conditionalValues: [
-                            const Condition.equals(name: MOBILE, value: 14),
-                            const Condition.equals(name: TABLET, value: 16),
-                            const Condition.equals(name: DESKTOP, value: 20),
-                            const Condition.equals(name: '4K', value: 24),
-                          ],
-                          defaultValue: 18,
-                        ).value,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
+import 'package:example/features/tasks/presentation/widgets/sync_dashboard_widget.dart';
 
 @RoutePage()
 class HomePage extends ConsumerWidget {
@@ -163,158 +12,242 @@ class HomePage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final userId = Supabase.instance.client.auth.currentUser?.id;
+    final user = Supabase.instance.client.auth.currentUser;
+    final theme = ShadTheme.of(context);
+    final isMobile = ResponsiveBreakpoints.of(context).isMobile;
 
-    return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
-        statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-      ),
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text('Home Page'),
-          backgroundColor: Colors.blue,
-          foregroundColor: Colors.white,
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: EdgeInsets.all(
-              ResponsiveValue<double>(
-                context,
-                conditionalValues: [
-                  const Condition.equals(name: MOBILE, value: 12),
-                  const Condition.equals(name: TABLET, value: 16),
-                  const Condition.equals(name: DESKTOP, value: 24),
-                  const Condition.equals(name: '4K', value: 32),
-                ],
-                defaultValue: 16,
-              ).value,
-            ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    'Welcome to Datum Test App',
-                    style: TextStyle(
-                      fontSize: ResponsiveValue<double>(
-                        context,
-                        conditionalValues: [
-                          const Condition.equals(name: MOBILE, value: 24),
-                          const Condition.equals(name: TABLET, value: 28),
-                          const Condition.equals(name: DESKTOP, value: 36),
-                          const Condition.equals(name: '4K', value: 48),
-                        ],
-                        defaultValue: 28,
-                      ).value,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  SizedBox(
-                    height: ResponsiveValue<double>(
-                      context,
-                      conditionalValues: [
-                        const Condition.equals(name: MOBILE, value: 16),
-                        const Condition.equals(name: TABLET, value: 20),
-                        const Condition.equals(name: DESKTOP, value: 24),
-                        const Condition.equals(name: '4K', value: 32),
-                      ],
-                      defaultValue: 20,
-                    ).value,
-                  ),
-                  Text(
-                    'Test the latest features with real-time sync',
-                    style: TextStyle(
-                      fontSize: ResponsiveValue<double>(
-                        context,
-                        conditionalValues: [
-                          const Condition.equals(name: MOBILE, value: 14),
-                          const Condition.equals(name: TABLET, value: 16),
-                          const Condition.equals(name: DESKTOP, value: 18),
-                          const Condition.equals(name: '4K', value: 22),
-                        ],
-                        defaultValue: 16,
-                      ).value,
-                      color: Colors.grey,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  SizedBox(
-                    height: ResponsiveValue<double>(
-                      context,
-                      conditionalValues: [
-                        const Condition.equals(name: MOBILE, value: 32),
-                        const Condition.equals(name: TABLET, value: 40),
-                        const Condition.equals(name: DESKTOP, value: 48),
-                        const Condition.equals(name: '4K', value: 64),
-                      ],
-                      defaultValue: 40,
-                    ).value,
-                  ),
-                  // Animated Test Features Button
-                  const AnimatedTestFeaturesButton(),
-                  SizedBox(
-                    height: ResponsiveValue<double>(
-                      context,
-                      conditionalValues: [
-                        const Condition.equals(name: MOBILE, value: 32),
-                        const Condition.equals(name: TABLET, value: 40),
-                        const Condition.equals(name: DESKTOP, value: 48),
-                        const Condition.equals(name: '4K', value: 64),
-                      ],
-                      defaultValue: 40,
-                    ).value,
-                  ),
-                  // Sync Dashboard Section
-                  if (userId != null) ...[
-                    Text(
-                      'Sync Dashboard',
-                      style: TextStyle(
-                        fontSize: ResponsiveValue<double>(
-                          context,
-                          conditionalValues: [
-                            const Condition.equals(name: MOBILE, value: 16),
-                            const Condition.equals(name: TABLET, value: 18),
-                            const Condition.equals(name: DESKTOP, value: 22),
-                            const Condition.equals(name: '4K', value: 28),
-                          ],
-                          defaultValue: 18,
-                        ).value,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.blue,
-                      ),
-                    ),
-                    SizedBox(
-                      height: ResponsiveValue<double>(
-                        context,
-                        conditionalValues: [
-                          const Condition.equals(name: MOBILE, value: 12),
-                          const Condition.equals(name: TABLET, value: 16),
-                          const Condition.equals(name: DESKTOP, value: 20),
-                          const Condition.equals(name: '4K', value: 24),
-                        ],
-                        defaultValue: 16,
-                      ).value,
-                    ),
-                    // Comprehensive Sync Dashboard
-                    SyncDashboardWidget(userId: userId),
-                    SizedBox(
-                      height: ResponsiveValue<double>(
-                        context,
-                        conditionalValues: [
-                          const Condition.equals(name: MOBILE, value: 32),
-                          const Condition.equals(name: TABLET, value: 40),
-                          const Condition.equals(name: DESKTOP, value: 48),
-                          const Condition.equals(name: '4K', value: 64),
-                        ],
-                        defaultValue: 40,
-                      ).value,
-                    ),
-                  ],
-                ],
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 120,
+            floating: false,
+            pinned: true,
+            flexibleSpace: FlexibleSpaceBar(
+              title: Text(
+                'Dashboard Overview',
+                style: theme.textTheme.h3
+                    .copyWith(color: theme.colorScheme.foreground),
               ),
+              centerTitle: false,
+              titlePadding: const EdgeInsets.only(left: 24, bottom: 16),
             ),
+            backgroundColor: theme.colorScheme.background,
+            elevation: 0,
+            automaticallyImplyLeading: false, // Sidebar handles navigation
+          ),
+          SliverPadding(
+            padding: const EdgeInsets.all(24),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _buildWelcomeHeader(context, user),
+                const SizedBox(height: 32),
+                _buildStatsGrid(context, isMobile),
+                const SizedBox(height: 32),
+                _buildSyncStatusSection(context, user?.id),
+                const SizedBox(height: 32),
+                _buildQuickActions(context),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWelcomeHeader(BuildContext context, User? user) {
+    final theme = ShadTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Welcome back, ${user?.email?.split('@').first ?? 'Explorer'}! 👋',
+          style: theme.textTheme.h3,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Here is what is happening with your data sync today.',
+          style: theme.textTheme.muted,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildStatsGrid(BuildContext context, bool isMobile) {
+    return GridView.count(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisCount: isMobile ? 1 : 3,
+      childAspectRatio: 2.5,
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      children: [
+        _StatCard(
+          title: 'Total Syncs',
+          value: '1,284',
+          icon: LucideIcons.refreshCw,
+          trend: '+12% from last week',
+          trendPositive: true,
+        ),
+        _StatCard(
+          title: 'Active Nodes',
+          value: '8',
+          icon: LucideIcons.network,
+          trend: 'All systems green',
+          trendPositive: true,
+        ),
+        _StatCard(
+          title: 'Storage Used',
+          value: '42.5 MB',
+          icon: LucideIcons.database,
+          trend: '72% of quota',
+          trendPositive: false,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSyncStatusSection(BuildContext context, String? userId) {
+    if (userId == null) return const SizedBox.shrink();
+    final theme = ShadTheme.of(context);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text('Sync Health', style: theme.textTheme.h4),
+            ShadButton.outline(
+              child: const Text('View Logs'),
+              onPressed: () {},
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SyncDashboardWidget(userId: userId),
+      ],
+    );
+  }
+
+  Widget _buildQuickActions(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Quick Actions', style: theme.textTheme.h4),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            _QuickActionCard(
+              title: 'Add New Task',
+              icon: LucideIcons.plus,
+              onTap: () => AutoTabsRouter.of(context).setActiveIndex(1),
+              color: Colors.blue,
+            ),
+            const SizedBox(width: 16),
+            _QuickActionCard(
+              title: 'Start Drawing',
+              icon: LucideIcons.brush,
+              onTap: () => AutoTabsRouter.of(context).setActiveIndex(2),
+              color: Colors.purple,
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _StatCard extends StatelessWidget {
+  final String title;
+  final String value;
+  final IconData icon;
+  final String trend;
+  final bool trendPositive;
+
+  const _StatCard({
+    required this.title,
+    required this.value,
+    required this.icon,
+    required this.trend,
+    required this.trendPositive,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return ShadCard(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: theme.colorScheme.primary, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(title,
+                    style: theme.textTheme.muted.copyWith(fontSize: 12)),
+                const SizedBox(height: 4),
+                Text(value, style: theme.textTheme.h4),
+                const SizedBox(height: 4),
+                Text(
+                  trend,
+                  style: theme.textTheme.muted.copyWith(
+                    fontSize: 11,
+                    color: trendPositive
+                        ? Colors.green
+                        : theme.colorScheme.mutedForeground,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _QuickActionCard extends StatelessWidget {
+  final String title;
+  final IconData icon;
+  final VoidCallback onTap;
+  final Color color;
+
+  const _QuickActionCard({
+    required this.title,
+    required this.icon,
+    required this.onTap,
+    required this.color,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = ShadTheme.of(context);
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: ShadCard(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: color, size: 32),
+              const SizedBox(height: 16),
+              Text(title,
+                  style:
+                      theme.textTheme.p.copyWith(fontWeight: FontWeight.w600)),
+            ],
           ),
         ),
       ),

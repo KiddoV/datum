@@ -185,4 +185,7 @@ class TestLogger implements DatumLogger {
   }) {
     return TestLogger();
   }
+
+  @override
+  DatumLogger getWorkerLogger() => this;
 }

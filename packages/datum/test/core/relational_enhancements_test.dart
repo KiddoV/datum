@@ -1,8 +1,6 @@
 import 'package:datum/datum.dart';
 import 'package:test/test.dart';
 import 'package:mocktail/mocktail.dart';
-import 'package:datum/source/core/models/relational_datum_entity.dart';
-import 'package:datum/source/core/manager/datum_manager.dart';
 
 import '../mocks/mock_adapters.dart';
 import '../mocks/mock_connectivity_checker.dart';
@@ -136,7 +134,6 @@ class Post extends RelationalDatumEntity {
 
 void main() {
   late DatumManager<User> userManager;
-  late DatumManager<Post> postManager;
   late MockLocalAdapter<User> userAdapter;
   late MockLocalAdapter<Post> postAdapter;
 
@@ -181,7 +178,6 @@ void main() {
     );
 
     userManager = Datum.manager<User>();
-    postManager = Datum.manager<Post>();
   });
 
   group('Eager Loading', () {

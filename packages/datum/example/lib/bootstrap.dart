@@ -175,6 +175,9 @@ class _TalkerDatumLogger implements datum_logger.DatumLogger {
 
     return buffer.toString();
   }
+
+  @override
+  datum_logger.DatumLogger getWorkerLogger() => this;
 }
 
 ///This bootstrap function builds widget asynchronusly
