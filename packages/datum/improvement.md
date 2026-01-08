@@ -21,7 +21,7 @@ This document tracks planned improvements and future directions for the **Datum*
 - [x] **Vector Clocks**: Implemented for complex multi-device conflict detection and causality tracking (moving beyond simple version numbers).
 
 ## 5. Developer Experience (DX) & Tooling
-- [ ] **Code Generation**: Automate `toDatumMap`, `fromMap`, `diff`, and `copyWith` using `build_runner`.
+- [x] **Code Generation**: Automate `toDatumMap`, `fromMap`, `diff`, and `copyWith` using `build_runner`.
 - [ ] **CLI Migration Tools**: Manage schema migrations via command line.
 - [ ] **Datum DevTools**: Inspector for local DB, sync queue, and conflict simulation.
 

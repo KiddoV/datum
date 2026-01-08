@@ -1,3 +1,22 @@
+# 1.0.3
+
+## 🚀 Relational Data Enhancements
+- **Eager Loading**: Support `withRelated` in `read()` and `readAll()` to solve N+1 query problems.
+- **Advanced Cascade Controls**: More granular deletion behaviors (e.g., `SetNull`) and visualization of delete plans.
+- **Transactional Relationships**: Atomic saves for entities and their pivot/related records.
+
+## ⚡ Performance & Scaling
+- **Batch Operations**: Support for batch push/pull in adapters and sync engine (Includes comprehensive test suite with 14 edge case scenarios and 100% pass rate)
+- **LRU Cache**: Size-limited caching in `DatumManager` to prevent memory bloat.
+- **Full Isolate Syncing**: Offloading the entire synchronizer to a background Isolate.
+
+## 🔄 Advanced Sync Logic
+- **Conflict Resolution Strategies**: Initial support for CRDT-based merging implemented via `VectorClock` and `DatumEntityInterface.merge()`.
+- **Vector Clocks**: Implemented for complex multi-device conflict detection and causality tracking (moving beyond simple version numbers).
+
+## 🛠 Developer Experience (DX)
+- **Code Generation**: Automated `toDatumMap`, `fromMap`, `diff`, and `copyWith` using `datum_generator`.
+
 # 1.0.2
 
 ## 🐛 Bug Fixes
