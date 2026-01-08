@@ -134,6 +134,8 @@ void main() {
                 title: 'Guides',
                 links: [
                   SidebarLink(text: "Define Your Entity", href: '/guides/entity_define'),
+                  SidebarLink(text: "Code Generation", href: '/guides/code_generation'),
+                  SidebarLink(text: "Automated Relationships", href: '/guides/code_generation_relationships'),
                   SidebarLink(text: "Initialization & Global API", href: '/guides/initialization'),
                   SidebarLink(text: "Working with Relationships", href: '/guides/relationships'),
                   SidebarLink(text: "Cascading Delete", href: '/guides/cascading_delete'),
@@ -141,6 +143,7 @@ void main() {
                   SidebarLink(text: "Define Your Local Adapter", href: '/guides/local_adapter_implement'),
                   SidebarLink(text: "Define Your Remote Adapter", href: '/guides/remote_adapter_implement'),
                   SidebarLink(text: "Datum Singleton API", href: '/guides/singleton_api'),
+                  SidebarLink(text: "Sync Patterns", href: '/guides/sync_patterns'),
                   SidebarLink(text: "Advanced Sync Patterns", href: '/guides/advanced_sync'),
                 ],
               ),

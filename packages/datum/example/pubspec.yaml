@@ -13,6 +13,8 @@ dependencies:
   datum:
     path: ../
 
+  datum_generator:
+    path: ../../datum_generator
   dio: ^5.9.0
   dio_smart_retry: ^7.0.1
   duration: ^4.0.3
@@ -59,10 +61,6 @@ dev_dependencies:
   slang_build_runner: ^4.9.0
   spot: ^0.16.0
   very_good_analysis: ^10.0.0
-  mockito: ^5.5.0
-
-
-
 
 
 flutter:

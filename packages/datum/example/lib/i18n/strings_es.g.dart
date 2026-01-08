@@ -3,6 +3,7 @@
 ///
 // coverage:ignore-file
 // ignore_for_file: type=lint, unused_import
+// dart format off
 
 import 'package:flutter/widgets.dart';
 import 'package:intl/intl.dart';
@@ -10,7 +11,7 @@ import 'package:slang/generated.dart';
 import 'strings.g.dart';
 
 // Path: <root>
-class TranslationsEs implements Translations {
+class TranslationsEs with BaseTranslations<AppLocale, Translations> implements Translations {
 	/// You can call this constructor and build your own translation instance of this locale.
 	/// Constructing via the enum [AppLocale.build] is preferred.
 	TranslationsEs({Map<String, Node>? overrides, PluralResolver? cardinalResolver, PluralResolver? ordinalResolver, TranslationMetadata<AppLocale, Translations>? meta})
@@ -49,17 +50,12 @@ class TranslationsEs implements Translations {
 /// so the map is split into smaller functions (512 entries each).
 extension on TranslationsEs {
 	dynamic _flatMapFunction(String path) {
-		return _flatMapFunction$0(path);
-	}
-
-	dynamic _flatMapFunction$0(String path) {
-		switch (path) {
-			case 'locale': return 'es';
-			case 'locale_en': return 'English';
-			case 'locale_es': return 'Spanish';
-			case 'counterAppBarTitle': return 'Contador';
-			default: return null;
-		}
+		return switch (path) {
+			'locale' => 'es',
+			'locale_en' => 'English',
+			'locale_es' => 'Spanish',
+			'counterAppBarTitle' => 'Contador',
+			_ => null,
+		};
 	}
 }
-

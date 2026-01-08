@@ -37,13 +37,14 @@ You should consider Datum if you are building an application that:
 New to Datum? Here's how to get started:
 
 1. **[Define your entities](guides/entity_define)**: Learn about `DatumEntity` and `RelationalDatumEntity`
-2. **[Set up initialization](guides/initialization)**: Configure and initialize the Datum system
-3. **[Work with relationships](guides/relationships)**: Define and use entity relationships
-4. **[Query your data](guides/querying)**: Filter, sort, and paginate data
-5. **[Implement adapters](guides/local_adapter_implement)**: Create local and remote adapters
-6. **[Master sync patterns](guides/advanced_sync)**: Handle app startup, login, and data synchronization
-7. **[Use the Singleton API](guides/singleton_api)**: Convenient access to all Datum operations
-8. **[Advanced sync patterns](guides/advanced_sync)**: Production-ready synchronization features
+2. **[Use code generation](guides/code_generation)**: Automate boilerplate with `datum_generator` (recommended)
+3. **[Set up initialization](guides/initialization)**: Configure and initialize the Datum system
+4. **[Work with relationships](guides/relationships)**: Define and use entity relationships
+5. **[Query your data](guides/querying)**: Filter, sort, and paginate data
+6. **[Implement adapters](guides/local_adapter_implement)**: Create local and remote adapters
+7. **[Master sync patterns](guides/advanced_sync)**: Handle app startup, login, and data synchronization
+8. **[Use the Singleton API](guides/singleton_api)**: Convenient access to all Datum operations
+9. **[Advanced sync patterns](guides/advanced_sync)**: Production-ready synchronization features
 
 ## 🚀 What's Next
 

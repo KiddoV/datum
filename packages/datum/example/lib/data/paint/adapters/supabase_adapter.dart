@@ -6,7 +6,7 @@ class PaintStrokeSupabaseAdapter extends SupabaseRemoteAdapter<PaintStroke> {
   PaintStrokeSupabaseAdapter()
       : super(
           tableName: 'paint_strokes',
-          fromMap: PaintStroke.fromMap,
+          fromMap: PaintStrokeFactory.fromMap,
         );
 
   @override

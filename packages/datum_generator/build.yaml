@@ -1,0 +1,14 @@
+
+builders:
+  datum_generator:
+    import: "package:datum_generator/datum_generator.dart"
+    builder_factories: ["datumBuilder"]
+    build_extensions: { ".dart": [".datum.g.part"] }
+    auto_apply: dependents
+    build_to: cache
+    defaults:
+      generate_for:
+        - lib/**
+        - test/**
+        - example/lib/data/**
+    applies_builders: ["source_gen|combining_builder"]

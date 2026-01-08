@@ -15,7 +15,34 @@ Datum supports four types of relationships between entities:
 
 ## Defining Relationships
 
-To use relationships, your entities must extend `RelationalDatumEntity` and override the `relations` getter:
+There are two ways to define relationships in Datum:
+
+1. **Automated (Recommended)**: Using `@HasManyRelation`, `@BelongsToRelation`, etc., annotations on placeholder fields in conjunction with `datum_generator`.
+2. **Manual**: Overriding the `relations` getter in your `RelationalDatumEntity`.
+
+### 1. Automated Approach (Recommended)
+
+When using `datum_generator`, you can define relationships with annotations. The generator will automatically create the `datumRelations` map for you.
+
+```dart
+@DatumSerializable(generateMixin: true)
+class User extends RelationalDatumEntity with _$UserMixin {
+  // Annotation on a placeholder field
+  @HasManyRelation<Post>('userId', cascadeDelete: 'cascade')
+  final List<Post>? _posts = null;
+
+  @override
+  Map<String, Relation> get relations => datumRelations;
+
+  // ... rest of implementation
+}
+```
+
+For more details on this approach, see the **[Automated Relationship Generation Guide](guides/code_generation_relationships)**.
+
+### 2. Manual Approach
+
+If you prefer not to use code generation or need advanced custom logic, you must extend `RelationalDatumEntity` and override the `relations` getter:
 
 ```dart
 class User extends RelationalDatumEntity {

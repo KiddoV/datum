@@ -164,6 +164,132 @@ create table public.sync_metadata (
 
 ---
 
+## 🤖 Code Generation (Recommended)
+
+Datum provides a powerful code generator that automatically creates boilerplate code for your entities, significantly reducing development time and potential errors.
+
+### Why Use Code Generation?
+
+Writing manual serialization, deserialization, diff tracking, and copy methods for every entity is:
+- **Time-consuming**: Repetitive boilerplate code
+- **Error-prone**: Easy to miss fields or make mistakes
+- **Hard to maintain**: Changes to your entity require updating multiple methods
+
+The `datum_generator` package solves this by automatically generating:
+- ✅ `toDatumMap()` - Serialization with automatic snake_case conversion
+- ✅ `fromMap()` - Type-safe deserialization
+- ✅ `diff()` - Change tracking between versions
+- ✅ `copyWith()` and `copyWithAll()` - Immutable updates with version incrementing
+- ✅ `operator ==` and `hashCode` - Proper equality comparisons
+
+### Quick Start with Code Generation
+
+1. **Add the generator**:
+
+Add `datum_generator` to your `pubspec.yaml`. It is required as a regular dependency (for annotations) AND a dev dependency (for the builder):
+
+```yaml
+dependencies:
+  datum: ^1.0.2
+  datum_generator: ^1.0.0
+
+dev_dependencies:
+  build_runner: ^2.4.0
+  datum_generator: ^1.0.0
+```
+
+2. **Annotate your entity**:
+
+By setting `generateMixin: true`, you can use the generated `_$TaskMixin` to automatically implement all required `DatumEntity` methods.
+
+```dart
+import 'package:datum/datum.dart';
+import 'package:datum_generator/datum_generator.dart';
+
+part 'task.g.dart';
+
+@DatumSerializable(tableName: 'tasks', generateMixin: true)
+class Task extends DatumEntity with _$TaskMixin {
+  @override
+  final String id;
+
+  @override
+  final String userId;
+
+  final String title;
+
+  @DatumIgnore()  // Exclude from serialization
+  final String? temporaryToken;
+
+  @DatumField('task_description')  // Custom field name
+  final String? description;
+
+  final bool isCompleted;
+
+  @override
+  final DateTime createdAt;
+
+  @override
+  final DateTime modifiedAt;
+
+  @override
+  final int version;
+
+  @override
+  final bool isDeleted;
+
+  const Task({
+    required this.id,
+    required this.userId,
+    required this.title,
+    this.temporaryToken,
+    this.description,
+    this.isCompleted = false,
+    required this.createdAt,
+    required this.modifiedAt,
+    this.version = 1,
+    this.isDeleted = false,
+  });
+
+  factory Task.fromMap(Map<String, dynamic> map) {
+    return _$TaskFromMap(map);
+  }
+}
+```
+
+3. **Run the generator**:
+
+```bash
+flutter pub run build_runner build
+```
+
+Or for continuous generation during development:
+
+```bash
+flutter pub run build_runner watch
+```
+
+This generates a `task.g.dart` file with all the boilerplate code!
+
+### Available Annotations
+
+- **`@DatumSerializable(tableName: 'table_name')`**: Mark a class for code generation
+- **`@DatumIgnore()`**: Exclude a field from serialization (still included in copyWith and equality)
+- **`@DatumField('custom_name')`**: Specify a custom database field name
+
+### Supported Types
+
+The generator handles these types automatically:
+- Primitives: `String`, `int`, `double`, `bool`
+- Dates: `DateTime` (auto-converts between milliseconds and ISO8601)
+- Flutter types: `Color`, `Offset`, `List<Offset>`
+- Collections: `List<T>`, `Map<String, dynamic>`
+- Nullable types: `String?`, `int?`, etc.
+
+For complete documentation, see the [datum_generator README](https://pub.dev/packages/datum_generator).
+
+---
+
 ## 📖 Full Examples
 
 Here are complete examples of a `DatumEntity` and its adapters from the example app.

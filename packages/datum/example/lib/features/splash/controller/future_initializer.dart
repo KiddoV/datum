@@ -119,22 +119,22 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
       DatumRegistration<PaintStroke>(
         localAdapter: IsolatedHiveLocalAdapter<PaintStroke>(
           entityBoxName: "PaintStroke",
-          fromMap: PaintStroke.fromMap, // Use tear-off
+          fromMap: PaintStrokeFactory.fromMap, // Use generated factory
           schemaVersion: 0,
         ),
         remoteAdapter: SupabaseRemoteAdapter<PaintStroke>(
-          fromMap: PaintStroke.fromMap,
+          fromMap: PaintStrokeFactory.fromMap,
           tableName: "paint_strokes",
         ),
       ),
       DatumRegistration<PaintCanvas>(
         localAdapter: IsolatedHiveLocalAdapter<PaintCanvas>(
           entityBoxName: "PaintCanvas",
-          fromMap: PaintCanvas.fromMap, // Use tear-off
+          fromMap: PaintCanvasFactory.fromMap, // Use generated factory
           schemaVersion: 0,
         ),
         remoteAdapter: SupabaseRemoteAdapter<PaintCanvas>(
-          fromMap: PaintCanvas.fromMap,
+          fromMap: PaintCanvasFactory.fromMap,
           tableName: "paint_canvases",
         ),
       ),

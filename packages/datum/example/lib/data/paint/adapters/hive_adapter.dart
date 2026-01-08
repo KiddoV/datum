@@ -47,7 +47,7 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
     return entityBox.watch().map((event) {
       final entityMap = event.value;
       final entity = entityMap != null
-          ? PaintStroke.fromMap(_normalizeMap(entityMap))
+          ? PaintStrokeFactory.fromMap(_normalizeMap(entityMap))
           : null;
       return DatumChangeDetail(
         entityId: event.key as String,
@@ -70,7 +70,7 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
   Future<PaintStroke?> read(String id, {String? userId}) async {
     final entityMap = entityBox.get(id);
     if (entityMap == null) return null;
-    final entity = PaintStroke.fromMap(_normalizeMap(entityMap));
+    final entity = PaintStrokeFactory.fromMap(_normalizeMap(entityMap));
     if (userId == null || entity.userId == userId) {
       return entity;
     }
@@ -81,7 +81,9 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
   Future<List<PaintStroke>> readAll({String? userId}) async {
     final maps = (entityBox.values)
         .where((map) => userId == null || map['userId'] == userId);
-    return maps.map((map) => PaintStroke.fromMap(_normalizeMap(map))).toList();
+    return maps
+        .map((map) => PaintStrokeFactory.fromMap(_normalizeMap(map)))
+        .toList();
   }
 
   @override
@@ -113,7 +115,7 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
           message: 'Entity with id $id not found for patch.');
     }
     final json = _normalizeMap(existing)..addAll(delta);
-    final patchedItem = PaintStroke.fromMap(json);
+    final patchedItem = PaintStrokeFactory.fromMap(json);
     await update(patchedItem);
     return patchedItem;
   }
@@ -172,7 +174,7 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
     if (opsList == null) return [];
     return opsList.cast<Map<dynamic, dynamic>>().map((raw) {
       return DatumSyncOperation.fromMap(
-          _normalizeMap(raw), PaintStroke.fromMap);
+          _normalizeMap(raw), PaintStrokeFactory.fromMap);
     }).toList();
   }
 
@@ -219,7 +221,7 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
     }
     final newEntities = <String, Map<dynamic, dynamic>>{};
     for (final rawItem in data) {
-      final entity = PaintStroke.fromMap(rawItem);
+      final entity = PaintStrokeFactory.fromMap(rawItem);
       newEntities[entity.id] = entity.toDatumMap(target: MapTarget.local);
     }
     await entityBox.putAll(newEntities);
@@ -338,7 +340,7 @@ class PaintStrokeHiveAdapter extends LocalAdapter<PaintStroke> {
 
         // 3. Transform the filtered maps into your entity objects.
         final entities = filteredMaps
-            .map((map) => PaintStroke.fromMap(_normalizeMap(map)))
+            .map((map) => PaintStrokeFactory.fromMap(_normalizeMap(map)))
             .toList();
 
         // 4. Yield the complete list as a single event on the stream.

@@ -5,7 +5,7 @@ import 'package:example/features/tasks/presentation/widgets/task_list_item.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
+import 'package:mocktail/mocktail.dart';
 
 // Mock SimpleDatumController
 class MockSimpleDatumController extends Mock implements SimpleDatumController {

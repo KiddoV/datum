@@ -3,12 +3,13 @@
 ///
 // coverage:ignore-file
 // ignore_for_file: type=lint, unused_import
+// dart format off
 
 part of 'strings.g.dart';
 
 // Path: <root>
 typedef TranslationsEn = Translations; // ignore: unused_element
-class Translations implements BaseTranslations<AppLocale, Translations> {
+class Translations with BaseTranslations<AppLocale, Translations> {
 	/// Returns the current translations of the given [context].
 	///
 	/// Usage:
@@ -60,17 +61,12 @@ class Translations implements BaseTranslations<AppLocale, Translations> {
 /// so the map is split into smaller functions (512 entries each).
 extension on Translations {
 	dynamic _flatMapFunction(String path) {
-		return _flatMapFunction$0(path);
-	}
-
-	dynamic _flatMapFunction$0(String path) {
-		switch (path) {
-			case 'locale': return 'en';
-			case 'locale_en': return 'English';
-			case 'locale_es': return 'Spanish';
-			case 'counterAppBarTitle': return 'Counter';
-			default: return null;
-		}
+		return switch (path) {
+			'locale' => 'en',
+			'locale_en' => 'English',
+			'locale_es' => 'Spanish',
+			'counterAppBarTitle' => 'Counter',
+			_ => null,
+		};
 	}
 }
-

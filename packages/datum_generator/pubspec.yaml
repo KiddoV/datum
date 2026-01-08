@@ -1,0 +1,25 @@
+name: datum_generator
+description: Code generator for the Datum framework.
+publish_to: none
+version: 1.0.0
+resolution: workspace
+# repository: https://github.com/my_org/my_repo
+
+environment:
+  sdk: ^3.10.4
+
+# Add regular dependencies here.
+dependencies:
+  analyzer: '>=7.0.0 <9.0.0'
+  build: ">=3.0.0 <5.0.0"
+  source_gen: ">=3.0.0 <5.0.0"
+  meta: ^1.11.0
+  # circular dependency if datum depends on generator.
+  # datum:
+  #   path: ../datum
+
+dev_dependencies:
+  build_runner: ^2.10.3
+  build_test: ^3.5.3
+  lints: ^4.0.0
+  test: ^1.25.6

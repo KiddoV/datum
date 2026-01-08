@@ -50,6 +50,7 @@ export 'source/core/models/vector_clock.dart';
 export 'source/core/query/datum_query.dart';
 export 'source/core/query/datum_query_builder.dart';
 export 'source/core/query/datum_query_sql_converter.dart';
+
 export 'source/core/resolver/conflict_resolution.dart';
 export 'source/core/resolver/crdt_resolver.dart';
 export 'source/core/resolver/last_write_wins_resolver.dart';

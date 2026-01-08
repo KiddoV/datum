@@ -1,0 +1,162 @@
+import 'package:meta/meta_meta.dart';
+
+/// Annotation for classes that should have Datum code generated.
+@Target({TargetKind.classType})
+class DatumSerializable {
+  /// The table name for this entity. If not provided, the class name will be used (converted to snake_case).
+  final String? tableName;
+
+  /// Whether to generate a mixin with all required method implementations.
+  ///
+  /// When true, generates a `_$EntityNameMixin` that you can use with:
+  /// ```dart
+  /// class MyEntity extends DatumEntity with _$MyEntityMixin {
+  ///   // Just define fields and constructor!
+  /// }
+  /// ```
+  ///
+  /// When false (default), you need to manually implement the required methods.
+  /// Defaults to false to avoid unused mixin warnings.
+  final bool generateMixin;
+
+  const DatumSerializable({this.tableName, this.generateMixin = false});
+}
+
+/// Annotation for fields that should be excluded from Datum serialization.
+@Target({TargetKind.field})
+class DatumIgnore {
+  const DatumIgnore();
+}
+
+/// Annotation to specify a custom name for a field in the Datum map.
+@Target({TargetKind.field})
+class DatumField {
+  /// The name to use for this field in the Datum map.
+  final String name;
+
+  const DatumField(this.name);
+}
+
+/// Annotation to define a BelongsTo relationship.
+///
+/// Use this when the current entity has a foreign key pointing to another entity.
+///
+/// Example:
+/// ```dart
+/// @BelongsToRelation<User>('userId')
+/// final String? _author = null;  // Placeholder field
+/// ```
+@Target({TargetKind.field})
+class BelongsToRelation<T> {
+  /// The foreign key field name in this entity
+  final String foreignKey;
+
+  /// The local key field name in the related entity (defaults to 'id')
+  final String localKey;
+
+  /// Cascade delete behavior
+  final String cascadeDelete;
+
+  const BelongsToRelation(
+    this.foreignKey, {
+    this.localKey = 'id',
+    this.cascadeDelete = 'none',
+  });
+}
+
+/// Annotation to define a HasMany relationship.
+///
+/// Use this when another entity has a foreign key pointing to this entity.
+///
+/// Example:
+/// ```dart
+/// @HasManyRelation<Post>('userId')
+/// final List<Post>? _posts = null;  // Placeholder field
+/// ```
+@Target({TargetKind.field})
+class HasManyRelation<T> {
+  /// The foreign key field name in the related entity
+  final String foreignKey;
+
+  /// The local key field name in this entity (defaults to 'id')
+  final String localKey;
+
+  /// Cascade delete behavior: 'none', 'cascade', 'restrict', 'setNull'
+  final String cascadeDelete;
+
+  const HasManyRelation(
+    this.foreignKey, {
+    this.localKey = 'id',
+    this.cascadeDelete = 'none',
+  });
+}
+
+/// Annotation to define a HasOne relationship.
+///
+/// Use this when another entity has a foreign key pointing to this entity (one-to-one).
+///
+/// Example:
+/// ```dart
+/// @HasOneRelation<Profile>('userId')
+/// final Profile? _profile = null;  // Placeholder field
+/// ```
+@Target({TargetKind.field})
+class HasOneRelation<T> {
+  /// The foreign key field name in the related entity
+  final String foreignKey;
+
+  /// The local key field name in this entity (defaults to 'id')
+  final String localKey;
+
+  /// Cascade delete behavior
+  final String cascadeDelete;
+
+  const HasOneRelation(
+    this.foreignKey, {
+    this.localKey = 'id',
+    this.cascadeDelete = 'none',
+  });
+}
+
+/// Annotation to define a ManyToMany relationship.
+///
+/// Use this for many-to-many relationships through a pivot entity.
+///
+/// Example:
+/// ```dart
+/// @ManyToManyRelation<Tag, PostTag>(
+///   pivotEntity: PostTag,
+///   thisForeignKey: 'postId',
+///   otherForeignKey: 'tagId',
+/// )
+/// final List<Tag>? _tags = null;  // Placeholder field
+/// ```
+@Target({TargetKind.field})
+class ManyToManyRelation<T, P> {
+  /// The pivot entity type
+  final Type pivotEntity;
+
+  /// The foreign key in the pivot entity pointing to this entity
+  final String thisForeignKey;
+
+  /// The foreign key in the pivot entity pointing to the related entity
+  final String otherForeignKey;
+
+  /// The local key in this entity (defaults to 'id')
+  final String thisLocalKey;
+
+  /// The local key in the related entity (defaults to 'id')
+  final String otherLocalKey;
+
+  /// Cascade delete behavior
+  final String cascadeDelete;
+
+  const ManyToManyRelation({
+    required this.pivotEntity,
+    required this.thisForeignKey,
+    required this.otherForeignKey,
+    this.thisLocalKey = 'id',
+    this.otherLocalKey = 'id',
+    this.cascadeDelete = 'none',
+  });
+}
