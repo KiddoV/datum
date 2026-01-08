@@ -404,6 +404,20 @@ void main() {
         () => remoteAdapter2.getSyncMetadata(any()),
       ).thenAnswer((_) async => null);
 
+      // Stub batch operations for remoteAdapter1
+      when(() => remoteAdapter1.createAll(any())).thenAnswer((_) async {});
+      when(() => remoteAdapter1.updateAll(any())).thenAnswer((_) async {});
+      when(
+        () => remoteAdapter1.deleteAll(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async {});
+
+      // Stub batch operations for remoteAdapter2
+      when(() => remoteAdapter2.createAll(any())).thenAnswer((_) async {});
+      when(() => remoteAdapter2.updateAll(any())).thenAnswer((_) async {});
+      when(
+        () => remoteAdapter2.deleteAll(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async {});
+
       await manager1.initialize();
       await manager2.initialize();
     }
@@ -693,9 +707,9 @@ void main() {
       expect(results[0].failedCount, 0);
       expect(results[1].failedCount, 0);
 
-      // Verify all creates were called
-      verify(() => remoteAdapter1.create(any<TestEntity>())).called(3);
-      verify(() => remoteAdapter2.create(any<TestEntity2>())).called(3);
+      // Verify all creates were called (batched)
+      verify(() => remoteAdapter1.createAll(any())).called(1);
+      verify(() => remoteAdapter2.createAll(any())).called(1);
     });
   });
 }

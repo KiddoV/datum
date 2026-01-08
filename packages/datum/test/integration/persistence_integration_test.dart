@@ -725,8 +725,8 @@ class TestRemoteAdapter extends RemoteAdapter<TestEntity> {
   }
 
   @override
-  Future<void> delete(String id, {String? userId}) async {
-    _remoteStorage.remove(id);
+  Future<bool> delete(String id, {String? userId}) async {
+    return _remoteStorage.remove(id) != null;
   }
 
   @override

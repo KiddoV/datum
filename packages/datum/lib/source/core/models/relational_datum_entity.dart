@@ -42,6 +42,9 @@ sealed class Relation<T extends DatumEntityInterface> {
 
   /// Returns true if this relation should set foreign keys to null.
   bool get shouldSetNullOnDelete => cascadeDeleteBehavior == CascadeDeleteBehavior.setNull;
+
+  /// Sets the value of the relation from a raw dynamic value (e.g. from generic query results).
+  void setRaw(dynamic value);
 }
 
 class BelongsTo<T extends DatumEntityInterface> extends Relation<T> {
@@ -69,6 +72,15 @@ class BelongsTo<T extends DatumEntityInterface> extends Relation<T> {
   void set(T? value) {
     _value = value;
     _isLoaded = true;
+  }
+
+  @override
+  void setRaw(dynamic value) {
+    if (value == null) {
+      set(null);
+    } else {
+      set(value as T);
+    }
   }
 
   Future<T?> fetch() async {
@@ -117,6 +129,15 @@ class HasMany<T extends DatumEntityInterface> extends Relation<T> {
   void set(List<T>? value) {
     _value = value;
     _isLoaded = true;
+  }
+
+  @override
+  void setRaw(dynamic value) {
+    if (value == null) {
+      set(null);
+    } else if (value is List) {
+      set(value.cast<T>());
+    }
   }
 
   Future<List<T>?> fetch() async {
@@ -169,6 +190,15 @@ class HasOne<T extends DatumEntityInterface> extends Relation<T> {
   void set(T? value) {
     _value = value;
     _isLoaded = true;
+  }
+
+  @override
+  void setRaw(dynamic value) {
+    if (value == null) {
+      set(null);
+    } else {
+      set(value as T);
+    }
   }
 
   Future<T?> fetch() async {
@@ -230,6 +260,15 @@ class ManyToMany<T extends DatumEntityInterface> extends Relation<T> {
     _value = value;
 
     _isLoaded = true;
+  }
+
+  @override
+  void setRaw(dynamic value) {
+    if (value == null) {
+      set(null);
+    } else if (value is List) {
+      set(value.cast<T>());
+    }
   }
 
   Future<List<T>?> fetch() async {
@@ -452,9 +491,17 @@ mixin RelationalDatumEntityMixin implements Equatable, DatumEntityInterface {
   @override
   int get version;
 
+  /// A **vector clock** for tracking causality across multiple devices.
+  @override
+  VectorClock? get vectorClock => null;
+
   /// A flag indicating if this entity has been locally marked for **deletion**.
   @override
   bool get isDeleted;
+
+  /// Returns a new instance with the vector clock incremented for [replicaId].
+  @override
+  DatumEntityInterface incrementClock(String replicaId) => this;
 
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
   @override
@@ -464,6 +511,10 @@ mixin RelationalDatumEntityMixin implements Equatable, DatumEntityInterface {
   /// [oldVersion] of the entity.
   @override
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
+
+  /// Merges this entity with [other].
+  @override
+  DatumEntityInterface merge(covariant DatumEntityInterface other) => other;
 
   /// Indicates whether this entity supports relationships. Always `true` for this mixin.
   @override
@@ -486,5 +537,5 @@ mixin RelationalDatumEntityMixin implements Equatable, DatumEntityInterface {
   /// Provides the list of properties to be used by the [Equatable] mixin
   /// for value equality checks.
   @override
-  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted];
+  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted, vectorClock];
 }

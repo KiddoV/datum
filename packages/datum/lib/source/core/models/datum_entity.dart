@@ -1,3 +1,4 @@
+import 'package:datum/source/core/models/vector_clock.dart';
 import 'package:equatable/equatable.dart';
 
 /// The **target for serialization**, allowing different fields to be included
@@ -31,8 +32,18 @@ abstract interface class DatumEntityInterface {
   /// changes.
   int get version;
 
+  /// A **vector clock** for tracking causality across multiple devices.
+  /// If provided, this allows for more accurate conflict detection than
+  /// simple version numbers.
+  VectorClock? get vectorClock;
+
   /// A flag indicating if this entity has been locally marked for **deletion**.
   bool get isDeleted;
+
+  /// Returns a new instance with the vector clock incremented for [replicaId].
+  ///
+  /// If this entity does not support vector clocks, it should return itself.
+  DatumEntityInterface incrementClock(String replicaId);
 
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local});
@@ -40,6 +51,11 @@ abstract interface class DatumEntityInterface {
   /// Computes the **difference** between the current entity state and an
   /// [oldVersion] of the entity.
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
+
+  /// Merges this entity with [other].
+  ///
+  /// This is used for conflict resolution, especially when using CRDT fields.
+  DatumEntityInterface merge(covariant DatumEntityInterface other);
 
   /// Indicates whether this entity supports relationships.
   bool get isRelational;
@@ -73,9 +89,17 @@ sealed class DatumEntityBase extends Equatable implements DatumEntityInterface {
   @override
   int get version;
 
+  /// A **vector clock** for tracking causality across multiple devices.
+  @override
+  VectorClock? get vectorClock => null;
+
   /// A flag indicating if this entity has been locally marked for **deletion**.
   @override
   bool get isDeleted;
+
+  /// Returns a new instance with the vector clock incremented for [replicaId].
+  @override
+  DatumEntityInterface incrementClock(String replicaId) => this;
 
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
   @override
@@ -89,6 +113,10 @@ sealed class DatumEntityBase extends Equatable implements DatumEntityInterface {
   @override
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
 
+  /// Merges this entity with [other].
+  @override
+  DatumEntityInterface merge(covariant DatumEntityInterface other) => other;
+
   /// Indicates whether this entity supports relationships.
   @override
   bool get isRelational => false;
@@ -96,7 +124,7 @@ sealed class DatumEntityBase extends Equatable implements DatumEntityInterface {
   /// Provides the list of properties to be used by the [Equatable] mixin
   /// for value equality checks.
   @override
-  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted];
+  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted, vectorClock];
 }
 
 /// The **base abstract class** for all entities managed by Datum **without**
@@ -173,9 +201,17 @@ mixin DatumEntityMixin implements Equatable, DatumEntityInterface {
   @override
   int get version;
 
+  /// A **vector clock** for tracking causality across multiple devices.
+  @override
+  VectorClock? get vectorClock => null;
+
   /// A flag indicating if this entity has been locally marked for **deletion**.
   @override
   bool get isDeleted;
+
+  /// Returns a new instance with the vector clock incremented for [replicaId].
+  @override
+  DatumEntityInterface incrementClock(String replicaId) => this;
 
   /// Converts the entity to a `Map<String, dynamic>` for persistence.
   @override
@@ -189,6 +225,10 @@ mixin DatumEntityMixin implements Equatable, DatumEntityInterface {
   @override
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion);
 
+  /// Merges this entity with [other].
+  @override
+  DatumEntityInterface merge(covariant DatumEntityInterface other) => other;
+
   /// Indicates whether this entity supports relationships. Always `false` for this mixin.
   @override
   bool get isRelational => false;
@@ -196,5 +236,5 @@ mixin DatumEntityMixin implements Equatable, DatumEntityInterface {
   /// Provides the list of properties to be used by the [Equatable] mixin
   /// for value equality checks.
   @override
-  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted];
+  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted, vectorClock];
 }

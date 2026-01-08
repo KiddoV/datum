@@ -1,6 +1,7 @@
 // ignore_for_file: implementation_imports, depend_on_referenced_packages
 
 import 'dart:async';
+import 'dart:isolate';
 
 // import 'package:test_api/src/backend/invoker.dart';
 
@@ -153,5 +154,44 @@ class ParallelStrategy implements DatumSyncExecutionStrategy {
               code: DatumExceptionCode.unknown,
             );
     }
+  }
+}
+
+/// A strategy that runs the sync process in a background isolate.
+class IsolateStrategy implements DatumSyncExecutionStrategy {
+  /// The delegate strategy to execute inside the isolate.
+  final DatumSyncExecutionStrategy delegate;
+
+  /// Whether to force using an isolate even in tests.
+  final bool forceIsolateInTest;
+
+  /// Creates a strategy that runs the provided [delegate] in a background isolate.
+  const IsolateStrategy(
+    this.delegate, {
+    this.forceIsolateInTest = false,
+  });
+
+  @override
+  Future<void> execute<T extends DatumEntityInterface>(
+    List<DatumSyncOperation<T>> operations,
+    Future<void> Function(DatumSyncOperation<T> operation) processOperation,
+    bool Function() isCancelled,
+    void Function(int completed, int total) onProgress, {
+    DatumLogger? logger,
+  }) async {
+    if (operations.isEmpty) return;
+
+    // Isolate.run will capture the closures and arguments.
+    // This requires that `processOperation`, `isCancelled`, `onProgress`, and `logger`
+    // (and their captured state) be sendable to the isolate.
+    await Isolate.run(() async {
+      await delegate.execute(
+        operations,
+        processOperation,
+        isCancelled,
+        onProgress,
+        logger: logger,
+      );
+    });
   }
 }

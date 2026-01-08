@@ -140,3 +140,24 @@ class DatumSyncOperation<T extends DatumEntityInterface> extends Equatable {
   @override
   bool get stringify => true;
 }
+
+/// Represents a batch of pending operations to be synchronized together.
+class DatumSyncBatchOperation<T extends DatumEntityInterface> extends DatumSyncOperation<T> {
+  /// The list of individual operations included in this batch.
+  final List<DatumSyncOperation<T>> operations;
+
+  /// Creates a [DatumSyncBatchOperation].
+  DatumSyncBatchOperation({
+    required this.operations,
+  }) : super(
+          id: 'batch_${operations.first.id}',
+          userId: operations.first.userId,
+          entityId: 'batch_${operations.first.entityId}',
+          type: operations.first.type,
+          timestamp: operations.first.timestamp,
+          sizeInBytes: operations.fold(0, (sum, op) => sum + op.sizeInBytes),
+        );
+
+  @override
+  List<Object?> get props => [...super.props, operations];
+}

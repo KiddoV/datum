@@ -115,7 +115,7 @@ void main() {
       when(() => remoteAdapter.update(any())).thenAnswer((_) async {});
       when(
         () => remoteAdapter.delete(any(), userId: any(named: 'userId')),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => true);
       when(
         () => remoteAdapter.readAll(
           userId: any(named: 'userId'),
@@ -823,7 +823,7 @@ void main() {
       when(() => logger.error(any(), any())).thenAnswer((_) {});
       when(() => remoteAdapter.create(any())).thenAnswer((_) async {});
       when(() => remoteAdapter.update(any())).thenAnswer((_) async {});
-      when(() => remoteAdapter.delete(any(), userId: any(named: 'userId'))).thenAnswer((_) async {});
+      when(() => remoteAdapter.delete(any(), userId: any(named: 'userId'))).thenAnswer((_) async => true);
       when(() => remoteAdapter.readAll(userId: any(named: 'userId'), scope: any(named: 'scope'))).thenAnswer((_) async => []);
       when(() => localAdapter.readByIds(any(), userId: any(named: 'userId'))).thenAnswer((_) async => {});
 

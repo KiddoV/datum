@@ -94,6 +94,20 @@ class MockRemoteAdapter<T extends DatumEntityInterface>
     await _push(entity);
   }
 
+  @override
+  Future<void> createAll(List<T> entities) async {
+    for (final entity in entities) {
+      await create(entity);
+    }
+  }
+
+  @override
+  Future<void> updateAll(List<T> entities) async {
+    for (final entity in entities) {
+      await update(entity);
+    }
+  }
+
   Future<void> _push(T item) async {
     if (!isConnectedValue) {
       throw const NetworkException(message: 'No connection', isRetryable: true);
@@ -149,7 +163,7 @@ class MockRemoteAdapter<T extends DatumEntityInterface>
   }
 
   @override
-  Future<void> delete(String id, {String? userId}) async {
+  Future<bool> delete(String id, {String? userId}) async {
     if (!isConnectedValue) {
       throw const NetworkException(message: 'No connection');
     }
@@ -166,6 +180,15 @@ class MockRemoteAdapter<T extends DatumEntityInterface>
           ),
         );
       }
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<void> deleteAll(List<String> ids, {String? userId}) async {
+    for (final id in ids) {
+      await delete(id, userId: userId);
     }
   }
 
@@ -193,6 +216,12 @@ class MockRemoteAdapter<T extends DatumEntityInterface>
 
   void setRemoteMetadata(String userId, DatumSyncMetadata metadata) {
     _remoteMetadata[userId] = metadata;
+  }
+
+  /// Helper method to clear all remote data for testing
+  void clearAllData() {
+    _remoteStorage.clear();
+    _remoteMetadata.clear();
   }
 
   @override

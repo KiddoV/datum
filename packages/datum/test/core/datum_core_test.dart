@@ -21,6 +21,9 @@ class Post extends DatumEntity {
   @override
   final bool isDeleted;
 
+  @override
+  VectorClock? get vectorClock => null;
+
   const Post({
     required this.id,
     required this.userId,
@@ -55,6 +58,9 @@ class Post extends DatumEntity {
 
   @override
   Map<String, dynamic>? diff(DatumEntity oldVersion) => null; // For a minimal test entity, we can return null.
+
+  @override
+  DatumEntityInterface merge(covariant DatumEntityInterface other) => other;
 }
 
 class MockDatumManager<T extends DatumEntityInterface> extends Mock implements DatumManager<T> {}
@@ -1285,7 +1291,7 @@ class _NonRelationalMixinEntity with DatumEntityMixin {
   Map<String, dynamic>? diff(DatumEntityInterface oldVersion) => null;
 
   @override
-  List<Object?> get props => [id, userId, createdAt, modifiedAt, version, isDeleted, name];
+  List<Object?> get props => [id, userId, createdAt, modifiedAt, version, isDeleted, vectorClock, name];
 
   @override
   bool get stringify => true;
@@ -1336,7 +1342,7 @@ class _RelationalMixinEntity with RelationalDatumEntityMixin {
   Map<String, Relation> get relations => {'comments': HasMany(this as RelationalDatumEntity, 'postId')};
 
   @override
-  List<Object?> get props => [id, userId, createdAt, modifiedAt, version, isDeleted, title];
+  List<Object?> get props => [id, userId, createdAt, modifiedAt, version, isDeleted, vectorClock, title];
 
   @override
   bool get stringify => true;

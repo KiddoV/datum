@@ -142,13 +142,20 @@ void main() {
         () => remoteAdapter.getSyncMetadata(any()),
       ).thenAnswer((_) => Future.value(null));
 
+      // Stub batch operations
+      when(() => remoteAdapter.createAll(any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateAll(any())).thenAnswer((_) async {});
+      when(
+        () => remoteAdapter.deleteAll(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async {});
+
       // Default manager setup
       manager = DatumManager<TestEntity>(
         localAdapter: localAdapter,
         remoteAdapter: remoteAdapter,
         connectivity: connectivityChecker, // Now required
         logger: logger,
-        datumConfig: const DatumConfig(),
+        datumConfig: const DatumConfig(remoteSyncBatchSize: 1),
       );
       await manager.initialize();
     });
@@ -194,6 +201,7 @@ void main() {
         logger: logger,
         datumConfig: const DatumConfig(
           syncExecutionStrategy: SequentialStrategy(),
+          remoteSyncBatchSize: 1,
         ),
       );
       await manager.initialize();
@@ -245,6 +253,7 @@ void main() {
           logger: logger,
           datumConfig: const DatumConfig(
             syncExecutionStrategy: ParallelStrategy(batchSize: 2),
+            remoteSyncBatchSize: 1,
           ),
         );
         await manager.initialize();
@@ -276,6 +285,7 @@ void main() {
           logger: logger,
           datumConfig: const DatumConfig(
             syncExecutionStrategy: ParallelStrategy(batchSize: 2),
+            remoteSyncBatchSize: 1,
           ),
         );
         await manager.initialize();
@@ -326,6 +336,7 @@ void main() {
                 batchSize: 2,
                 failFast: false,
               ),
+              remoteSyncBatchSize: 1,
             ),
           );
           await manager.initialize();

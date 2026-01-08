@@ -36,13 +36,7 @@ class User extends RelationalDatumEntity {
   @override
   List<Object?> get props => [
         ...super.props,
-        id,
-        userId,
         name,
-        modifiedAt,
-        createdAt,
-        version,
-        isDeleted,
       ];
 
   const User({
@@ -106,13 +100,7 @@ class Post extends RelationalDatumEntity {
   @override
   List<Object?> get props => [
         ...super.props,
-        id,
-        userId,
         title,
-        modifiedAt,
-        createdAt,
-        version,
-        isDeleted,
       ];
 
   const Post({
@@ -207,13 +195,7 @@ class Profile extends RelationalDatumEntity {
   @override
   List<Object?> get props => [
         ...super.props,
-        id,
-        userId,
         bio,
-        modifiedAt,
-        createdAt,
-        version,
-        isDeleted,
       ];
 
   const Profile({
@@ -302,14 +284,8 @@ class PostTag extends RelationalDatumEntity {
   @override
   List<Object?> get props => [
         ...super.props,
-        id,
-        userId,
         postId,
         tagId,
-        modifiedAt,
-        createdAt,
-        version,
-        isDeleted,
       ];
 
   const PostTag({
@@ -375,13 +351,7 @@ class Tag extends RelationalDatumEntity {
   @override
   List<Object?> get props => [
         ...super.props,
-        id,
-        userId,
         name,
-        modifiedAt,
-        createdAt,
-        version,
-        isDeleted,
       ];
 
   const Tag({

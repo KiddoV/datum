@@ -155,12 +155,19 @@ void main() async {
       ).thenAnswer((_) async => null);
       when(() => remoteAdapter.dispose()).thenAnswer((_) async {});
 
+      // Stubs for batch operations
+      when(() => remoteAdapter.createAll(any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateAll(any())).thenAnswer((_) async {});
+      when(
+        () => remoteAdapter.deleteAll(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async {});
+
       manager = DatumManager<TestEntity>(
         localAdapter: localAdapter,
         remoteAdapter: remoteAdapter,
         connectivity: connectivityChecker,
         logger: TestLogger(),
-        datumConfig: const DatumConfig(), // Default config
+        datumConfig: const DatumConfig(remoteSyncBatchSize: 1), // Default config with batching disabled
       );
     });
 
@@ -1341,6 +1348,7 @@ void main() async {
             logger: TestLogger(),
             datumConfig: const DatumConfig(
               deleteBehavior: DeleteBehavior.hardDelete,
+              remoteSyncBatchSize: 1,
             ),
           );
           await manager.initialize();
@@ -1365,6 +1373,7 @@ void main() async {
             () => remoteAdapter.delete(any(), userId: any(named: 'userId')),
           ).thenAnswer((_) async {
             await Future<void>.delayed(const Duration(milliseconds: 20));
+            return true;
           });
 
           when(() => localAdapter.getPendingOperations(userId)).thenAnswer(

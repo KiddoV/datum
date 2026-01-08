@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:datum/datum.dart';
+import 'package:datum/datum.dart' hide IsolateStrategy;
 import 'package:example/sync/isolate_stratergy.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';

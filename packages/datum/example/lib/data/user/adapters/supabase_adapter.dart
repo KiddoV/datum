@@ -124,18 +124,21 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
   Stream<bool> get authStateStream => _authStateController.stream;
 
   @override
-  Future<void> delete(String id, {String? userId}) async {
+  Future<bool> delete(String id, {String? userId}) async {
     try {
-      await _client.from(tableName).delete().eq(
+      final response = await _client
+          .from(tableName)
+          .delete()
+          .eq(
             'id',
             id,
-          );
+          )
+          .select();
+      return response.isNotEmpty;
     } on PostgrestException catch (e) {
       // PGRST116: "Cannot coerce the result to a single JSON object" - means no rows were affected
       if (e.code == 'PGRST116') {
-        throw EntityNotFoundException(
-          message: 'Entity with id $id not found in table $tableName',
-        );
+        return false;
       }
       rethrow;
     }
@@ -143,11 +146,19 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
   @override
   Future<AdapterHealthStatus> checkHealth() async {
-    final auth =
-        Supabase.instance.client.auth.currentSession?.accessToken == null;
-    return auth == true
-        ? AdapterHealthStatus.unhealthy
-        : AdapterHealthStatus.healthy;
+    try {
+      // Check authentication first
+      if (_client.auth.currentSession?.accessToken == null) {
+        return AdapterHealthStatus.unhealthy;
+      }
+
+      // Perform a lightweight query to verify DB connectivity
+      await _client.from(tableName).select('id').limit(1).maybeSingle();
+      return AdapterHealthStatus.healthy;
+    } catch (e) {
+      talker.error("❌ [Adapter] Health check failed for table: $tableName", e);
+      return AdapterHealthStatus.unhealthy;
+    }
   }
 
   @override
@@ -239,7 +250,18 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
   }
 
   @override
-  Future<bool> isConnected() async => true;
+  Future<bool> isConnected() async {
+    try {
+      // Perform a lightweight query to verify connectivity
+      // optimizing for speed with limit(1) and maybeSingle()
+      await _client.from(tableName).select('id').limit(1).maybeSingle();
+      return true;
+    } catch (e) {
+      talker.debug("Connectivity check failed: $e");
+      return false;
+    }
+  }
+
   @override
   Future<void> create(T entity) async {
     final data = _toSnakeCase(entity.toDatumMap(target: MapTarget.remote));
@@ -982,10 +1004,57 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
   Future<void> update(T entity) async {
     // The sync engine calls `update` for full-data updates.
     // We can use `upsert` to handle both creating and replacing the entity.
-    // This is simpler and more robust than calculating a diff here.
     final data = _toSnakeCase(entity.toDatumMap(target: MapTarget.remote));
     data['user_id'] = entity.userId;
-    await _client.from(tableName).upsert(data, onConflict: 'id');
+    try {
+      await _client.from(tableName).upsert(data, onConflict: 'id');
+    } catch (e, stack) {
+      talker.error('❌ [Adapter] update failed for table: $tableName', e, stack);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> createAll(List<T> entities) async {
+    if (entities.isEmpty) return;
+    talker.info("Batch creating ${entities.length} items in $tableName");
+
+    final data = entities.map((e) {
+      final map = _toSnakeCase(e.toDatumMap(target: MapTarget.remote));
+      map['user_id'] = e.userId;
+      return map;
+    }).toList();
+
+    try {
+      // Use efficient batch upsert
+      await _client.from(tableName).upsert(data, onConflict: 'id');
+      talker.info("✅ [Adapter] Batch create successful for table: $tableName");
+    } catch (e, stack) {
+      talker.error(
+          "❌ [Adapter] createAll failed for table: $tableName", e, stack);
+      rethrow;
+    }
+  }
+
+  @override
+  Future<void> updateAll(List<T> entities) async {
+    // Upsert handles both create and update efficiently
+    return createAll(entities);
+  }
+
+  @override
+  Future<void> deleteAll(List<String> ids, {String? userId}) async {
+    if (ids.isEmpty) return;
+    talker.info("Batch deleting ${ids.length} items from $tableName");
+
+    try {
+      await _client.from(tableName).delete().inFilter('id', ids);
+      talker.info("✅ [Adapter] Batch delete successful for table: $tableName");
+    } catch (e, stack) {
+      talker.error(
+          "❌ [Adapter] deleteAll failed for table: $tableName", e, stack);
+      rethrow;
+    }
   }
 
   PostgrestFilterBuilder _applyFilter(
@@ -1068,9 +1137,20 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
           :final thisLocalKey,
         ):
         // Get the pivot table name from the pivot entity
-        final pivotAdapter = Datum.manager().remoteAdapter;
+        // Note: usage of Datum.manager() without type arguments assumes a default manager or specific config
+        // Safeguard against missing adapter or wrong type
+        RemoteAdapter? pivotAdapter;
+        try {
+          pivotAdapter = Datum.manager().remoteAdapter;
+        } catch (e) {
+          talker.warning(
+              "Could not resolve pivot adapter via Datum.manager(): $e");
+        }
+
         if (pivotAdapter is! SupabaseRemoteAdapter) {
-          throw ArgumentError('Pivot adapter must be a SupabaseRemoteAdapter');
+          talker.error(
+              'Pivot adapter must be a SupabaseRemoteAdapter to fetch ManyToMany relations.');
+          return [];
         }
         final pivotTableName = pivotAdapter.tableName;
 

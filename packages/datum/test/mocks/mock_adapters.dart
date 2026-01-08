@@ -85,6 +85,20 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
     await push(entity);
   }
 
+  @override
+  Future<void> createAll(List<T> entities) async {
+    for (final entity in entities) {
+      await create(entity);
+    }
+  }
+
+  @override
+  Future<void> updateAll(List<T> entities) async {
+    for (final entity in entities) {
+      await update(entity);
+    }
+  }
+
   /// A custom method for tests that combines create/update logic.
   Future<void> push(T item) async {
     final bool exists = _storage[item.userId]?.containsKey(item.id) ?? false;
@@ -154,6 +168,13 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
       return true;
     }
     return false;
+  }
+
+  @override
+  Future<void> deleteAll(List<String> ids, {String? userId}) async {
+    for (final id in ids) {
+      await delete(id, userId: userId);
+    }
   }
 
   @override
@@ -737,11 +758,29 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
     await _push(entity);
   }
 
+  @override
+  Future<void> createAll(List<T> entities) async {
+    for (final entity in entities) {
+      await create(entity);
+    }
+  }
+
+  @override
+  Future<void> updateAll(List<T> entities) async {
+    for (final entity in entities) {
+      await update(entity);
+    }
+  }
+
   Future<void> _push(T item) async {
     if (!isConnectedValue) {
       throw const NetworkException(message: 'No connection', isRetryable: true);
     }
     await Future<void>.delayed(_processingDelay);
+    _internalPush(item);
+  }
+
+  void _internalPush(T item) {
     if (_failedIds.contains(item.id)) {
       throw NetworkException(message: 'Simulated push failure for ${item.id}');
     }
@@ -789,9 +828,15 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
   }
 
   @override
-  Future<void> delete(String id, {String? userId}) async {
-    if (!isConnectedValue) throw const NetworkException(message: 'No connection');
+  Future<bool> delete(String id, {String? userId}) async {
+    if (!isConnectedValue) {
+      throw const NetworkException(message: 'No connection', isRetryable: true);
+    }
     await Future<void>.delayed(_processingDelay);
+    return _internalDelete(id, userId: userId);
+  }
+
+  bool _internalDelete(String id, {String? userId}) {
     final item = _remoteStorage[userId ?? '']?.remove(id);
     if (item != null) {
       if (!silent) {
@@ -804,6 +849,15 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
           ),
         );
       }
+      return true;
+    }
+    return false;
+  }
+
+  @override
+  Future<void> deleteAll(List<String> ids, {String? userId}) async {
+    for (final id in ids) {
+      await delete(id, userId: userId);
     }
   }
 
@@ -831,6 +885,12 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
 
   void setRemoteMetadata(String userId, DatumSyncMetadata metadata) {
     _remoteMetadata[userId] = metadata;
+  }
+
+  /// Helper method to clear all remote data for testing
+  void clearAllData() {
+    _remoteStorage.clear();
+    _remoteMetadata.clear();
   }
 
   @override

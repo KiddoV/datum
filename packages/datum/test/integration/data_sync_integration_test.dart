@@ -190,6 +190,13 @@ void main() {
         () => remoteAdapter.getSyncMetadata(any()),
       ).thenAnswer((_) async => null as DatumSyncMetadata?);
 
+      // Stub batch operations
+      when(() => remoteAdapter.createAll(any())).thenAnswer((_) async {});
+      when(() => remoteAdapter.updateAll(any())).thenAnswer((_) async {});
+      when(
+        () => remoteAdapter.deleteAll(any(), userId: any(named: 'userId')),
+      ).thenAnswer((_) async {});
+
       await manager.initialize();
       return manager;
     }
@@ -610,7 +617,10 @@ void main() {
       // Re-initialize manager with a sequential strategy to make cancellation predictable
       await manager.dispose();
       await setupManager(
-        config: const DatumConfig(syncExecutionStrategy: SequentialStrategy()),
+        config: const DatumConfig(
+          syncExecutionStrategy: SequentialStrategy(),
+          remoteSyncBatchSize: 1,
+        ),
       );
 
       final operations = List.generate(

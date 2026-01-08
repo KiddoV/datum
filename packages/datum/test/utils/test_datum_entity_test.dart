@@ -66,7 +66,7 @@ void main() {
       expect(map['modifiedAt'], testModifiedAt.toIso8601String());
       expect(map['version'], 5);
       expect(map['isDeleted'], true);
-      expect(map.length, 7);
+      expect(map.length, 8);
     });
 
     test('toDatumMap returns correct map for remote target', () {
@@ -89,7 +89,7 @@ void main() {
       expect(map['modifiedAt'], testModifiedAt.toIso8601String());
       expect(map['version'], 5);
       expect(map['isDeleted'], true);
-      expect(map.length, 7);
+      expect(map.length, 8);
     });
 
     test('fromMap creates entity correctly', () {
@@ -299,7 +299,7 @@ void main() {
 
       expect(entity1.props, equals(entity2.props));
       expect(entity1.props, isNot(equals(entity3.props)));
-      expect(entity1.props.length, 7); // All fields should be included
+      expect(entity1.props.length, 8); // All fields should be included (now including vectorClock)
     });
 
     test('supports value equality', () {
@@ -395,8 +395,17 @@ class _MockDatumEntity implements DatumEntityInterface {
   bool get isRelational => false;
 
   @override
+  VectorClock? get vectorClock => null;
+
+  @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) => {};
 
   @override
   Map<String, dynamic>? diff(covariant DatumEntityInterface oldVersion) => null;
+
+  @override
+  DatumEntityInterface merge(covariant DatumEntityInterface other) => other;
+
+  @override
+  DatumEntityInterface incrementClock(String replicaId) => this;
 }

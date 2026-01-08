@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:isolate';
 
 import 'package:collection/collection.dart';
 import 'package:datum/datum.dart';
@@ -11,17 +12,25 @@ import '../cascade_delete.dart';
 import '../engine/error_boundary.dart';
 
 import 'cold_start_manager.dart';
+import '../utils/lru_cache.dart';
+
+// Internal class representing a step in the cascade delete plan.
+enum _CascadeStepType { delete, update }
 
 // Internal class representing a step in the cascade delete plan.
 class _CascadeDeleteStep {
   final DatumEntityInterface entity;
   final dynamic manager;
   final String? relationName;
+  final _CascadeStepType type;
+  final Map<String, dynamic>? updateData;
 
   const _CascadeDeleteStep({
     required this.entity,
     required this.manager,
     this.relationName,
+    this.type = _CascadeStepType.delete,
+    this.updateData,
   });
 }
 
@@ -37,6 +46,38 @@ class _CascadeDeletePlan<T extends DatumEntityInterface> {
     required this.steps,
     required this.canDelete,
     required this.restrictedRelations,
+  });
+}
+
+/// Represents a preview of the cascade delete operation.
+class CascadeDeletePreview {
+  final String mainEntityType;
+  final String mainEntityId;
+  final List<CascadeDeleteStepPreview> steps;
+  final bool canDelete;
+  final List<String> warningMessages;
+
+  CascadeDeletePreview({
+    required this.mainEntityType,
+    required this.mainEntityId,
+    required this.steps,
+    required this.canDelete,
+    required this.warningMessages,
+  });
+}
+
+/// Represents a single step in the cascade delete preview.
+class CascadeDeleteStepPreview {
+  final String entityType;
+  final String entityId;
+  final String action; // "Delete" or "SetNull"
+  final Map<String, dynamic>? details;
+
+  CascadeDeleteStepPreview({
+    required this.entityType,
+    required this.entityId,
+    required this.action,
+    this.details,
   });
 }
 
@@ -88,13 +129,13 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   DateTime _lastCacheCleanup = DateTime.now();
 
   /// Cache for relationship query results to improve performance
-  final Map<String, List<DatumEntityInterface>> _relationshipQueryCache = {};
+  late final LRUCache<String, List<DatumEntityInterface>> _relationshipQueryCache;
 
   /// Cache for entity existence checks
-  final Map<String, bool> _entityExistenceCache = {};
+  late final LRUCache<String, bool> _entityExistenceCache;
 
   /// Cache for query results
-  final Map<String, List<T>> _queryCache = {};
+  late final LRUCache<String, List<T>> _queryCache;
 
   late final QueueManager<T> _queueManager;
   late final IsolateHelper _isolateHelper;
@@ -251,6 +292,10 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       localAdapter: localAdapter,
       logger: _logger,
     );
+
+    _relationshipQueryCache = LRUCache(config.maxRelationshipQueryCacheSize);
+    _entityExistenceCache = LRUCache(config.maxEntityExistenceCacheSize);
+    _queryCache = LRUCache(config.maxQueryCacheSize);
   }
 
   /// Initializes the manager and its adapters. Must be called before any other methods.
@@ -525,7 +570,12 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     // Check for user switch before proceeding.
     await _syncEngineInstance.checkForUserSwitch(userId);
 
-    final transformed = await _applyPreSaveTransforms(item);
+    var transformed = await _applyPreSaveTransforms(item);
+
+    // Automatically increment vector clock if deviceId is available
+    if (deviceId != null) {
+      transformed = transformed.incrementClock(deviceId!) as T;
+    }
     final existing = await localAdapter.read(item.id, userId: userId);
 
     if (existing != null) {
@@ -715,7 +765,10 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   }
 
   /// Reads a single entity by its ID from the primary local adapter.
-  Future<T?> read(String id, {String? userId}) async {
+  /// Reads a single entity by its ID from the primary local adapter.
+  ///
+  /// The [withRelated] parameter allows eager loading of related entities.
+  Future<T?> read(String id, {String? userId, List<String> withRelated = const []}) async {
     _ensureInitialized();
 
     // Create cache key for entity existence
@@ -738,13 +791,26 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     _logger.debug('Cached entity existence for key: $cacheKey (exists: ${entity != null})');
 
     if (entity == null) return null;
+
+    if (withRelated.isNotEmpty) {
+      await _fetchAndStitchRelations([entity], withRelated, DataSource.local, userId);
+    }
+
     return _applyPostFetchTransforms(entity);
   }
 
   /// Reads all entities from the primary local adapter.
-  Future<List<T>> readAll({String? userId}) async {
+  /// Reads all entities from the primary local adapter.
+  ///
+  /// The [withRelated] parameter allows eager loading of related entities.
+  Future<List<T>> readAll({String? userId, List<String> withRelated = const []}) async {
     _ensureInitialized();
     final entities = await localAdapter.readAll(userId: userId);
+
+    if (withRelated.isNotEmpty && entities.isNotEmpty) {
+      await _fetchAndStitchRelations(entities, withRelated, DataSource.local, userId);
+    }
+
     final transformedEntities = <T>[];
     for (final entity in entities) {
       try {
@@ -944,7 +1010,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
             final relationalEntity = entity as RelationalDatumEntity;
             final foreignKeyValue = relationalEntity.toDatumMap()[foreignKeyName];
             final relatedEntity = relatedEntitiesById[foreignKeyValue];
-            (relationalEntity.relations[relationName] as BelongsTo).set(relatedEntity);
+            relationalEntity.relations[relationName]?.setRaw(relatedEntity);
           }
         }
       } else if (relation is HasMany) {
@@ -966,7 +1032,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
           for (final entity in entities) {
             final related = relatedEntitiesByParentId[entity.id] ?? [];
-            ((entity as RelationalDatumEntity).relations[relationName] as HasMany).set(related.cast());
+            (entity as RelationalDatumEntity).relations[relationName]?.setRaw(related);
           }
         }
       }
@@ -1008,9 +1074,17 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     T entityForEvent = existing;
     if (effectiveBehavior == DeleteBehavior.softDelete) {
       // Soft delete: mark the entity as deleted
+      final delta = <String, dynamic>{
+        'isDeleted': true,
+        'modifiedAt': DateTime.now().toIso8601String(),
+      };
+      if (deviceId != null) {
+        final currentClock = existing.vectorClock ?? const VectorClock();
+        delta['vectorClock'] = currentClock.increment(deviceId!).toMap();
+      }
       entityForEvent = await localAdapter.patch(
         id: id,
-        delta: {'isDeleted': true, 'modifiedAt': DateTime.now().toIso8601String()},
+        delta: delta,
         userId: userId,
       );
     } else {
@@ -1366,19 +1440,49 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
       try {
         analyticsBuilder.recordQueryExecuted();
-        final success = await step.manager.performDeleteWithoutEvents(
-          id: step.entity.id,
-          userId: userId,
-          source: source,
-          forceRemoteSync: forceRemoteSync,
-        );
+
+        bool success = true;
+        if (step.type == _CascadeStepType.delete) {
+          success = await step.manager.performDeleteWithoutEvents(
+            id: step.entity.id,
+            userId: userId,
+            source: source,
+            forceRemoteSync: forceRemoteSync,
+          );
+        } else if (step.type == _CascadeStepType.update && step.updateData != null) {
+          try {
+            await step.manager.localAdapter.patch(
+              id: step.entity.id,
+              delta: step.updateData!,
+              userId: userId,
+            );
+            analyticsBuilder.recordSetNullOperation();
+            // Manually emit update event? Or assume localAdapter emits it?
+            // performDeleteWithoutEvents suggests we manipulate events manually.
+            // localAdapter.patch likely emits change event if implemented properly.
+            // For consistency with cascade delete which suppresses events during execution
+            // and emits them later (maybe?), we should check.
+            // But existing delete implementation emits main entity delete event at the end.
+            // Cascade steps might not emit events?
+            // Actually currently step.manager.performDeleteWithoutEvents is used.
+            // So we probably want update without events, but we don't have that method easily.
+            // For now using patch is atomic-ish on adapter level.
+            success = true;
+          } catch (e) {
+            success = false;
+            // Log error?
+            _logger.error('Failed to set null for ${step.entity.id}: $e');
+          }
+        }
 
         if (success) {
-          analyticsBuilder.recordEntityDeleted(step.entity.runtimeType);
-          deletedEntities.putIfAbsent(step.entity.runtimeType, () => []).add(step.entity);
+          if (step.type == _CascadeStepType.delete) {
+            analyticsBuilder.recordEntityDeleted(step.entity.runtimeType);
+            deletedEntities.putIfAbsent(step.entity.runtimeType, () => []).add(step.entity);
+          }
         } else {
           analyticsBuilder.recordError();
-          errors.add('Failed to delete ${step.entity.runtimeType}:${step.entity.id}');
+          errors.add('Failed to ${step.type == _CascadeStepType.delete ? 'delete' : 'update'} ${step.entity.runtimeType}:${step.entity.id}');
           if (!options.allowPartialDeletes) {
             break; // Stop on first failure if partial deletes not allowed
           }
@@ -1397,7 +1501,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
         total: plan.steps.length,
         currentEntityType: step.entity.runtimeType.toString(),
         currentEntityId: step.entity.id,
-        message: 'Deleting ${step.entity.runtimeType.toString()}',
+        message: step.type == _CascadeStepType.delete ? 'Deleting ${step.entity.runtimeType.toString()}' : 'Updating ${step.entity.runtimeType.toString()}',
       ));
     }
 
@@ -1407,6 +1511,61 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       deletedEntities: deletedEntities,
       restrictedRelations: plan.restrictedRelations,
       errors: errors,
+    );
+  }
+
+  /// Executes a block of code within a single atomic transaction.
+  ///
+  /// This is crucial for multi-step processes where all steps must succeed or
+  /// fail together. This mainly delegates to the local adapter.
+  Future<R> transaction<R>(Future<R> Function() action) {
+    _ensureInitialized();
+    return localAdapter.transaction(action);
+  }
+
+  /// Returns a visualization of the delete plan for the given entity.
+  /// This is useful for previewing what will happen before deleting.
+  Future<CascadeDeletePreview?> getDeletePlan(String id, {String? userId}) async {
+    _ensureInitialized();
+
+    // Check for entity existence (reuse read logic but lighter? No, need entity object for plan)
+    final entity = await read(id, userId: userId);
+    if (entity == null) return null;
+
+    final analyticsBuilder = CascadeAnalyticsBuilder();
+    analyticsBuilder.startOperation(dryRun: true);
+    final plan = await _buildCascadeDeletePlan(entity, userId ?? entity.userId, analyticsBuilder);
+
+    final stepsPreview = plan.steps.map((step) {
+      String action = 'Delete';
+      Map<String, dynamic>? details;
+
+      if (step.type == _CascadeStepType.update) {
+        action = 'SetNull';
+        details = step.updateData;
+      }
+
+      return CascadeDeleteStepPreview(
+        entityType: step.entity.runtimeType.toString(),
+        entityId: step.entity.id,
+        action: action,
+        details: details,
+      );
+    }).toList();
+
+    final warnings = <String>[];
+    if (!plan.canDelete) {
+      plan.restrictedRelations.forEach((relation, entities) {
+        warnings.add('Cannot delete because of restrict constraint on relation "$relation" (${entities.length} items)');
+      });
+    }
+
+    return CascadeDeletePreview(
+      mainEntityType: T.toString(),
+      mainEntityId: id,
+      steps: stepsPreview,
+      canDelete: plan.canDelete,
+      warningMessages: warnings,
     );
   }
 
@@ -1505,10 +1664,30 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
             visitedEntities,
           );
         }
-      } else if (relation.shouldSetNullOnDelete && relation is BelongsTo) {
-        // For setNull behavior on BelongsTo relationships, we need to update the foreign key to null
-        // instead of deleting the related entity. This is handled during execution, not planning.
-        // We don't add anything to the delete plan for setNull operations.
+      } else if (relation.shouldSetNullOnDelete) {
+        if (relation is HasMany || relation is HasOne) {
+          final relatedEntities = await _getRelatedEntities(relationalEntity, relation, userId);
+          String? foreignKeyName;
+          if (relation is HasMany) {
+            foreignKeyName = relation.foreignKey;
+          } else if (relation is HasOne) {
+            foreignKeyName = relation.foreignKey;
+          }
+
+          if (foreignKeyName != null) {
+            for (final relatedEntity in relatedEntities) {
+              final relatedStep = _CascadeDeleteStep(
+                entity: relatedEntity,
+                manager: relation.getRelatedManager(),
+                relationName: relationName,
+                type: _CascadeStepType.update,
+                updateData: {foreignKeyName: null},
+              );
+              deleteOrder.add(relatedStep);
+            }
+          }
+        }
+        // For BelongsTo, the foreign key is on current entity being deleted, so no action needed.
       }
       // For none behavior, do nothing during planning
     }
@@ -1908,6 +2087,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
           }
 
           // Check if sync should be skipped based on final direction and pending operations
+          // Check if sync should be skipped based on final direction and pending operations
           final finalDirection = typedOptions?.direction ?? config.defaultSyncDirection;
           if (finalDirection == SyncDirection.pushOnly && pendingCount == 0) {
             // If the direction is pushOnly and there are no pending operations,
@@ -1916,11 +2096,69 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
             return DatumSyncResult.skipped(userId, 0);
           }
 
-          final (result, events) = await _syncEngineInstance.synchronize(
-            userId,
-            options: typedOptions,
-            scope: effectiveScope,
-          );
+          DatumSyncResult<T> result;
+          List<DatumSyncEvent<T>> events;
+
+          if (config.useIsolateSync) {
+            // Capture dependencies into local variables to avoid capturing 'this' in Isolate.run
+            final localAdapterCaptured = localAdapter;
+            final remoteAdapterCaptured = remoteAdapter;
+            final conflictResolverCaptured = _conflictResolver;
+            final queueManagerCaptured = _queueManager;
+            final conflictDetectorCaptured = _conflictDetector;
+            final loggerCaptured = _logger;
+            final configCaptured = config;
+            final connectivityCaptured = _connectivity;
+            final isolateHelperCaptured = _isolateHelper;
+            final deviceIdCaptured = deviceId;
+            final optionsCaptured = typedOptions;
+            final scopeCaptured = effectiveScope;
+
+            // Offload the entire sync process to a background isolate.
+            // note: This requires Adapters and other dependencies to be sendable.
+            (result, events) = await Isolate.run(() async {
+              // Create dummy controllers for the isolated engine since we only care about the return values
+              // and the side effects on the adapters.
+              final dummyEventController = StreamController<DatumSyncEvent<T>>();
+              final dummyStatusSubject = BehaviorSubject<DatumSyncStatusSnapshot>.seeded(DatumSyncStatusSnapshot.initial(userId));
+              final dummyMetadataSubject = BehaviorSubject<DatumSyncMetadata>();
+
+              try {
+                final engine = DatumSyncEngine<T>(
+                  localAdapter: localAdapterCaptured,
+                  remoteAdapter: remoteAdapterCaptured,
+                  conflictResolver: conflictResolverCaptured,
+                  queueManager: queueManagerCaptured,
+                  conflictDetector: conflictDetectorCaptured,
+                  logger: loggerCaptured,
+                  config: configCaptured,
+                  connectivityChecker: connectivityCaptured,
+                  eventController: dummyEventController,
+                  statusSubject: dummyStatusSubject,
+                  metadataSubject: dummyMetadataSubject,
+                  isolateHelper: isolateHelperCaptured,
+                  deviceId: deviceIdCaptured,
+                );
+
+                return await engine.synchronize(
+                  userId,
+                  options: optionsCaptured,
+                  scope: scopeCaptured,
+                );
+              } finally {
+                dummyEventController.close();
+                dummyStatusSubject.close();
+                dummyMetadataSubject.close();
+              }
+            });
+          } else {
+            (result, events) = await _syncEngineInstance.synchronize(
+              userId,
+              options: typedOptions,
+              scope: effectiveScope,
+            );
+          }
+
           _processSyncEvents(events);
           // Persist the result of the sync operation.
           if (!result.wasSkipped) {

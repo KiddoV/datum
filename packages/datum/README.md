@@ -598,7 +598,7 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface> extends RemoteAdapte
   String get _metadataTableName => 'sync_metadata';
 
   @override
-  Future<void> delete(String id, {String? userId}) async {
+  Future<bool> delete(String id, {String? userId}) async {
     await _client.from(tableName).delete().eq(
           'id',
           id,

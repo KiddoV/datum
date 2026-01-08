@@ -25,10 +25,17 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
     DateTime? modifiedAt,
     int? version,
     bool? isDeleted,
+    VectorClock? vectorClock,
   })  : createdAt = createdAt ?? DateTime.now(),
         modifiedAt = modifiedAt ?? DateTime.now(),
         version = version ?? 1,
-        isDeleted = isDeleted ?? false;
+        isDeleted = isDeleted ?? false,
+        _vectorClock = vectorClock;
+
+  final VectorClock? _vectorClock;
+
+  @override
+  VectorClock? get vectorClock => _vectorClock;
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) {
@@ -40,6 +47,7 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
       'modifiedAt': modifiedAt.toIso8601String(),
       'version': version,
       'isDeleted': isDeleted,
+      'vectorClock': vectorClock?.toMap(),
     };
   }
 
@@ -52,6 +60,7 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
       modifiedAt: DateTime.parse(map['modifiedAt'] as String),
       version: map['version'] as int,
       isDeleted: map['isDeleted'] as bool,
+      vectorClock: map['vectorClock'] != null ? VectorClock.fromMap(Map<String, int>.from(map['vectorClock'])) : null,
     );
   }
 
@@ -63,6 +72,7 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
     DateTime? modifiedAt,
     int? version,
     bool? isDeleted,
+    VectorClock? vectorClock,
   }) {
     return TestDatumEntity(
       id: id ?? this.id,
@@ -72,7 +82,14 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
       modifiedAt: modifiedAt ?? this.modifiedAt,
       version: version ?? this.version,
       isDeleted: isDeleted ?? this.isDeleted,
+      vectorClock: vectorClock ?? this.vectorClock,
     );
+  }
+
+  @override
+  DatumEntityInterface incrementClock(String replicaId) {
+    final currentClock = vectorClock ?? const VectorClock();
+    return copyWith(vectorClock: currentClock.increment(replicaId));
   }
 
   @override
@@ -89,5 +106,5 @@ class TestDatumEntity extends DatumEntity with EquatableMixin {
   }
 
   @override
-  List<Object?> get props => [id, userId, value, createdAt, modifiedAt, version, isDeleted];
+  List<Object?> get props => [id, userId, value, createdAt, modifiedAt, version, isDeleted, vectorClock];
 }

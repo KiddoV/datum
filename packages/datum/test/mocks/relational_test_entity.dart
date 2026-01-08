@@ -81,7 +81,7 @@ class RelationalTestEntity extends RelationalDatumEntity {
   }
 
   @override
-  List<Object?> get props => [id, userId, createdAt, modifiedAt, version, isDeleted, name];
+  List<Object?> get props => [id, userId, createdAt, modifiedAt, version, isDeleted, vectorClock, name];
 
   @override
   Map<String, Relation> get relations => {

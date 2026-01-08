@@ -54,6 +54,20 @@ abstract class RemoteAdapter<T extends DatumEntityInterface> {
   /// Update an existing entity on the remote data source.
   Future<void> update(T entity);
 
+  /// Create multiple entities on the remote data source.
+  Future<void> createAll(List<T> entities) async {
+    for (final entity in entities) {
+      await create(entity);
+    }
+  }
+
+  /// Update multiple entities on the remote data source.
+  Future<void> updateAll(List<T> entities) async {
+    for (final entity in entities) {
+      await update(entity);
+    }
+  }
+
   /// Apply a partial update ("patch") to an existing entity.
   Future<T> patch({
     required String id,
@@ -62,7 +76,14 @@ abstract class RemoteAdapter<T extends DatumEntityInterface> {
   });
 
   /// Delete an entity from the remote data source.
-  Future<void> delete(String id, {String? userId});
+  Future<bool> delete(String id, {String? userId});
+
+  /// Delete multiple entities from the remote data source.
+  Future<void> deleteAll(List<String> ids, {String? userId}) async {
+    for (final id in ids) {
+      await delete(id, userId: userId);
+    }
+  }
 
   // --- Sync & Metadata Methods ---
 

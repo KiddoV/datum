@@ -9,7 +9,8 @@ import 'package:datum/source/core/models/datum_operation.dart';
 import 'package:datum/source/core/models/datum_sync_metadata.dart';
 import 'package:datum/source/core/models/datum_sync_operation.dart';
 import 'package:datum/source/core/models/datum_sync_result.dart';
-import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
+import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart'
+    hide IsolateStrategy;
 import 'package:datum/source/utils/connectivity_checker.dart';
 import 'package:datum/source/utils/datum_logger.dart';
 import 'package:example/sync/isolate_stratergy.dart';
@@ -186,6 +187,7 @@ void main() {
         logger: logger,
         datumConfig: const DatumConfig(
           syncExecutionStrategy: IsolateStrategy(SequentialStrategy()),
+          remoteSyncBatchSize: 1,
         ),
       );
       await manager.initialize();
@@ -254,6 +256,7 @@ void main() {
           syncExecutionStrategy: IsolateStrategy(
             ParallelStrategy(batchSize: 2, failFast: true),
           ),
+          remoteSyncBatchSize: 1,
         ),
       );
       await manager.initialize();

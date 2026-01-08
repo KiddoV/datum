@@ -273,15 +273,18 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
       return 0;
     }
 
+    // Group consecutive operations of the same type to enable batching.
+    final groups = _groupOperations(operationsToProcess);
+
     logger.info(
-      'Pushing ${operationsToProcess.length} changes for user $userId...',
+      'Pushing ${operationsToProcess.length} changes (in ${groups.length} batches) for user $userId...',
     );
 
     // The main `synchronize` method has a try-catch that will handle any
     // exceptions thrown by the execution strategy.
     await config.syncExecutionStrategy.execute(
-      operationsToProcess,
-      (op) async {
+      groups,
+      (DatumSyncOperation<T> op) async {
         final size = await _processPendingOperation(op, generatedEvents: generatedEvents);
         cumulativeBytesPushed += size;
         bytesPushed += size;
@@ -316,6 +319,10 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
     DatumSyncOperation<T> operation, {
     required List<DatumSyncEvent<T>> generatedEvents,
   }) async {
+    if (operation is DatumSyncBatchOperation<T>) {
+      return await _processBatchOperation(operation, generatedEvents: generatedEvents);
+    }
+
     _notifyPreOperationObservers(operation);
     logger.debug(
       'Processing operation: ${operation.type.name} for entity ${operation.entityId}',
@@ -565,10 +572,25 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
           final size = jsonEncode(remoteItem.toDatumMap()).length;
           batchBytes += size;
         } else {
-          // This is an update from remote for an existing item.
-          await localAdapter.update(remoteItem);
-          final size = jsonEncode(remoteItem.toDatumMap()).length;
-          batchBytes += size;
+          // Check if remote is actually newer based on vector clocks
+          final localVC = localItem.vectorClock;
+          final remoteVC = remoteItem.vectorClock;
+
+          bool shouldUpdate = true;
+          if (localVC != null && remoteVC != null) {
+            // Only update if remote is strictly newer
+            if (remoteVC.isLessThanOrEqualTo(localVC)) {
+              shouldUpdate = false;
+              logger.debug('Skipping remote update for ${remoteItem.id} because local version is newer or same.');
+            }
+          }
+
+          if (shouldUpdate) {
+            // This is an update from remote for an existing item.
+            await localAdapter.update(remoteItem);
+            final size = jsonEncode(remoteItem.toDatumMap()).length;
+            batchBytes += size;
+          }
         }
 
         // Note: syncedCount is not incremented for pull operations in the global sync result
@@ -866,6 +888,109 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
       }
     }
     return true;
+  }
+
+  List<DatumSyncOperation<T>> _groupOperations(List<DatumSyncOperation<T>> operations) {
+    if (operations.isEmpty) return [];
+
+    final result = <DatumSyncOperation<T>>[];
+    var currentBatch = <DatumSyncOperation<T>>[];
+
+    for (final op in operations) {
+      if (currentBatch.isEmpty) {
+        currentBatch.add(op);
+      } else {
+        final lastOp = currentBatch.last;
+        // Group consecutive operations of the same type and same user.
+        // We only batch CREATE, DELETE, and FULL UPDATE (no delta).
+        final isCreate = op.type == DatumOperationType.create;
+        final isDelete = op.type == DatumOperationType.delete;
+        final isFullUpdate = op.type == DatumOperationType.update && (op.delta == null || op.delta!.isEmpty);
+
+        final canBatch = op.type == lastOp.type && op.userId == lastOp.userId && (isCreate || isDelete || isFullUpdate);
+
+        if (canBatch && currentBatch.length < config.remoteSyncBatchSize) {
+          currentBatch.add(op);
+        } else {
+          if (currentBatch.length == 1) {
+            result.add(currentBatch.first);
+          } else {
+            result.add(DatumSyncBatchOperation<T>(operations: currentBatch));
+          }
+          currentBatch = [op];
+        }
+      }
+    }
+
+    if (currentBatch.isNotEmpty) {
+      if (currentBatch.length == 1) {
+        result.add(currentBatch.first);
+      } else {
+        result.add(DatumSyncBatchOperation<T>(operations: currentBatch));
+      }
+    }
+
+    return result;
+  }
+
+  Future<int> _processBatchOperation(
+    DatumSyncBatchOperation<T> batch, {
+    required List<DatumSyncEvent<T>> generatedEvents,
+  }) async {
+    for (final op in batch.operations) {
+      _notifyPreOperationObservers(op);
+    }
+
+    logger.debug(
+      'Processing batch: ${batch.type.name} for ${batch.operations.length} entities',
+    );
+
+    try {
+      switch (batch.type) {
+        case DatumOperationType.create:
+          final entities = batch.operations.map((op) => op.data!).toList();
+          await remoteAdapter.createAll(entities);
+        case DatumOperationType.update:
+          final entities = batch.operations.map((op) => op.data!).toList();
+          await remoteAdapter.updateAll(entities);
+        case DatumOperationType.delete:
+          final ids = batch.operations.map((op) => op.entityId).toList();
+          await remoteAdapter.deleteAll(ids, userId: batch.userId);
+      }
+
+      for (final op in batch.operations) {
+        await queueManager.dequeue(op.id);
+        _notifyPostOperationObservers(op, success: true);
+      }
+
+      if (!statusSubject.isClosed) {
+        statusSubject.add(
+          statusSubject.value.copyWith(
+            syncedCount: statusSubject.value.syncedCount + batch.operations.length,
+          ),
+        );
+      }
+      return batch.sizeInBytes;
+    } on Object catch (e, stackTrace) {
+      logger.error('Batch operation ${batch.id} failed: $e', stackTrace);
+
+      if (!statusSubject.isClosed) {
+        statusSubject.add(
+          statusSubject.value.copyWith(
+            failedOperations: statusSubject.value.failedOperations + batch.operations.length,
+            errors: [...statusSubject.value.errors, e],
+          ),
+        );
+      }
+
+      for (final op in batch.operations) {
+        // Dequeue failed ops for now to prevent blocking future syncs
+        await queueManager.dequeue(op.id);
+        _notifyPostOperationObservers(op, success: false);
+      }
+
+      throw SyncExceptionWithEvents(e, stackTrace, generatedEvents);
+    }
   }
 }
 

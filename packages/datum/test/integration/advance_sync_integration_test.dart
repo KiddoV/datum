@@ -94,6 +94,7 @@ void main() {
         // Use a sequential strategy to demonstrate cancellation.
         datumConfig: const DatumConfig(
           syncExecutionStrategy: SequentialStrategy(),
+          remoteSyncBatchSize: 1,
         ),
       );
 
@@ -222,6 +223,7 @@ void main() {
             maxRetries: 1,
             shouldRetry: (e) async => e is NetworkException,
           ),
+          remoteSyncBatchSize: 1,
         ),
       );
 
@@ -431,5 +433,12 @@ void _stubDefaultBehaviors(
   ).thenAnswer((_) async => null);
   when(
     () => localAdapter.saveLastSyncResult(any(), any()),
+  ).thenAnswer((_) async {});
+
+  // Batch operations
+  when(() => remoteAdapter.createAll(any())).thenAnswer((_) async {});
+  when(() => remoteAdapter.updateAll(any())).thenAnswer((_) async {});
+  when(
+    () => remoteAdapter.deleteAll(any(), userId: any(named: 'userId')),
   ).thenAnswer((_) async {});
 }

@@ -1,10 +1,11 @@
 import 'package:example/data/task/entity/task.dart';
 import 'package:example/features/simple_datum/controller/entity_sync_status_provider.dart';
 import 'package:example/features/simple_datum/view/simple_datum_page.dart';
+import 'package:example/shared/helper/global_helper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class TaskListItem extends ConsumerWidget {
+class TaskListItem extends ConsumerStatefulWidget {
   const TaskListItem({
     super.key,
     required this.task,
@@ -17,17 +18,23 @@ class TaskListItem extends ConsumerWidget {
   final void Function(Task) onDelete;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<TaskListItem> createState() => _TaskListItemState();
+}
+
+class _TaskListItemState extends ConsumerState<TaskListItem> with GlobalHelper {
+  @override
+  Widget build(BuildContext context) {
     // Get last sync time to compare with task modification time
-    final lastSyncTimeAsync = ref.watch(lastSyncTimeProvider(task.userId));
+    final lastSyncTimeAsync =
+        ref.watch(lastSyncTimeProvider(widget.task.userId));
 
     return CheckboxListTile(
       title: Row(
         children: [
           Expanded(
             child: Text(
-              task.title,
-              style: task.isCompleted
+              widget.task.title,
+              style: widget.task.isCompleted
                   ? const TextStyle(
                       decoration: TextDecoration.lineThrough,
                       color: Colors.grey)
@@ -37,8 +44,8 @@ class TaskListItem extends ConsumerWidget {
           // Sync status indicator based on last sync time vs task modification time
           lastSyncTimeAsync.when(
             data: (lastSyncTime) {
-              final isPendingSync =
-                  lastSyncTime == null || task.modifiedAt.isAfter(lastSyncTime);
+              final isPendingSync = lastSyncTime == null ||
+                  widget.task.modifiedAt.isAfter(lastSyncTime);
               return Container(
                 margin: const EdgeInsets.only(left: 8),
                 child: Tooltip(
@@ -74,14 +81,14 @@ class TaskListItem extends ConsumerWidget {
         ],
       ),
       subtitle: Text(
-        task.description ?? '',
+        widget.task.description ?? '',
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
       ),
-      value: task.isCompleted,
+      value: widget.task.isCompleted,
       onChanged: (isCompleted) async {
-        final updatedTask =
-            task.copyWith(isCompleted: isCompleted, modifiedAt: DateTime.now());
+        final updatedTask = widget.task
+            .copyWith(isCompleted: isCompleted, modifiedAt: DateTime.now());
         try {
           await ref
               .read(simpleDatumControllerProvider.notifier)
@@ -90,8 +97,8 @@ class TaskListItem extends ConsumerWidget {
           if (!context.mounted) {
             return;
           }
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error updating task: $e')),
+          showErrorSnack(
+            child: Text('Error updating task: $e'),
           );
         }
       },
@@ -100,11 +107,11 @@ class TaskListItem extends ConsumerWidget {
         children: [
           IconButton(
             icon: const Icon(Icons.edit),
-            onPressed: () => onUpdate(task),
+            onPressed: () => widget.onUpdate(widget.task),
           ),
           IconButton(
             icon: const Icon(Icons.delete, color: Colors.red),
-            onPressed: () => onDelete(task),
+            onPressed: () => widget.onDelete(widget.task),
           ),
         ],
       ),

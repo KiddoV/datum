@@ -175,6 +175,23 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
   /// Defines the behavior for delete operations. Defaults to [DeleteBehavior.hardDelete].
   final DeleteBehavior deleteBehavior;
 
+  /// The maximum size of the query cache.
+  final int maxQueryCacheSize;
+
+  /// The maximum size of the relationship query cache.
+  final int maxRelationshipQueryCacheSize;
+
+  /// The maximum size of the entity existence cache.
+  final int maxEntityExistenceCacheSize;
+
+  /// Whether to offload the entire synchronization process to a background isolate.
+  ///
+  /// Requires that [LocalAdapter] and [RemoteAdapter] be sendable to an isolate.
+  /// This usually means they cannot hold open database connections or other
+  /// non-sendable resources directly, or they must be able to re-establish
+  /// connections in the new isolate.
+  final bool useIsolateSync;
+
   const DatumConfig({
     this.autoSyncInterval = const Duration(minutes: 15),
     this.autoStartSync = false,
@@ -209,6 +226,10 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     this.syncDirectionResolver,
     this.coldStartConfig = const ColdStartConfig(),
     this.deleteBehavior = DeleteBehavior.hardDelete,
+    this.maxQueryCacheSize = 100,
+    this.maxRelationshipQueryCacheSize = 200,
+    this.maxEntityExistenceCacheSize = 500,
+    this.useIsolateSync = false,
   });
 
   /// A default configuration with sensible production values.
@@ -247,6 +268,10 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
     SyncDirectionResolver? syncDirectionResolver,
     ColdStartConfig? coldStartConfig,
     DeleteBehavior? deleteBehavior,
+    int? maxQueryCacheSize,
+    int? maxRelationshipQueryCacheSize,
+    int? maxEntityExistenceCacheSize,
+    bool? useIsolateSync,
   }) {
     return DatumConfig<E>(
       autoSyncInterval: autoSyncInterval ?? this.autoSyncInterval,
@@ -281,6 +306,10 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       syncDirectionResolver: syncDirectionResolver ?? this.syncDirectionResolver,
       coldStartConfig: coldStartConfig ?? this.coldStartConfig,
       deleteBehavior: deleteBehavior ?? this.deleteBehavior,
+      maxQueryCacheSize: maxQueryCacheSize ?? this.maxQueryCacheSize,
+      maxRelationshipQueryCacheSize: maxRelationshipQueryCacheSize ?? this.maxRelationshipQueryCacheSize,
+      maxEntityExistenceCacheSize: maxEntityExistenceCacheSize ?? this.maxEntityExistenceCacheSize,
+      useIsolateSync: useIsolateSync ?? this.useIsolateSync,
     );
   }
 
@@ -321,6 +350,10 @@ class DatumConfig<T extends DatumEntityInterface> extends Equatable {
       syncDirectionResolver,
       coldStartConfig,
       deleteBehavior,
+      maxQueryCacheSize,
+      maxRelationshipQueryCacheSize,
+      maxEntityExistenceCacheSize,
+      useIsolateSync,
     ];
   }
 }

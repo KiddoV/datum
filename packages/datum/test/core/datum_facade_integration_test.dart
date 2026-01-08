@@ -223,7 +223,7 @@ void main() {
         return entity;
       });
       when(() => remote.create(any(that: isA<T>()))).thenAnswer((_) async {});
-      when(() => remote.delete(any(that: isA<String>()), userId: any(named: 'userId', that: isA<String>()))).thenAnswer((_) async {});
+      when(() => remote.delete(any(that: isA<String>()), userId: any(named: 'userId', that: isA<String>()))).thenAnswer((_) async => true);
       when(() => remote.patch(id: any(named: 'id'), delta: any(named: 'delta'), userId: any(named: 'userId'))).thenAnswer((invocation) async {
         final id = invocation.namedArguments[#id] as String;
         final userId = invocation.namedArguments[#userId] as String?;

@@ -145,7 +145,7 @@ class _TestRemoteAdapter extends RemoteAdapter<TestEntity> {
   @override
   Future<void> create(TestEntity entity) => throw UnimplementedError();
   @override
-  Future<void> delete(String id, {String? userId}) => throw UnimplementedError();
+  Future<bool> delete(String id, {String? userId}) => throw UnimplementedError();
   @override
   Stream<DatumChangeDetail<TestEntity>>? get changeStream => throw UnimplementedError();
   @override

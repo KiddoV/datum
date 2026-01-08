@@ -117,7 +117,7 @@ class SimpleRelationalEntity with RelationalDatumEntityMixin {
   Map<String, Relation> get relations => {};
 
   @override
-  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted];
+  List<Object?> get props => [id, userId, modifiedAt, createdAt, version, isDeleted, vectorClock];
 }
 
 void main() {
@@ -458,7 +458,7 @@ void main() {
       });
 
       test('relational entity has correct props', () {
-        expect(entity.props, hasLength(6));
+        expect(entity.props, hasLength(7));
         expect(entity.props[0], equals('1'));
         expect(entity.props[1], equals('user1'));
         expect(entity.props[2], equals(now));

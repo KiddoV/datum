@@ -32,7 +32,7 @@ class UserRemoteAdapter extends RemoteAdapter<UserEntity> {
   }
 
   @override
-  Future<void> delete(String id, {String? userId}) {
+  Future<bool> delete(String id, {String? userId}) {
     final item = _remoteStorage[userId ?? '']?.remove(id);
     if (item != null) {
       _changeController.add(
@@ -43,8 +43,9 @@ class UserRemoteAdapter extends RemoteAdapter<UserEntity> {
           timestamp: DateTime.now(),
         ),
       );
+      return Future.value(true);
     }
-    return Future.value();
+    return Future.value(false);
   }
 
   @override

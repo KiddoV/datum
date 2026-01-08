@@ -319,7 +319,7 @@ void main() {
       );
       when(
         () => remoteAdapter.delete(any(), userId: 'user1'),
-      ).thenAnswer((_) async {});
+      ).thenAnswer((_) async => true);
       await manager.synchronize('user1');
 
       // Assert

@@ -48,7 +48,26 @@ class DatumConflictDetector<T extends DatumEntityInterface> {
       );
     }
 
-    // Case 5: Both modified. If versions differ, it's a clear sign of independent modification.
+    // Case 5: Both modified.
+    // If vector clocks are present, use them for accurate causality tracking.
+    final localVC = localItem.vectorClock;
+    final remoteVC = remoteItem.vectorClock;
+
+    if (localVC != null && remoteVC != null) {
+      if (localVC.isConcurrent(remoteVC)) {
+        return DatumConflictContext(
+          userId: userId,
+          entityId: localItem.id,
+          type: DatumConflictType.bothModified,
+          localMetadata: localMetadata,
+          remoteMetadata: remoteMetadata,
+          detectedAt: DateTime.now(),
+        );
+      }
+      return null; // One is an ancestor of the other, no conflict.
+    }
+
+    // Fallback: If versions differ, it's a sign of independent modification.
     if (localItem.version != remoteItem.version) {
       return DatumConflictContext(
         userId: userId,

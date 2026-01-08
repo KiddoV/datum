@@ -59,6 +59,7 @@ void main() {
           now,
           1,
           false,
+          null, // vectorClock
         ]);
       });
 
@@ -247,6 +248,10 @@ void main() {
         expect(entityPast.hashCode, isNot(equals(entityFuture.hashCode)));
       });
 
+      test('vectorClock is null by default in props', () {
+        expect(entity1.props[6], isNull);
+      });
+
       test('handles entities with UTC and local timezones', () {
         final utcTime = DateTime.utc(2023, 1, 1, 12, 0, 0);
         final localTime = DateTime(2023, 1, 1, 12, 0, 0);
@@ -284,9 +289,14 @@ void main() {
           version: 1,
         );
 
-        expect(simpleEntity.props, hasLength(6));
+        expect(simpleEntity.props, hasLength(7));
         expect(simpleEntity.props[0], equals('simple1'));
         expect(simpleEntity.isRelational, isFalse);
+      });
+
+      test('incrementClock returns itself by default', () {
+        final result = entity1.incrementClock('device-1');
+        expect(result, same(entity1));
       });
 
       test('entities from different classes with same props are not equal', () {

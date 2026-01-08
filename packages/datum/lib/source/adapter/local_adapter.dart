@@ -86,6 +86,20 @@ abstract class LocalAdapter<T extends DatumEntityInterface> {
   /// Update an existing entity.
   Future<void> update(T entity);
 
+  /// Create multiple entities at once.
+  Future<void> createAll(List<T> entities) async {
+    for (final entity in entities) {
+      await create(entity);
+    }
+  }
+
+  /// Update multiple entities at once.
+  Future<void> updateAll(List<T> entities) async {
+    for (final entity in entities) {
+      await update(entity);
+    }
+  }
+
   /// Apply a partial update ("patch") to an existing entity.
   Future<T> patch({
     required String id,
@@ -95,6 +109,13 @@ abstract class LocalAdapter<T extends DatumEntityInterface> {
 
   /// Remove an entity. Returns `true` if an item was deleted.
   Future<bool> delete(String id, {String? userId});
+
+  /// Remove multiple entities by their IDs.
+  Future<void> deleteAll(List<String> ids, {String? userId}) async {
+    for (final id in ids) {
+      await delete(id, userId: userId);
+    }
+  }
 
   /// Remove all data for a specific user.
   Future<void> clearUserData(String userId);
