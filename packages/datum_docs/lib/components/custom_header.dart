@@ -9,7 +9,7 @@ class CustomHeader extends StatelessComponent {
     required this.logo,
     required this.title,
     this.subtitle,
-    this.version = '1.0.2',
+    this.version = '1.0.3',
     this.leading = const [SidebarToggleButton()],
     this.items = const [],
     this.navigationItems = const [],

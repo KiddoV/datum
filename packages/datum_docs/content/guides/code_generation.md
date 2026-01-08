@@ -28,7 +28,7 @@ Add `datum_generator` as a dependency (for annotations) and a dev dependency (fo
 
 ```yaml
 dependencies:
-  datum: ^1.0.2
+  datum: ^1.0.3
   datum_generator: ^1.0.0
 
 dev_dependencies:

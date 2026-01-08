@@ -22,7 +22,7 @@ Add `datum_generator` to your `pubspec.yaml`:
 
 ```yaml
 dependencies:
-  datum: ^1.0.2
+  datum: ^1.0.3
   # Required for annotations
   datum_generator: ^1.0.0
 
