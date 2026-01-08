@@ -88,7 +88,6 @@ final futureInitializerPod = FutureProvider<ProviderContainer>((
     enablePerformanceLogging: false,
     logLevel: LogLevel.trace,
     onMigrationError: _onMigrationError, // Use top-level function
-
     // Cold start sync now runs in background - won't block app initialization
     coldStartConfig: const ColdStartConfig(
       strategy: ColdStartStrategy.adaptive, // Runs in background

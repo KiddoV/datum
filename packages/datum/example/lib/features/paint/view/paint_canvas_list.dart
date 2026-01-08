@@ -53,7 +53,7 @@ class PaintCanvasList extends ConsumerWidget {
               const Spacer(),
               ShadButton.outline(
                 onPressed: () => _createNewCanvas(context, ref),
-                icon: const Icon(LucideIcons.plus, size: 16),
+                leading: const Icon(LucideIcons.plus, size: 16),
                 child: const Text('New Painting'),
               ),
             ],
@@ -65,33 +65,35 @@ class PaintCanvasList extends ConsumerWidget {
             itemCount: canvases.length,
             itemBuilder: (context, index) {
               final canvas = canvases[index];
-              return ShadCard(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: EdgeInsets.zero,
-                child: ListTile(
-                  leading: Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.primary.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(8),
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 12),
+                child: ShadCard(
+                  padding: EdgeInsets.zero,
+                  child: ListTile(
+                    leading: Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Icon(
+                        LucideIcons.brush,
+                        color: theme.colorScheme.primary,
+                      ),
                     ),
-                    child: Icon(
-                      LucideIcons.brush,
-                      color: theme.colorScheme.primary,
+                    title: Text(
+                      canvas.title,
+                      style: theme.textTheme.p
+                          .copyWith(fontWeight: FontWeight.w600),
                     ),
+                    subtitle: Text(
+                      '${canvas.strokeCount} strokes • Modified ${canvas.modifiedAt.toString().split(' ')[0]}',
+                      style: theme.textTheme.muted,
+                    ),
+                    trailing: _buildPopupMenu(context, ref, canvas, theme),
+                    onTap: () => onCanvasSelected(canvas.id),
                   ),
-                  title: Text(
-                    canvas.title,
-                    style:
-                        theme.textTheme.p.copyWith(fontWeight: FontWeight.w600),
-                  ),
-                  subtitle: Text(
-                    '${canvas.strokeCount} strokes • Modified ${canvas.modifiedAt.toString().split(' ')[0]}',
-                    style: theme.textTheme.muted,
-                  ),
-                  trailing: _buildPopupMenu(context, ref, canvas, theme),
-                  onTap: () => onCanvasSelected(canvas.id),
                 ),
               );
             },
@@ -125,7 +127,7 @@ class PaintCanvasList extends ConsumerWidget {
           const SizedBox(height: 24),
           ShadButton(
             onPressed: () => _createNewCanvas(context, ref),
-            icon: const Icon(LucideIcons.plus, size: 16),
+            leading: const Icon(LucideIcons.plus, size: 16),
             child: const Text('Create New Painting'),
           ),
         ],

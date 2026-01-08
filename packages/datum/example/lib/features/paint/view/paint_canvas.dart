@@ -396,12 +396,6 @@ class _CanvasPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final paintBase = Paint()
-      ..strokeCap = StrokeCap.round
-      ..strokeJoin = StrokeJoin.round
-      ..style = PaintingStyle.stroke
-      ..isAntiAlias = true;
-
     // 1. Draw all completed (and optimistic) strokes
     for (final stroke in strokes) {
       final paint = Paint()

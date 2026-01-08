@@ -3,6 +3,7 @@ import 'dart:ui';
 
 import 'package:datum/datum.dart';
 import 'package:example/bootstrap.dart';
+import 'package:example/const/secrets.dart';
 
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:recase/recase.dart';
@@ -94,6 +95,20 @@ class _SubscriptionRetryManager {
   }
 }
 
+/// Holds state that cannot be sent across isolates
+class _SupabaseAdapterState<T extends DatumEntityInterface> {
+  RealtimeChannel? channel;
+  StreamController<DatumChangeDetail<T>>? streamController;
+  final Map<String, RealtimeChannel> relatedChannels = {};
+  final _SubscriptionRetryManager retryManager = _SubscriptionRetryManager();
+
+  // Authentication
+  StreamSubscription<AuthState>? authSubscription;
+  bool isAuthenticated = false;
+  final StreamController<bool> authStateController =
+      StreamController<bool>.broadcast();
+}
+
 class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     extends RemoteAdapter<T> {
   final String tableName;
@@ -106,19 +121,55 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
     SupabaseClient? clientOverride,
   }) : _clientOverride = clientOverride;
 
-  // Core components
-  RealtimeChannel? _channel;
-  StreamController<DatumChangeDetail<T>>? _streamController;
-  final Map<String, RealtimeChannel> _relatedChannels = {};
-  final _SubscriptionRetryManager _retryManager = _SubscriptionRetryManager();
+  // Static state registry to keep adapter instances sendable
+  static final Map<String, _SupabaseAdapterState> _states = {};
 
-  // Authentication
-  StreamSubscription<AuthState>? _authSubscription;
-  bool _isAuthenticated = false;
-  final StreamController<bool> _authStateController =
-      StreamController<bool>.broadcast();
+  _SupabaseAdapterState<T> get _state {
+    final state = _states[tableName] ??= _SupabaseAdapterState<T>();
+    return state as _SupabaseAdapterState<T>;
+  }
 
-  SupabaseClient get _client => _clientOverride ?? Supabase.instance.client;
+  // Core components accessors
+  RealtimeChannel? get _channel => _state.channel;
+  set _channel(RealtimeChannel? value) => _state.channel = value;
+
+  StreamController<DatumChangeDetail<T>>? get _streamController =>
+      _state.streamController;
+  set _streamController(StreamController<DatumChangeDetail<T>>? value) =>
+      _state.streamController = value;
+
+  Map<String, RealtimeChannel> get _relatedChannels => _state.relatedChannels;
+
+  _SubscriptionRetryManager get _retryManager => _state.retryManager;
+
+  // Authentication accessors
+  StreamSubscription<AuthState>? get _authSubscription =>
+      _state.authSubscription;
+  set _authSubscription(StreamSubscription<AuthState>? value) =>
+      _state.authSubscription = value;
+
+  bool get _isAuthenticated => _state.isAuthenticated;
+  set _isAuthenticated(bool value) => _state.isAuthenticated = value;
+
+  StreamController<bool> get _authStateController => _state.authStateController;
+
+  SupabaseClient get _client {
+    if (_clientOverride != null) return _clientOverride!;
+
+    try {
+      // Check if Supabase is already initialized in this isolate
+      return Supabase.instance.client;
+    } catch (_) {
+      // Not initialized, do it now. This happens in worker isolates.
+      // We use the secrets directly since they are constants.
+      Supabase.initialize(
+        url: Secrets.SUPABASE_URL,
+        anonKey: Secrets.SUPABASE_ANON_KEY,
+      );
+      return Supabase.instance.client;
+    }
+  }
+
   String get _metadataTableName => 'sync_metadata';
 
   Stream<bool> get authStateStream => _authStateController.stream;
