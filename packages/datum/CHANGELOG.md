@@ -7,6 +7,22 @@
   - This ensures that paused user IDs are properly maintained when stopping auto-sync, allowing correct restoration of auto-sync state when resumed
   - Thanks to [@vipwpcom](https://github.com/vipwpcom) for the bug report and test
 
+## 📚 Documentation
+
+- **dartdoc**: fix unresolved documentation references
+  - Fixed `remoteAdapter.getSyncMetadata` → `RemoteAdapter.getSyncMetadata`
+  - Fixed `resubscribeToRemoteChanges` → `DatumManager.resubscribeToRemoteChanges`
+  - Fixed `unsubscribeFromRemoteChanges` → `DatumManager.unsubscribeFromRemoteChanges`
+  - Fixed `AdapterHealthStatus.ok` → `AdapterHealthStatus.healthy` (2 instances)
+  - All dartdoc warnings resolved (0 warnings, 0 errors)
+
+## ⚡ Improvements
+
+- **dependencies**: move flutter_test to dev_dependencies
+  - Moved `flutter_test` from dependencies to dev_dependencies in pubspec.yaml
+  - Improves package compatibility and pub.dev score (now 150/160 points)
+  - Package can now be analyzed without requiring Flutter SDK for consumers
+
 # 1.0.3
 
 ## 🚀 Relational Data Enhancements
