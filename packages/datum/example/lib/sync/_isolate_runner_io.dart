@@ -1,10 +1,8 @@
 import 'dart:async';
 import 'dart:isolate';
 
-import 'package:datum/source/core/models/datum_entity.dart';
-import 'package:datum/source/core/models/datum_sync_operation.dart';
-import 'package:datum/source/core/sync/datum_sync_execution_strategy.dart';
-import 'package:datum/source/utils/datum_logger.dart';
+import 'package:datum/datum.dart';
+import 'package:equatable/equatable.dart';
 import 'package:example/isolate_logger.dart';
 
 /// Spawns an isolate to run the sync process. This is for non-web platforms.
@@ -19,11 +17,18 @@ Future<void> spawnIsolate<T extends DatumEntityInterface>(
   final completer = Completer<void>();
   final mainReceivePort = ReceivePort();
 
-  final isolateInitMessage = _IsolateInitMessage<T>(
+  // Optimization: Instead of sending full entity objects (which might contain
+  // non-sendable fields like closures or complex generic types), we send
+  // their map representations. This ensures safe cross-isolate communication.
+  final rawOperations = operations.map((op) => op.toMap()).toList();
+
+  final isolateInitMessage = _IsolateInitMessage(
     mainToIsolateSendPort: mainReceivePort.sendPort,
-    operations: operations,
+    rawOperations: rawOperations,
     wrappedStrategy: wrappedStrategy,
-    logger: logger,
+    // Ensure we only send a sendable worker logger, not the main isolate logger
+    // which might contain a non-sendable ReceivePort.
+    workerLogger: logger.getWorkerLogger(),
   );
 
   unawaited(
@@ -74,18 +79,18 @@ Future<void> spawnIsolate<T extends DatumEntityInterface>(
 
 // --- Isolate Communication Models ---
 
-class _IsolateInitMessage<T extends DatumEntityInterface> {
+class _IsolateInitMessage {
   _IsolateInitMessage({
     required this.mainToIsolateSendPort,
-    required this.operations,
+    required this.rawOperations,
     required this.wrappedStrategy,
-    required this.logger,
+    required this.workerLogger,
   });
 
   final SendPort mainToIsolateSendPort;
-  final List<DatumSyncOperation<T>> operations;
+  final List<Map<String, dynamic>> rawOperations;
   final DatumSyncExecutionStrategy wrappedStrategy;
-  final DatumLogger logger;
+  final DatumLogger workerLogger;
 }
 
 class _ProcessOperationRequest {
@@ -114,24 +119,87 @@ class _SyncError {
   final StackTrace stackTrace;
 }
 
+/// A minimal entity used within the worker isolate to represent the data payload
+/// without requiring the full specific entity class or its dependencies.
+class _ProxyEntity extends Equatable implements DatumEntityInterface {
+  final Map<String, dynamic> _data;
+
+  _ProxyEntity(this._data);
+
+  @override
+  String get id => _data['id'] as String? ?? '';
+  @override
+  String get userId => _data['userId'] as String? ?? '';
+  @override
+  DateTime get createdAt => DateTime.fromMillisecondsSinceEpoch(0);
+  @override
+  DateTime get modifiedAt => DateTime.fromMillisecondsSinceEpoch(0);
+  @override
+  int get version => 1;
+  @override
+  bool get isDeleted => false;
+  @override
+  VectorClock? get vectorClock => null;
+  @override
+  bool get isRelational => false;
+  @override
+  Map<String, Relation> get relations => {};
+
+  @override
+  Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) =>
+      _data;
+
+  @override
+  DatumEntityInterface copyWith(
+          {DateTime? modifiedAt, int? version, bool? isDeleted}) =>
+      this;
+
+  @override
+  Map<String, dynamic>? diff(DatumEntityInterface oldVersion) => null;
+
+  @override
+  DatumEntityInterface incrementClock(String replicaId) => this;
+
+  @override
+  DatumEntityInterface merge(DatumEntityInterface other) => this;
+
+  @override
+  List<Object?> get props => [_data];
+
+  @override
+  bool get stringify => true;
+}
+
 /// The entry point for the background isolate.
-void _isolateEntryPoint<T extends DatumEntityInterface>(
-    _IsolateInitMessage<T> initMessage) {
+void _isolateEntryPoint(_IsolateInitMessage initMessage) {
   final mainSendPort = initMessage.mainToIsolateSendPort;
-  final operations = initMessage.operations;
+  final workerLogger = initMessage.workerLogger;
 
-  // Create a worker logger for this isolate
-  final workerLogger = initMessage.logger is IsolateLogger
-      ? (initMessage.logger as IsolateLogger).createWorkerLogger()
-      : IsolateLogger(initMessage.logger).createWorkerLogger();
+  // Reconstruct operation objects from the raw maps. We use a ProxyEntity
+  // to avoid needing the specific T types in the worker isolate.
+  final operations = initMessage.rawOperations.map((m) {
+    return DatumSyncOperation<DatumEntityInterface>(
+      id: m['id'] as String,
+      userId: m['userId'] as String,
+      entityId: m['entityId'] as String,
+      type: DatumOperationType.values.byName(m['type'] as String),
+      timestamp: DateTime.fromMillisecondsSinceEpoch(m['timestamp'] as int),
+      data: m['data'] == null
+          ? null
+          : _ProxyEntity(Map<String, dynamic>.from(m['data'] as Map)),
+      delta: m['delta'] == null
+          ? null
+          : Map<String, dynamic>.from(m['delta'] as Map),
+      retryCount: m['retryCount'] as int? ?? 0,
+      sizeInBytes: m['sizeInBytes'] as int? ?? 0,
+    );
+  }).toList();
 
-  // Only log at info level for isolate start to reduce overhead
   workerLogger.info(
       'Starting isolate sync execution with ${operations.length} operations');
 
   Future<void> requestProcessing(
       DatumSyncOperation<DatumEntityInterface> operation) async {
-    // Remove per-operation debug logging to reduce cross-isolate communication overhead
     final responsePort = ReceivePort();
     mainSendPort.send(
       _ProcessOperationRequest(operation.id, responsePort.sendPort),
@@ -140,16 +208,13 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
     responsePort.close();
 
     if (result is _IsolateError) {
-      // Only log errors, not every operation
       workerLogger
           .warn('Operation ${operation.id} failed in isolate: ${result.error}');
       return Future.error(result.error, result.stackTrace);
     }
-    // Remove success logging for each operation
   }
 
   void reportProgress(int completed, int total) {
-    // Reduce progress logging frequency - only log every 10 operations or at completion
     if (completed % 10 == 0 || completed == total) {
       workerLogger
           .debug('Isolate progress: $completed/$total operations completed');
@@ -161,7 +226,7 @@ void _isolateEntryPoint<T extends DatumEntityInterface>(
 
   initMessage.wrappedStrategy
       .execute<DatumEntityInterface>(
-    operations.cast<DatumSyncOperation<DatumEntityInterface>>(),
+    operations,
     requestProcessing,
     isCancelled,
     reportProgress,

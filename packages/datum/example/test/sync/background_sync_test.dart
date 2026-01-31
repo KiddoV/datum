@@ -49,8 +49,8 @@ void main() {
     });
 
     tearDown(() async {
-      await tearDownTestHive();
       await datum.dispose();
+      await tearDownTestHive();
     });
 
     testWidgets('should unsubscribe and resubscribe on app lifecycle changes',

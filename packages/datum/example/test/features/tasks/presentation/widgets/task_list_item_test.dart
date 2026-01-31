@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 // Mock SimpleDatumController
 class MockSimpleDatumController extends Mock implements SimpleDatumController {
@@ -41,7 +42,7 @@ void main() {
         lastSyncTimeProvider(task.userId)
             .overrideWith((ref) => Stream.value(lastSyncTime)),
       ],
-      child: MaterialApp(
+      child: ShadApp(
         home: Scaffold(
           body: TaskListItem(
             task: task,
@@ -173,6 +174,7 @@ void main() {
       onDelete: (_) {},
       lastSyncTime: lastSyncTime,
     ));
+    await tester.pump(); // Allow stream to emit
 
     expect(find.byIcon(Icons.cloud_upload_outlined), findsOneWidget);
   });

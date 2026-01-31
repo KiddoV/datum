@@ -1,5 +1,5 @@
 import 'package:datum/datum.dart';
-import 'package:datum_generator/datum_generator.dart';
+import 'package:datum_generator/annotations.dart';
 
 part 'advanced_types_example.g.dart';
 

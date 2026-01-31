@@ -3,7 +3,7 @@ import 'dart:math';
 
 import 'package:datum/datum.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:datum_generator/datum_generator.dart';
+import 'package:datum_generator/annotations.dart';
 
 import 'paint_stroke.dart';
 

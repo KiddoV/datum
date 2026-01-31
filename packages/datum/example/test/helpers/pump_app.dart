@@ -2,10 +2,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:example/core/theme/app_theme.dart';
 import 'package:example/core/theme/theme_controller.dart';
 import 'package:example/i18n/strings.g.dart';
 import 'package:example/shared/pods/translation_pod.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:spot/spot.dart';
 
 extension PumpApp on WidgetTester {
@@ -33,10 +33,16 @@ class FakeApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final currentTheme = ref.read(themecontrollerProvider);
-    return MaterialApp(
+    return ShadApp(
       debugShowCheckedModeBanner: false,
-      theme: Themes.theme,
-      darkTheme: Themes.darkTheme,
+      theme: ShadThemeData(
+        brightness: Brightness.light,
+        colorScheme: const ShadSlateColorScheme.light(),
+      ),
+      darkTheme: ShadThemeData(
+        brightness: Brightness.dark,
+        colorScheme: const ShadSlateColorScheme.dark(),
+      ),
       themeMode: currentTheme,
       supportedLocales: AppLocaleUtils.supportedLocales,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,

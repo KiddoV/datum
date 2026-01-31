@@ -1,3 +1,4 @@
+void main() {}
 // @Tags(['browser'])
 // library;
 

@@ -2302,7 +2302,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
   /// Schedules the next auto-sync for the specified user after the given interval.
   void _scheduleNextAutoSync(String userId, Duration interval) {
-    if (isDisposed) {
+    if (isDisposed || _isSyncPaused) {
       return;
     }
 
@@ -2705,11 +2705,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
   /// While paused, any calls to `synchronize()` will be skipped immediately.
   /// This also stops any running auto-sync timers for this manager.
   void pauseSync() {
-    _isSyncPaused = true;
     _prePauseStatus = currentStatus.status;
     // Remember which users had active auto-sync timers.
     _pausedAutoSyncUserIds.addAll(_autoSyncTimers.keys);
     stopAutoSync();
+    _isSyncPaused = true;
     if (!_statusSubject.isClosed) {
       _statusSubject.add(currentStatus.copyWith(status: DatumSyncStatus.paused));
     }
