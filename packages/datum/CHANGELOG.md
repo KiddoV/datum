@@ -1,3 +1,12 @@
+# 1.0.4
+
+## 🐛 Bug Fixes
+
+- **auto-sync**: fix stopAutoSync() incorrectly clearing _pausedAutoSyncUserIds
+  - Fixed an issue where `stopAutoSync()` was incorrectly clearing the `_pausedAutoSyncUserIds` set, which prevented auto-sync restoration after pause/resume cycles
+  - This ensures that paused user IDs are properly maintained when stopping auto-sync, allowing correct restoration of auto-sync state when resumed
+  - Thanks to [@vipwpcom](https://github.com/vipwpcom) for the bug report and test
+
 # 1.0.3
 
 ## 🚀 Relational Data Enhancements
