@@ -182,11 +182,13 @@ class AlgoliaDocSearch extends StatelessComponent {
 
   String _jsonEncode(Map<String, dynamic> data) {
     // Simple JSON encoding for the config
-    final entries = data.entries.map((e) {
-      final key = '"${e.key}"';
-      final value = _encodeValue(e.value);
-      return '$key:$value';
-    }).join(',');
+    final entries = data.entries
+        .map((e) {
+          final key = '"${e.key}"';
+          final value = _encodeValue(e.value);
+          return '$key:$value';
+        })
+        .join(',');
 
     return '{$entries}';
   }
