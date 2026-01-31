@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:universal_web/web.dart' as html;
 
@@ -42,7 +43,9 @@ final class CachedGitHubButton extends StatefulComponent {
         lineHeight: 1.2.em,
       ),
       css('&:hover').styles(backgroundColor: Color('color-mix(in srgb, currentColor 5%, transparent)')),
-      css('& *').styles(transition: Transition('opacity', duration: 200, curve: Curve.easeInOut)),
+      css('& *').styles(
+        transition: Transition('opacity', duration: 200.ms, curve: Curve.easeInOut),
+      ),
       css('&:hover *').styles(raw: {'opacity': '1 !important'}),
       css('.github-icon').styles(width: 1.2.rem),
       css('.github-info', [
@@ -143,13 +146,13 @@ class _CachedGitHubButtonState extends State<CachedGitHubButton> with PreloadSta
     return a(href: 'https://github.com/${component.repo}', target: Target.blank, classes: 'github-button not-content', [
       div(classes: 'github-icon', const [_GitHubIcon()]),
       div(classes: 'github-info', [
-        span([text(component.repo)]),
+        span([Component.text(component.repo)]),
         span([
-          text('★'),
-          span(styles: !loaded ? const Styles(opacity: 0) : null, [text('${_stars ?? 9999}')]),
+          Component.text('★'),
+          span(styles: !loaded ? const Styles(opacity: 0) : null, [Component.text('${_stars ?? 9999}')]),
           span([]),
-          text('⑂'),
-          span(styles: !loaded ? const Styles(opacity: 0) : null, [text('${_forks ?? 99}')]),
+          Component.text('⑂'),
+          span(styles: !loaded ? const Styles(opacity: 0) : null, [Component.text('${_forks ?? 99}')]),
         ]),
       ]),
     ]);

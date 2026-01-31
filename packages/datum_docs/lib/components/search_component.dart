@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 
 /// Algolia DocSearch v4 component for documentation sites.
@@ -71,7 +72,7 @@ class AlgoliaDocSearch extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
-    return fragment([
+    return Component.fragment([
       // Add DocSearch CSS and JS to the document head
       Document.head(
         children: [

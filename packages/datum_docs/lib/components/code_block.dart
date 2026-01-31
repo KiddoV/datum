@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:syntax_highlight_lite/syntax_highlight_lite.dart' hide Color;
 
@@ -115,7 +116,7 @@ class CodeBlock extends CustomComponent {
         zIndex: ZIndex(10),
         width: 1.25.rem,
         height: 1.25.rem,
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.25.rem),
         opacity: 0.5,
         color: Color('hsl(var(--foreground))'),
@@ -140,7 +141,7 @@ class _CodeBlock extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     final codeblock = pre([
-      code([if (highlighter != null) buildSpan(highlighter!.highlight(source)) else text(source)]),
+      code([if (highlighter != null) buildSpan(highlighter!.highlight(source)) else Component.text(source)]),
     ]);
 
     return div(classes: 'code-block', [CodeBlockCopyButton(), codeblock]);
@@ -159,11 +160,11 @@ class _CodeBlock extends StatelessComponent {
     }
 
     if (styles == null && textSpan.children.isEmpty) {
-      return text(textSpan.text ?? '');
+      return Component.text(textSpan.text ?? '');
     }
 
     return span(styles: styles, [
-      if (textSpan.text != null) text(textSpan.text!),
+      if (textSpan.text != null) Component.text(textSpan.text!),
       for (final t in textSpan.children) buildSpan(t),
     ]);
   }

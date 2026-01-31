@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
@@ -11,7 +12,7 @@ class Breadcrumb extends StatelessComponent {
     final breadcrumbs = page.data['breadcrumbs'] as List<Map<String, String>>?;
 
     if (breadcrumbs == null || breadcrumbs.isEmpty) {
-      return fragment([]);
+      return Component.fragment([]);
     }
 
     return div(
@@ -44,7 +45,7 @@ class Breadcrumb extends StatelessComponent {
                         styles: Styles(
                           color: Color('#6b7280'),
                         ),
-                        [text(breadcrumbs[i]['title']!)],
+                        [Component.text(breadcrumbs[i]['title']!)],
                       ),
                     ] else ...[
                       // Current page (not a link)
@@ -53,7 +54,7 @@ class Breadcrumb extends StatelessComponent {
                           color: Color('#374151'),
                           fontWeight: FontWeight.w500,
                         ),
-                        [text(breadcrumbs[i]['title']!)],
+                        [Component.text(breadcrumbs[i]['title']!)],
                       ),
                     ],
                   ]),
@@ -64,7 +65,7 @@ class Breadcrumb extends StatelessComponent {
                         margin: Margin.symmetric(horizontal: 0.25.rem),
                         color: Color('#9ca3af'),
                       ),
-                      [text('/')],
+                      [Component.text('/')],
                     ),
                   ],
                 ],

@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/theme.dart';
 
@@ -21,7 +22,7 @@ class ClickerState extends State<Clicker> {
         setState(() => count++);
       },
       [
-        text('Click me! ($count)'),
+        Component.text('Click me! ($count)'),
       ],
     );
   }
@@ -31,7 +32,7 @@ class ClickerState extends State<Clicker> {
     css('.clicker').styles(
       padding: Padding.all(0.5.rem),
       margin: Margin.only(top: 1.rem),
-      border: Border(color: ContentColors.primary),
+      border: Border.all(color: ContentColors.primary),
       radius: BorderRadius.circular(0.5.rem),
     ),
   ];

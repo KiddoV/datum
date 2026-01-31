@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
@@ -43,7 +44,7 @@ class Steps extends CustomComponentBase {
         display: Display.flex,
         padding: Padding.symmetric(vertical: 0.75.rem, horizontal: 1.rem),
         margin: Margin.only(bottom: 1.5.rem),
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.75.rem),
         alignItems: AlignItems.start,
         gap: Gap(column: 1.rem),
@@ -101,7 +102,7 @@ class Steps extends CustomComponentBase {
       css('&.steps > li > .step-content pre, &.steps li > .step-content pre').styles(
         padding: Padding.all(1.rem),
         margin: Margin.symmetric(vertical: 1.rem),
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.5.rem),
         backgroundColor: Color('hsl(var(--muted))'),
         raw: {'overflow': 'auto', 'box-shadow': 'inset 0 1px 3px hsl(var(--foreground) / 0.1)'},
@@ -142,11 +143,11 @@ class _StepsComponent extends StatelessComponent {
 
   List<Component> _parseSteps(String content) {
     final steps = <Component>[];
-    final lines = content.split('\n').map((line) => line.trim()).where((line) => line.isNotEmpty);
+    final lines = content.split('\n').map((stepLine) => stepLine.trim()).where((stepLine) => stepLine.isNotEmpty);
 
-    for (final line in lines) {
+    for (final stepLine in lines) {
       // Match lines that start with a number followed by a dot and space
-      final stepMatch = RegExp(r'^(\d+)\.\s*(.*)$').firstMatch(line);
+      final stepMatch = RegExp(r'^(\d+)\.\s*(.*)$').firstMatch(stepLine);
       if (stepMatch != null) {
         final stepContent = stepMatch.group(2) ?? '';
         steps.add(
@@ -172,13 +173,13 @@ class _StepsComponent extends StatelessComponent {
     for (final match in regex.allMatches(content)) {
       // Add text before the match
       if (match.start > lastIndex) {
-        parts.add(text(content.substring(lastIndex, match.start)));
+        parts.add(Component.text(content.substring(lastIndex, match.start)));
       }
 
       // Add the bold text
       parts.add(
         span(styles: Styles(fontWeight: FontWeight.w600), [
-          text(match.group(1)!),
+          Component.text(match.group(1)!),
         ]),
       );
 
@@ -187,11 +188,11 @@ class _StepsComponent extends StatelessComponent {
 
     // Add remaining text
     if (lastIndex < content.length) {
-      parts.add(text(content.substring(lastIndex)));
+      parts.add(Component.text(content.substring(lastIndex)));
     }
 
     if (parts.isEmpty) {
-      return text(content);
+      return Component.text(content);
     }
 
     return span(parts);

@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
@@ -71,7 +72,7 @@ class _TipComponent extends StatelessComponent {
         display: Display.flex,
         padding: Padding.symmetric(vertical: 1.rem, horizontal: 1.25.rem),
         margin: Margin.only(bottom: 1.rem),
-        border: Border(width: 1.px, color: Color('$borderColor / 0.2')),
+        border: Border.all(width: 1.px, color: Color('$borderColor / 0.2')),
         radius: BorderRadius.circular(0.5.rem),
         alignItems: AlignItems.start,
         gap: Gap(column: 0.75.rem),
@@ -88,7 +89,7 @@ class _TipComponent extends StatelessComponent {
             raw: {'margin-top': '0.125rem'},
           ),
           [
-            raw(iconSvg),
+            RawText(iconSvg),
           ],
         ),
         div(
@@ -112,12 +113,12 @@ class _TipComponent extends StatelessComponent {
     if (component is Text && component.text.contains('**')) {
       // Parse the markdown directly
       final html = _markdownToHtml(component.text);
-      return raw('<span>$html</span>');
+      return RawText('<span>$html</span>');
     }
 
     // For any other case, return the original component
     // The Jaspr system will handle rendering it appropriately
-    return component ?? text('');
+    return component ?? Component.text('');
   }
 
   String _markdownToHtml(String markdown) {

@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
@@ -47,34 +48,34 @@ class Badge extends CustomComponentBase {
       ),
       // Default variant
       css('&.badge-default').styles(
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         color: Color('hsl(var(--muted-foreground))'),
         backgroundColor: Color('hsl(var(--muted))'),
       ),
       // Success variant
       css('&.badge-success').styles(
-        border: Border(width: 1.px, color: Color('hsl(142 76% 36% / 0.2)')),
+        border: Border.all(width: 1.px, color: Color('hsl(142 76% 36% / 0.2)')),
         color: Color('hsl(142 76% 36%)'),
         backgroundColor: Color('hsl(142 76% 36% / 0.1)'),
         raw: {'box-shadow': '0 1px 2px hsl(142 76% 36% / 0.1)'},
       ),
       // Warning variant
       css('&.badge-warning').styles(
-        border: Border(width: 1.px, color: Color('hsl(38 92% 50% / 0.2)')),
+        border: Border.all(width: 1.px, color: Color('hsl(38 92% 50% / 0.2)')),
         color: Color('hsl(38 92% 50%)'),
         backgroundColor: Color('hsl(38 92% 50% / 0.1)'),
         raw: {'box-shadow': '0 1px 2px hsl(38 92% 50% / 0.1)'},
       ),
       // Error variant
       css('&.badge-error').styles(
-        border: Border(width: 1.px, color: Color('hsl(0 84% 60% / 0.2)')),
+        border: Border.all(width: 1.px, color: Color('hsl(0 84% 60% / 0.2)')),
         color: Color('hsl(0 84% 60%)'),
         backgroundColor: Color('hsl(0 84% 60% / 0.1)'),
         raw: {'box-shadow': '0 1px 2px hsl(0 84% 60% / 0.1)'},
       ),
       // Info variant
       css('&.badge-info').styles(
-        border: Border(width: 1.px, color: Color('hsl(199 89% 48% / 0.2)')),
+        border: Border.all(width: 1.px, color: Color('hsl(199 89% 48% / 0.2)')),
         color: Color('hsl(199 89% 48%)'),
         backgroundColor: Color('hsl(199 89% 48% / 0.1)'),
         raw: {'box-shadow': '0 1px 2px hsl(199 89% 48% / 0.1)'},

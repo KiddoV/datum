@@ -8,6 +8,7 @@ import 'package:datum_docs/components/cached_github_button.dart';
 import 'package:datum_docs/components/custom_header.dart';
 import 'package:datum_docs/components/custom_image.dart';
 import 'package:datum_docs/components/enhanced_theme_toggle.dart';
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:jaspr_content/components/sidebar.dart';
 import 'package:jaspr_content/components/tabs.dart';
@@ -15,7 +16,7 @@ import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
 
 // This file is generated automatically by Jaspr, do not remove or edit.
-import 'jaspr_options.dart';
+import 'main.server.options.dart';
 
 import 'components/code_block.dart';
 import 'components/steps.dart';
@@ -28,7 +29,7 @@ import 'page_extensions.dart';
 void main() {
   // Initializes the server environment with the generated default options.
   Jaspr.initializeApp(
-    options: defaultJasprOptions,
+    options: defaultServerOptions,
   );
 
   // Starts the app.
@@ -211,7 +212,7 @@ void main() {
                               fontWeight: FontWeight.w600,
                               letterSpacing: 0.025.em,
                             ),
-                            [text('v1.0.3')],
+                            [Component.text('v1.0.3')],
                           ),
                           div(
                             styles: Styles(

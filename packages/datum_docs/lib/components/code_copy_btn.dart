@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_lucide/jaspr_lucide.dart' hide Timer, List;
 import 'package:universal_web/web.dart' as web;

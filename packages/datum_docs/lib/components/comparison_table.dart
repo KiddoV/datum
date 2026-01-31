@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
@@ -25,7 +26,7 @@ class ComparisonTable extends CustomComponentBase {
       case 'TableRow':
         return _TableRowComponent(child: child);
       default:
-        return text('');
+        return Component.text('');
     }
   }
 
@@ -35,7 +36,7 @@ class ComparisonTable extends CustomComponentBase {
       css('&').styles(
         width: 100.percent,
         margin: Margin.only(bottom: 1.5.rem),
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.75.rem),
         backgroundColor: Color('hsl(var(--card))'),
         raw: {
@@ -52,7 +53,7 @@ class ComparisonTable extends CustomComponentBase {
       ),
       css('& th').styles(
         padding: Padding.symmetric(vertical: 1.rem, horizontal: 1.25.rem),
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         color: Color('hsl(var(--foreground))'),
         textAlign: TextAlign.left,
         fontSize: 0.875.rem,
@@ -61,7 +62,7 @@ class ComparisonTable extends CustomComponentBase {
       ),
       css('& td').styles(
         padding: Padding.symmetric(vertical: 1.rem, horizontal: 1.25.rem),
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         color: Color('hsl(var(--foreground))'),
         raw: {'line-height': '1.5'},
       ),
@@ -80,7 +81,7 @@ class ComparisonTable extends CustomComponentBase {
       css('& .status-success').styles(
         display: Display.inlineBlock,
         padding: Padding.symmetric(horizontal: 0.5.rem, vertical: 0.25.rem),
-        border: Border(width: 1.px, color: Color('hsl(142 76% 36% / 0.2)')),
+        border: Border.all(width: 1.px, color: Color('hsl(142 76% 36% / 0.2)')),
         radius: BorderRadius.circular(9999.px),
         color: Color('hsl(142 76% 36%)'),
         fontSize: 0.75.rem,
@@ -90,7 +91,7 @@ class ComparisonTable extends CustomComponentBase {
       css('& .status-warning').styles(
         display: Display.inlineBlock,
         padding: Padding.symmetric(horizontal: 0.5.rem, vertical: 0.25.rem),
-        border: Border(width: 1.px, color: Color('hsl(38 92% 50% / 0.2)')),
+        border: Border.all(width: 1.px, color: Color('hsl(38 92% 50% / 0.2)')),
         radius: BorderRadius.circular(9999.px),
         color: Color('hsl(38 92% 50%)'),
         fontSize: 0.75.rem,
@@ -100,7 +101,7 @@ class ComparisonTable extends CustomComponentBase {
       css('& .status-info').styles(
         display: Display.inlineBlock,
         padding: Padding.symmetric(horizontal: 0.5.rem, vertical: 0.25.rem),
-        border: Border(width: 1.px, color: Color('hsl(199 89% 48% / 0.2)')),
+        border: Border.all(width: 1.px, color: Color('hsl(199 89% 48% / 0.2)')),
         radius: BorderRadius.circular(9999.px),
         color: Color('hsl(199 89% 48%)'),
         fontSize: 0.75.rem,
@@ -147,7 +148,7 @@ class _ComparisonTableComponent extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return div(classes: 'comparison-table', [
-      table([child ?? text('')]),
+      table([child ?? Component.text('')]),
     ]);
   }
 }
@@ -163,12 +164,12 @@ class _TableHeaderComponent extends StatelessComponent {
       final textChild = child as Text;
       final columns = textChild.text.split('|');
       return thead([
-        tr(columns.map((col) => th([text(col.trim())])).toList()),
+        tr(columns.map((column) => th([Component.text(column.trim())])).toList()),
       ]);
     }
     return thead([
       tr([
-        th([child ?? text('')]),
+        th([child ?? Component.text('')]),
       ]),
     ]);
   }
@@ -184,10 +185,10 @@ class _TableRowComponent extends StatelessComponent {
     if (child is Text) {
       final textChild = child as Text;
       final columns = textChild.text.split('|');
-      return tr(columns.map((col) => td([_parseCellContent(col.trim())])).toList());
+      return tr(columns.map((column) => td([_parseCellContent(column.trim())])).toList());
     }
     return tr([
-      td([child ?? text('')]),
+      td([child ?? Component.text('')]),
     ]);
   }
 
@@ -196,36 +197,36 @@ class _TableRowComponent extends StatelessComponent {
     if (content.contains('<Badge variant="success">')) {
       final match = RegExp(r'<Badge variant="success">(.*?)</Badge>').firstMatch(content);
       if (match != null) {
-        return span(classes: 'status-success', [text(match.group(1)!)]);
+        return span(classes: 'status-success', [Component.text(match.group(1)!)]);
       }
     }
     if (content.contains('<Badge variant="warning">')) {
       final match = RegExp(r'<Badge variant="warning">(.*?)</Badge>').firstMatch(content);
       if (match != null) {
-        return span(classes: 'status-warning', [text(match.group(1)!)]);
+        return span(classes: 'status-warning', [Component.text(match.group(1)!)]);
       }
     }
     if (content.contains('<Badge variant="info">')) {
       final match = RegExp(r'<Badge variant="info">(.*?)</Badge>').firstMatch(content);
       if (match != null) {
-        return span(classes: 'status-info', [text(match.group(1)!)]);
+        return span(classes: 'status-info', [Component.text(match.group(1)!)]);
       }
     }
 
     // Handle icons and symbols
-    if (content == '✅') return span(classes: 'icon-check', [text('✓')]);
-    if (content == '❌') return span(classes: 'icon-cross', [text('✗')]);
-    if (content == '🔧') return span(classes: 'icon-manual', [text('🔧')]);
-    if (content == '⚪') return span(classes: 'icon-circle', [text('○')]);
-    if (content == '🟡') return span(classes: 'icon-yellow', [text('●')]);
-    if (content == '🟢') return span(classes: 'icon-green', [text('●')]);
+    if (content == '✅') return span(classes: 'icon-check', [Component.text('✓')]);
+    if (content == '❌') return span(classes: 'icon-cross', [Component.text('✗')]);
+    if (content == '🔧') return span(classes: 'icon-manual', [Component.text('🔧')]);
+    if (content == '⚪') return span(classes: 'icon-circle', [Component.text('○')]);
+    if (content == '🟡') return span(classes: 'icon-yellow', [Component.text('●')]);
+    if (content == '🟢') return span(classes: 'icon-green', [Component.text('●')]);
 
     // Handle bold text
     if (content.startsWith('<b>') && content.endsWith('</b>')) {
       final textContent = content.substring(3, content.length - 4);
-      return b([text(textContent)]);
+      return b([Component.text(textContent)]);
     }
 
-    return text(content);
+    return Component.text(content);
   }
 }

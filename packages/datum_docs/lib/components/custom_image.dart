@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/components/_internal/zoomable_image.dart';
 import 'package:jaspr_content/jaspr_content.dart';
@@ -95,7 +96,7 @@ class _Image extends StatelessComponent {
   Component build(BuildContext context) {
     return figure(classes: 'image', [
       img(src: src, alt: alt ?? caption, width: width, height: height),
-      if (caption != null) figcaption([text(caption!)]),
+      if (caption != null) figcaption([Component.text(caption!)]),
     ]);
   }
 }

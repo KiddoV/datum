@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/components/sidebar_toggle_button.dart';
 import 'package:datum_docs/components/enhanced_theme_toggle.dart';
@@ -45,7 +46,7 @@ class CustomHeader extends StatelessComponent {
 
   @override
   Component build(BuildContext context) {
-    return fragment([
+    return Component.fragment([
       Document.head(
         children: [
           // Algolia site verification
@@ -74,12 +75,12 @@ class CustomHeader extends StatelessComponent {
               img(src: logo, alt: '$title Logo'),
               div(classes: 'header-title-text', [
                 div(classes: 'header-title-row', [
-                  span(classes: 'header-main-title', [text(title)]),
-                  span(classes: 'header-version', [text('v$version')]),
+                  span(classes: 'header-main-title', [Component.text(title)]),
+                  span(classes: 'header-version', [Component.text('v$version')]),
                 ]),
                 if (subtitle != null)
                   span(classes: 'header-subtitle', [
-                    text(subtitle!),
+                    Component.text(subtitle!),
                   ]),
               ]),
             ]),

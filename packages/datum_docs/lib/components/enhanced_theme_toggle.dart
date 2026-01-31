@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:universal_web/web.dart' as web;
 
@@ -171,7 +172,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
   Component build(BuildContext context) {
     if (!_isInitialized) {
       return div(classes: 'enhanced-theme-toggle-container', [
-        div(classes: 'theme-dropdown', [text('...')]),
+        div(classes: 'theme-dropdown', [Component.text('...')]),
       ]);
     }
 
@@ -207,7 +208,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
               ),
               [
                 currentIcon,
-                span(classes: 'theme-label', [text(currentLabel)]),
+                span(classes: 'theme-label', [Component.text(currentLabel)]),
                 ChevronDownIcon(size: 14),
               ],
             ),
@@ -231,7 +232,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
                   ),
                   [
                     MonitorIcon(size: 16),
-                    span(classes: 'theme-label', [text('Auto')]),
+                    span(classes: 'theme-label', [Component.text('Auto')]),
                   ],
                 ),
                 // Dark option
@@ -242,7 +243,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
                   ),
                   [
                     MoonIcon(size: 16),
-                    span(classes: 'theme-label', [text('Dark')]),
+                    span(classes: 'theme-label', [Component.text('Dark')]),
                   ],
                 ),
                 // Light option
@@ -253,7 +254,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
                   ),
                   [
                     SunIcon(size: 16),
-                    span(classes: 'theme-label', [text('Light')]),
+                    span(classes: 'theme-label', [Component.text('Light')]),
                   ],
                 ),
               ]),
@@ -302,10 +303,10 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
       css('&').styles(
         display: Display.flex,
         padding: Padding.symmetric(horizontal: 12.px, vertical: 8.px),
-        border: Border(color: Color('hsl(var(--border))'), width: 1.px, style: BorderStyle.solid),
+        border: Border.all(color: Color('hsl(var(--border))'), width: 1.px, style: BorderStyle.solid),
         radius: BorderRadius.circular(8.px),
         cursor: Cursor.pointer,
-        transition: Transition('all', duration: 150),
+        transition: Transition('all', duration: 150.ms),
         justifyContent: JustifyContent.spaceBetween,
         alignItems: AlignItems.center,
         color: Color('hsl(var(--foreground))'),
@@ -338,7 +339,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
     css('.dropdown-options', [
       css('&').styles(
         padding: Padding.all(2.px),
-        border: Border(color: Color('hsl(var(--border))'), width: 1.px, style: BorderStyle.solid),
+        border: Border.all(color: Color('hsl(var(--border))'), width: 1.px, style: BorderStyle.solid),
         radius: BorderRadius.circular(8.px),
         backgroundColor: Color('hsl(var(--background))'),
         raw: {
@@ -359,7 +360,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
         padding: Padding.symmetric(horizontal: 10.px, vertical: 8.px),
         radius: BorderRadius.circular(6.px),
         cursor: Cursor.pointer,
-        transition: Transition('all', duration: 150),
+        transition: Transition('all', duration: 150.ms),
         alignItems: AlignItems.center,
         color: Color('hsl(var(--foreground) / 0.8)'),
         fontSize: 0.875.rem,
@@ -382,7 +383,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
     ]),
     css('.theme-label', [
       css('&').styles(
-        transition: Transition('color', duration: 150),
+        transition: Transition('color', duration: 150.ms),
         fontSize: 0.8125.rem,
         fontWeight: FontWeight.w500,
       ),
@@ -390,7 +391,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
     // Chevron rotation animation
     css('.dropdown-trigger svg:last-child', [
       css('&').styles(
-        transition: Transition('transform', duration: 200),
+        transition: Transition('transform', duration: 200.ms),
         raw: {'margin-left': 'auto'},
       ),
     ]),
@@ -402,7 +403,7 @@ class EnhancedThemeToggleState extends State<EnhancedThemeToggle> {
     // Icon animations
     css('.dropdown-option svg, .dropdown-trigger svg:not(:last-child)', [
       css('&').styles(
-        transition: Transition('transform', duration: 200),
+        transition: Transition('transform', duration: 200.ms),
       ),
       css('.dropdown-option:hover &').styles(
         raw: {'transform': 'scale(1.1)'},

@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
@@ -25,7 +26,7 @@ class Card extends CustomComponentBase {
       css('&').styles(
         padding: Padding.all(1.5.rem),
         margin: Margin.only(bottom: 1.5.rem),
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.75.rem),
         backgroundColor: Color('hsl(var(--card))'),
         raw: {
@@ -78,7 +79,7 @@ class Card extends CustomComponentBase {
       css('& > .card-content pre').styles(
         padding: Padding.all(1.rem),
         margin: Margin.symmetric(vertical: 1.rem),
-        border: Border(width: 1.px, color: Color('hsl(var(--border))')),
+        border: Border.all(width: 1.px, color: Color('hsl(var(--border))')),
         radius: BorderRadius.circular(0.5.rem),
         backgroundColor: Color('hsl(var(--muted))'),
         raw: {'overflow': 'auto', 'box-shadow': 'inset 0 1px 3px hsl(var(--foreground) / 0.1)'},
@@ -114,7 +115,7 @@ class _CardComponent extends StatelessComponent {
   @override
   Component build(BuildContext context) {
     return div(classes: 'card', [
-      if (title != null) div(classes: 'card-title', [text(title!)]),
+      if (title != null) div(classes: 'card-title', [Component.text(title!)]),
       if (child != null) div(classes: 'card-content', [child!]),
     ]);
   }

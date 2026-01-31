@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/server.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 import 'package:jaspr_content/theme.dart';
@@ -63,8 +64,8 @@ class ResponsiveDocsLayout extends PageLayoutBase {
             div(classes: 'content-container', [
               div(classes: 'content-header', [
                 Breadcrumb(),
-                if (pageData['title'] case String title) h1([text(title)]),
-                if (pageData['description'] case String description) p([text(description)]),
+                if (pageData['title'] case String title) h1([Component.text(title)]),
+                if (pageData['description'] case String description) p([Component.text(description)]),
                 if (pageData['image'] case String image) img(src: image, alt: pageData['imageAlt'] as String?),
                 PageMetadata(),
               ]),
@@ -74,7 +75,7 @@ class ResponsiveDocsLayout extends PageLayoutBase {
             aside(classes: 'toc', [
               if (page.data['toc'] case TableOfContents toc)
                 div([
-                  h3([text('On this page')]),
+                  h3([Component.text('On this page')]),
                   toc.build(),
                 ]),
             ]),
@@ -116,7 +117,7 @@ class ResponsiveDocsLayout extends PageLayoutBase {
             css('&').styles(
               margin: Margin.only(bottom: 2.px),
               radius: BorderRadius.circular(6.px),
-              transition: Transition('all', duration: 200, curve: Curve.easeInOut),
+              transition: Transition('all', duration: 200.ms, curve: Curve.easeInOut),
             ),
             css('&:hover').styles(
               transform: Transform.translate(x: 2.px),
@@ -131,7 +132,7 @@ class ResponsiveDocsLayout extends PageLayoutBase {
           ]),
           css('a').styles(
             padding: Padding.only(left: 16.px, top: 8.px, bottom: 8.px, right: 8.px),
-            transition: Transition('color', duration: 150, curve: Curve.easeInOut),
+            transition: Transition('color', duration: 150.ms, curve: Curve.easeInOut),
             color: Color('inherit'),
             textDecoration: TextDecoration.none,
             raw: {'border-radius': '6px'},
@@ -201,7 +202,7 @@ class ResponsiveDocsLayout extends PageLayoutBase {
             zIndex: ZIndex(10),
             width: 17.rem,
             overflow: Overflow.only(y: Overflow.auto),
-            transition: Transition('transform', duration: 150, curve: Curve.easeInOut),
+            transition: Transition('transform', duration: 150.ms, curve: Curve.easeInOut),
             transform: Transform.translate(x: (-100).percent),
             // Modern scrollbar styling
             raw: {

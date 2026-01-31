@@ -1,3 +1,4 @@
+import 'package:jaspr/dom.dart';
 import 'package:jaspr/jaspr.dart';
 import 'package:jaspr_content/jaspr_content.dart';
 
@@ -21,7 +22,7 @@ class PageMetadata extends StatelessComponent {
     final _ = seoData?['description'] as String?;
     final _ = seoData?['structuredData'] as Map<String, dynamic>?;
 
-    return fragment([
+    return Component.fragment([
       // Display reading time if available
       if (readingTime != null)
         div(
@@ -32,7 +33,7 @@ class PageMetadata extends StatelessComponent {
             fontStyle: FontStyle.italic,
           ),
           [
-            text('📖 $readingTime'),
+            Component.text('📖 $readingTime'),
           ],
         ),
 
@@ -46,7 +47,7 @@ class PageMetadata extends StatelessComponent {
             fontStyle: FontStyle.italic,
           ),
           [
-            text('📅 Last updated $lastModified'),
+            Component.text('📅 Last updated $lastModified'),
           ],
         ),
     ]);
