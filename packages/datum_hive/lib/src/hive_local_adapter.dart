@@ -2,8 +2,8 @@
 import 'dart:convert';
 
 import 'package:datum/datum.dart';
-import 'package:flutter/material.dart';
 import 'package:hive_ce_flutter/hive_flutter.dart';
+import 'package:meta/meta.dart';
 
 class HiveLocalAdapter<T extends DatumEntityInterface> extends LocalAdapter<T> {
   /// The name of the Hive box where entities of type `T` will be stored.

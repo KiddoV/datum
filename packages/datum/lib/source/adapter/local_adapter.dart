@@ -242,7 +242,7 @@ abstract class LocalAdapter<T extends DatumEntityInterface> {
 
   /// Checks the health of the local adapter.
   ///
-  /// Returns [AdapterHealthStatus.ok] by default. Adapters should override
+  /// Returns [AdapterHealthStatus.healthy] by default. Adapters should override
   /// this to provide a meaningful health check (e.g., check if a database
   /// file is accessible).
   Future<AdapterHealthStatus> checkHealth() async => AdapterHealthStatus.healthy;

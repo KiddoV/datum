@@ -38,7 +38,6 @@ class TestEntity extends DatumEntity {
         'isDeleted': isDeleted,
       };
 
-  @override
   TestEntity copyWith({
     DateTime? modifiedAt,
     int? version,

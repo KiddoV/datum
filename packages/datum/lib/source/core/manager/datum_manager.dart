@@ -2687,7 +2687,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
 
   /// Fetches sync metadata from the remote server for this entity type.
   ///
-  /// This is a convenience method that calls [remoteAdapter.getSyncMetadata].
+  /// This is a convenience method that calls [RemoteAdapter.getSyncMetadata].
   /// Returns null if no metadata exists or if the remote adapter doesn't support this operation.
   Future<DatumSyncMetadata?> getRemoteSyncMetadata(String userId) async {
     _ensureInitialized();

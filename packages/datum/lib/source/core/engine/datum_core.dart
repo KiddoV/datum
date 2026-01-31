@@ -1405,7 +1405,7 @@ class Datum {
 
   /// Unsubscribes all managers from remote change events.
   ///
-  /// This method calls [unsubscribeFromRemoteChanges] on all registered managers,
+  /// This method calls [DatumManager.unsubscribeFromRemoteChanges] on all registered managers,
   /// which can be useful for reducing network activity or preventing
   /// unnecessary processing during certain application states.
   ///
@@ -1421,7 +1421,7 @@ class Datum {
 
   /// Re-subscribes all managers to remote change events.
   ///
-  /// This method calls [resubscribeToRemoteChanges] on all registered managers,
+  /// This method calls [DatumManager.resubscribeToRemoteChanges] on all registered managers,
   /// restoring the normal flow of remote change events being processed and
   /// applied locally.
   ///

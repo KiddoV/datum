@@ -3,7 +3,6 @@ import 'dart:isolate';
 
 import 'package:datum/datum.dart';
 import 'package:equatable/equatable.dart';
-import 'package:example/isolate_logger.dart';
 
 /// Spawns an isolate to run the sync process. This is for non-web platforms.
 Future<void> spawnIsolate<T extends DatumEntityInterface>(
@@ -124,7 +123,7 @@ class _SyncError {
 class _ProxyEntity extends Equatable implements DatumEntityInterface {
   final Map<String, dynamic> _data;
 
-  _ProxyEntity(this._data);
+  const _ProxyEntity(this._data);
 
   @override
   String get id => _data['id'] as String? ?? '';
@@ -142,14 +141,12 @@ class _ProxyEntity extends Equatable implements DatumEntityInterface {
   VectorClock? get vectorClock => null;
   @override
   bool get isRelational => false;
-  @override
   Map<String, Relation> get relations => {};
 
   @override
   Map<String, dynamic> toDatumMap({MapTarget target = MapTarget.local}) =>
       _data;
 
-  @override
   DatumEntityInterface copyWith(
           {DateTime? modifiedAt, int? version, bool? isDeleted}) =>
       this;
