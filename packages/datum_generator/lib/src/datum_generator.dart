@@ -69,7 +69,11 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
         .toList();
 
     final serializableFields = allFields
-        .where((f) => !_isIgnored(f) && !_hasRelationAnnotationOnField(f))
+        .where(
+          (f) =>
+              !_isIgnored(f, property: 'toMap') &&
+              !_hasRelationAnnotationOnField(f),
+        )
         .toList();
 
     final buffer = StringBuffer();
@@ -87,15 +91,16 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
     // copyWith
     _generateCopyWith(buffer, className, allFields);
 
-    // copyWithAll (exclude relationship placeholder fields)
-    final copyableFields = allFields
-        .where((f) => !_hasRelationAnnotationOnField(f))
-        .toList();
-    _generateCopyWithAll(buffer, className, copyableFields);
+    // copyWithAll
+    _generateCopyWithAll(buffer, className, allFields);
 
     // operator == and hashCode
     final equatableFields = allFields
-        .where((f) => !_hasRelationAnnotationOnField(f))
+        .where(
+          (f) =>
+              !_hasRelationAnnotationOnField(f) &&
+              !_isIgnored(f, property: 'equality'),
+        )
         .toList();
     _generateEquality(buffer, className, equatableFields);
 
@@ -107,16 +112,11 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
 
     buffer.writeln('}');
 
-    // Exclude relationship placeholder fields from fromMap
-    final deserializableFields = allFields
-        .where((f) => !_hasRelationAnnotationOnField(f))
-        .toList();
-
     // Check if we need the list equals helper (only if entity has List fields in equatable fields)
     final hasListFields = equatableFields.any(
       (f) => f.type.getDisplayString().startsWith('List'),
     );
-    _generateFromMap(buffer, className, deserializableFields, hasListFields);
+    _generateFromMap(buffer, className, allFields, hasListFields);
 
     // Generate mixin only if requested
     if (generateMixin) {
@@ -209,7 +209,8 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
     buffer.writeln('  List<Object?> get props => [');
 
     for (final field in allFields) {
-      if (!_isIgnored(field) && !_hasRelationAnnotationOnField(field)) {
+      if (!_isIgnored(field, property: 'equality') &&
+          !_hasRelationAnnotationOnField(field)) {
         buffer.writeln('    (this as $className).${_getElementName(field)},');
       }
     }
@@ -296,9 +297,28 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
     return e.toString();
   }
 
-  bool _isIgnored(dynamic field) {
+  bool _isIgnored(dynamic field, {String? property}) {
     try {
-      return _ignoreChecker.hasAnnotationOf(field);
+      final annotation = _ignoreChecker.firstAnnotationOf(field);
+      if (annotation == null) return false;
+
+      // If no specific property requested, any DatumIgnore annotation means it's ignored for serialization (backward compatibility)
+      if (property == null) return true;
+
+      final reader = ConstantReader(annotation);
+      try {
+        final fieldReader = reader.read(property);
+        if (fieldReader.isNull) {
+          // Fallback for backward compatibility if the field doesn't exist on the annotation yet
+          if (property == 'fromMap' || property == 'toMap') return true;
+          return false;
+        }
+        return fieldReader.boolValue;
+      } catch (_) {
+        // Fallback for backward compatibility
+        if (property == 'fromMap' || property == 'toMap') return true;
+        return false;
+      }
     } catch (_) {
       return false;
     }
@@ -337,6 +357,13 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
 
       final type = field.type.getDisplayString();
       final typeElement = field.type.element;
+      final toGenerator = _getToGenerator(field);
+
+      if (toGenerator != null) {
+        final code = toGenerator.replaceAll('%DATA_PROPERTY%', fieldName);
+        buffer.writeln("      '$mapKey': $code,");
+        continue;
+      }
 
       // Check if it's an enum by checking the element kind
       final isEnum = typeElement != null && typeElement.kind.name == 'ENUM';
@@ -397,9 +424,23 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
     List<dynamic> fields,
   ) {
     buffer.writeln(
-      '  Map<String, dynamic>? datumDiff(DatumEntityInterface oldVersion) {',
+      '\n  Map<String, dynamic>? datumDiff(DatumEntityInterface oldVersion) {',
     );
-    buffer.writeln('    final old = oldVersion as $className;');
+    final diffableFields = fields.where((f) {
+      final fieldName = _getElementName(f);
+      return ![
+        'id',
+        'userId',
+        'createdAt',
+        'modifiedAt',
+        'version',
+        'isDeleted',
+      ].contains(fieldName);
+    }).toList();
+
+    if (diffableFields.isNotEmpty) {
+      buffer.writeln('    final old = oldVersion as $className;');
+    }
     buffer.writeln('    final changes = <String, dynamic>{};');
 
     for (final field in fields) {
@@ -487,10 +528,19 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
   void _generateCopyWithAll(
     StringBuffer buffer,
     String className,
-    List<dynamic> fields,
+    List<dynamic> allFields,
   ) {
+    // Only fields that are NOT ignored and NOT relations are parameters
+    final copyableFields = allFields
+        .where(
+          (f) =>
+              !_hasRelationAnnotationOnField(f) &&
+              !_isIgnored(f, property: 'copyWith'),
+        )
+        .toList();
+
     buffer.writeln('  $className copyWithAll({');
-    for (final field in fields) {
+    for (final field in copyableFields) {
       final type = field.type.getDisplayString();
       final fieldName = _getElementName(field);
       // Make them all optional for copyWith
@@ -501,7 +551,7 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
 
     // Check for changes to increment version automatically
     buffer.writeln('    final hasChanges = ');
-    final changeFields = fields
+    final changeFields = copyableFields
         .where((f) => !['modifiedAt', 'version'].contains(_getElementName(f)))
         .toList();
     if (changeFields.isEmpty) {
@@ -515,14 +565,23 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
     buffer.writeln(';');
 
     buffer.writeln('    return $className(');
-    for (final field in fields) {
+    for (final field in allFields) {
+      if (_hasRelationAnnotationOnField(field)) continue;
+
       final fieldName = _getElementName(field);
+      final isParam = copyableFields.any(
+        (f) => _getElementName(f) == fieldName,
+      );
+
       if (fieldName == 'version') {
         buffer.writeln(
           '      version: version ?? (hasChanges ? this.version + 1 : this.version),',
         );
-      } else {
+      } else if (isParam) {
         buffer.writeln('      $fieldName: $fieldName ?? this.$fieldName,');
+      } else {
+        // Ignored from copyWith, but must still be passed to constructor if it's there
+        buffer.writeln('      $fieldName: $fieldName,');
       }
     }
     buffer.writeln('    );');
@@ -565,7 +624,7 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
   void _generateFromMap(
     StringBuffer buffer,
     String className,
-    List<dynamic> fields,
+    List<dynamic> allFields,
     bool hasListFields,
   ) {
     // Only generate the list equals helper if needed
@@ -582,14 +641,46 @@ bool _${_toLowerCamelCase(className)}ListEquals<T>(List<T>? a, List<T>? b) {
 }
 ''');
     }
+
+    final deserializableFields = allFields
+        .where(
+          (f) =>
+              !_hasRelationAnnotationOnField(f) &&
+              !_isIgnored(f, property: 'fromMap'),
+        )
+        .toList();
+
     buffer.writeln(
       '\n$className _\$${className}FromMap(Map<String, dynamic> map) {',
     );
     buffer.writeln('  return $className(');
-    for (final field in fields) {
+    for (final field in allFields) {
+      // Relations are handled by the RelationalDatumEntity logic, not constructor
+      if (_hasRelationAnnotationOnField(field)) continue;
+
       final fieldName = _getElementName(field);
+      final isDeserializable = deserializableFields.any(
+        (f) => _getElementName(f) == fieldName,
+      );
+
+      if (!isDeserializable) {
+        // If the field is ignored from map, we don't pass it to the constructor.
+        // This assumes the field is either optional or has a default value.
+        // If it's required and has no default, Dart will correctly flag a compilation error
+        // in the generated file, which is the expected behavior for invalid model definitions.
+        continue;
+      }
+
       final mapKey = _getMapKey(field);
       final type = field.type.getDisplayString();
+      final fromGenerator = _getFromGenerator(field);
+
+      if (fromGenerator != null) {
+        final access = "map['$mapKey'] ?? map['${_camelToSnake(fieldName)}']";
+        final code = fromGenerator.replaceAll('%DATA_PROPERTY%', access);
+        buffer.writeln("    $fieldName: $code,");
+        continue;
+      }
 
       if (fieldName == 'createdAt' || fieldName == 'modifiedAt') {
         buffer.writeln(
@@ -711,11 +802,35 @@ DateTime _${_toLowerCamelCase(className)}ParseDate(dynamic value) {
       final annotation = _fieldChecker.firstAnnotationOf(field);
       if (annotation != null) {
         final reader = ConstantReader(annotation);
-        final name = reader.read('name').stringValue;
-        return name;
+        final name = reader.read('name');
+        if (!name.isNull) return name.stringValue;
       }
     } catch (_) {}
     return _camelToSnake(_getElementName(field));
+  }
+
+  String? _getFromGenerator(dynamic field) {
+    try {
+      final annotation = _fieldChecker.firstAnnotationOf(field);
+      if (annotation != null) {
+        final reader = ConstantReader(annotation);
+        final fromGenerator = reader.read('fromGenerator');
+        if (!fromGenerator.isNull) return fromGenerator.stringValue;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  String? _getToGenerator(dynamic field) {
+    try {
+      final annotation = _fieldChecker.firstAnnotationOf(field);
+      if (annotation != null) {
+        final reader = ConstantReader(annotation);
+        final toGenerator = reader.read('toGenerator');
+        if (!toGenerator.isNull) return toGenerator.stringValue;
+      }
+    } catch (_) {}
+    return null;
   }
 
   bool _isRelationalEntity(dynamic element) {
@@ -833,7 +948,7 @@ DateTime _${_toLowerCamelCase(className)}ParseDate(dynamic value) {
 
         return "ManyToMany<$relatedType>("
             "this, "
-            "const $pivotType() as DatumEntityInterface, "
+            "$pivotType, "
             "'$thisForeignKey', "
             "'$otherForeignKey', "
             "thisLocalKey: '$thisLocalKey', "

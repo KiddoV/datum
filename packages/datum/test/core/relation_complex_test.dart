@@ -53,15 +53,6 @@ void main() {
       createdAt: DateTime(2023),
     );
 
-    final testPostTag = PostTag(
-      id: 'posttag-1',
-      userId: 'user-1',
-      postId: 'post-1',
-      tagId: 'tag-1',
-      modifiedAt: DateTime(2023),
-      createdAt: DateTime(2023),
-    );
-
     setUpAll(() {
       registerFallbackValue(
         User(
@@ -326,9 +317,9 @@ void main() {
 
     group('ManyToMany', () {
       test('constructor initializes correctly without initial value', () {
-        final manyToMany = ManyToMany<Post>(testTag, testPostTag, 'tagId', 'postId');
+        final manyToMany = ManyToMany<Post>(testTag, PostTag, 'tagId', 'postId');
 
-        expect(manyToMany.pivotEntity, testPostTag);
+        expect(manyToMany.pivotType, PostTag);
         expect(manyToMany.thisForeignKey, 'tagId');
         expect(manyToMany.otherForeignKey, 'postId');
         expect(manyToMany.thisLocalKey, 'id');
@@ -338,9 +329,9 @@ void main() {
 
       test('constructor initializes correctly with initial value', () {
         final posts = [testPost];
-        final manyToMany = ManyToMany<Post>(testTag, testPostTag, 'tagId', 'postId', value: posts);
+        final manyToMany = ManyToMany<Post>(testTag, PostTag, 'tagId', 'postId', value: posts);
 
-        expect(manyToMany.pivotEntity, testPostTag);
+        expect(manyToMany.pivotType, PostTag);
         expect(manyToMany.thisForeignKey, 'tagId');
         expect(manyToMany.otherForeignKey, 'postId');
         expect(manyToMany.thisLocalKey, 'id');
@@ -351,7 +342,7 @@ void main() {
       test('constructor with custom keys', () {
         final manyToMany = ManyToMany<Post>(
           testTag,
-          testPostTag,
+          PostTag,
           'tagId',
           'postId',
           thisLocalKey: 'customThis',
@@ -364,13 +355,13 @@ void main() {
 
       test('value getter returns cached value', () {
         final posts = [testPost];
-        final manyToMany = ManyToMany<Post>(testTag, testPostTag, 'tagId', 'postId', value: posts);
+        final manyToMany = ManyToMany<Post>(testTag, PostTag, 'tagId', 'postId', value: posts);
 
         expect(manyToMany.value, posts);
       });
 
       test('set method updates value', () {
-        final manyToMany = ManyToMany<Post>(testTag, testPostTag, 'tagId', 'postId');
+        final manyToMany = ManyToMany<Post>(testTag, PostTag, 'tagId', 'postId');
         final posts = [testPost];
 
         manyToMany.set(posts);
@@ -380,7 +371,7 @@ void main() {
 
       test('fetch returns cached value when already loaded', () async {
         final posts = [testPost];
-        final manyToMany = ManyToMany<Post>(testTag, testPostTag, 'tagId', 'postId', value: posts);
+        final manyToMany = ManyToMany<Post>(testTag, PostTag, 'tagId', 'postId', value: posts);
 
         final result = await manyToMany.fetch();
 
@@ -400,7 +391,7 @@ void main() {
           ],
         );
 
-        final manyToMany = ManyToMany<Post>(testTag, testPostTag, 'tagId', 'postId');
+        final manyToMany = ManyToMany<Post>(testTag, PostTag, 'tagId', 'postId');
 
         final manager = manyToMany.getRelatedManager();
 

@@ -301,16 +301,10 @@ void main() {
 
     group('ManyToMany Relation', () {
       test('ManyToMany relation is created correctly', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
+        // final pivotEntity = TestRelationalEntity(...); (removed)
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
@@ -323,16 +317,9 @@ void main() {
       });
 
       test('ManyToMany relation with custom keys', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
           thisLocalKey: 'customThisKey',
@@ -344,13 +331,6 @@ void main() {
       });
 
       test('ManyToMany relation with initial value', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relatedEntities = [
           TestRelationalEntity(
             id: 'related1',
@@ -362,7 +342,7 @@ void main() {
         ];
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
           value: relatedEntities,
@@ -372,16 +352,9 @@ void main() {
       });
 
       test('ManyToMany set method updates value', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
@@ -400,16 +373,9 @@ void main() {
       });
 
       test('ManyToMany getRelatedManager returns correct manager type', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
@@ -435,16 +401,9 @@ void main() {
       });
 
       test('ManyToMany is a Relation', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
@@ -509,16 +468,9 @@ void main() {
       });
 
       test('ManyToMany fetch returns related entities when found', () async {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
@@ -595,16 +547,9 @@ void main() {
       });
 
       test('ManyToMany relation starts unloaded', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
@@ -656,16 +601,9 @@ void main() {
       });
 
       test('ManyToMany set method updates value and marks as loaded', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
@@ -686,16 +624,9 @@ void main() {
 
     group('Relation Configuration', () {
       test('ManyToMany relation accepts custom local keys', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
           thisLocalKey: 'customThisKey',

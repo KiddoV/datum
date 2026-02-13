@@ -1,3 +1,22 @@
+# 1.0.5
+
+## ✨ Features
+
+- **generator**: scalar @DatumIgnore flags
+  - Added support for granular control in `@DatumIgnore` annotation
+  - Developers can now specify:
+    - `copyWith: true` to exclude fields from `copyWith` / `copyWithAll`
+    - `equality: true` to exclude fields from `==` and `hashCode`
+    - `fromMap: true` / `toMap: true` to exclude from serialization (default)
+  - Perfect for handling runtime-only state (e.g., `ValueNotifier`, `StreamController`) inside entities without breaking immutability or equality checks
+  - Fully backward compatible with existing `@DatumIgnore()` usage
+## 🗑️ Breaking Changes
+
+- **relations**: `ManyToMany` now requires `Type` for pivot entity
+  - Updated `ManyToMany` constructor to accept `Type` for pivot entity instead of an instance.
+  - This removes the requirement for a `const` zero-argument constructor on pivot entities.
+
+
 # 1.0.4
 
 ## 🐛 Bug Fixes

@@ -366,7 +366,7 @@ class Tag extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-        'posts': ManyToMany(this, PostTag(id: 'pivot', userId: 'user-1', postId: 'post-1', tagId: 'tag-1', modifiedAt: DateTime(2023), createdAt: DateTime(2023)), 'tagId', 'postId'), // ManyToMany with posts through PostTag
+        'posts': ManyToMany(this, PostTag, 'tagId', 'postId'), // ManyToMany with posts through PostTag
       };
 
   @override

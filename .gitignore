@@ -39,6 +39,12 @@ packages/datum_docs/build/*
 *.pbserver.dart
 *.pbgrpc.dart
 
+# Exception: Keep example app's generated files for demonstration
+!packages/datum/example/lib/core/router/router.gr.dart
+!packages/datum/example/lib/i18n/strings.g.dart
+!packages/datum/example/lib/i18n/strings_en.g.dart
+!packages/datum/example/lib/i18n/strings_es.g.dart
+
 # Platform-specific build files
 android/local.properties
 ios/.symlinks/

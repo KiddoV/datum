@@ -212,7 +212,7 @@ class Post extends RelationalDatumEntity {
   @override
   Map<String, Relation> get relations => {
         'author': BelongsTo(this, 'userId'),
-        'tags': ManyToMany(this, PostTag.constInstance, 'postId', 'tagId'),
+        'tags': ManyToMany(this, PostTag, 'postId', 'tagId'),
       };
 
   @override
@@ -321,7 +321,7 @@ class Tag extends RelationalDatumEntity {
 
   @override
   Map<String, Relation> get relations => {
-        'posts': ManyToMany(this, PostTag.constInstance, 'tagId', 'postId'),
+        'posts': ManyToMany(this, PostTag, 'tagId', 'postId'),
       };
 
   @override

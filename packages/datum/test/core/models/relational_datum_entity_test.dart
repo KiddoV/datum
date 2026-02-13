@@ -180,21 +180,14 @@ void main() {
 
     group('ManyToMany constructor and properties', () {
       test('ManyToMany constructor sets properties correctly', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
         );
 
-        expect(relation.pivotEntity, pivotEntity);
+        expect(relation.pivotType, TestRelationalEntity);
         expect(relation.thisForeignKey, 'thisForeignKey');
         expect(relation.otherForeignKey, 'otherForeignKey');
         expect(relation.thisLocalKey, 'id'); // default
@@ -203,13 +196,6 @@ void main() {
       });
 
       test('ManyToMany constructor with value sets _value and _isLoaded', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relatedEntities = [
           TestRelationalEntity(
             id: 'related1',
@@ -221,7 +207,7 @@ void main() {
         ];
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
           value: relatedEntities,
@@ -230,16 +216,9 @@ void main() {
       });
 
       test('ManyToMany constructor with custom keys', () {
-        final pivotEntity = TestRelationalEntity(
-          id: 'pivot1',
-          userId: 'user1',
-          modifiedAt: now,
-          createdAt: now,
-          version: 1,
-        );
         final relation = ManyToMany<TestRelationalEntity>(
           entity,
-          pivotEntity,
+          TestRelationalEntity,
           'thisForeignKey',
           'otherForeignKey',
           thisLocalKey: 'customThisKey',

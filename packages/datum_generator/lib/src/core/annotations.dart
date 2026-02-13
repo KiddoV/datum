@@ -22,19 +22,46 @@ class DatumSerializable {
   const DatumSerializable({this.tableName, this.generateMixin = false});
 }
 
-/// Annotation for fields that should be excluded from Datum serialization.
+/// Annotation for fields that should be excluded from Datum serialization or metadata methods.
 @Target({TargetKind.field})
 class DatumIgnore {
-  const DatumIgnore();
+  /// Whether to exclude this field from copyWith and copyWithAll methods.
+  final bool copyWith;
+
+  /// Whether to exclude this field from operator == and hashCode.
+  final bool equality;
+
+  /// Whether to exclude this field when deserializing from a map.
+  final bool fromMap;
+
+  /// Whether to exclude this field when serializing to a map.
+  final bool toMap;
+
+  const DatumIgnore({
+    this.copyWith = false,
+    this.equality = false,
+    this.fromMap = true,
+    this.toMap = true,
+  });
 }
 
 /// Annotation to specify a custom name for a field in the Datum map.
 @Target({TargetKind.field})
 class DatumField {
   /// The name to use for this field in the Datum map.
-  final String name;
+  final String? name;
 
-  const DatumField(this.name);
+  /// Custom Dart code to transform the field value from the map.
+  /// Use %DATA_PROPERTY% as a placeholder for the map value access.
+  /// Example: "PhoneMeta.fromJson(%DATA_PROPERTY% as Map<String, dynamic>)"
+  final String? fromGenerator;
+
+  /// Custom Dart code to transform the field value to the map.
+  /// Use %DATA_PROPERTY% as a placeholder for the field value.
+  /// Example: "%DATA_PROPERTY%.toJson()"
+  final String? toGenerator;
+
+  const DatumField({this.name, this.fromGenerator, this.toGenerator});
 }
 
 /// Annotation to define a BelongsTo relationship.

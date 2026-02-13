@@ -329,7 +329,7 @@ class MockRemoteAdapter<T extends DatumEntityInterface>
       case ManyToMany():
         // 1. Get the manager for the pivot entity.
         final pivotManager = Datum.managerByType(
-          relation.pivotEntity.runtimeType,
+          relation.pivotType,
         );
         // 2. Query the pivot table to find all entries matching the parent's local key.
         final pivotQuery = DatumQuery(

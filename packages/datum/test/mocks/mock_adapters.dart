@@ -510,11 +510,10 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
         );
         return relatedAdapter.query(query);
       case ManyToMany():
-        // 1. Get the manager for the pivot entity via the central Datum instance.
-        final pivotAdapter = relatedAdapters?[relation.pivotEntity.runtimeType];
+        final pivotAdapter = relatedAdapters?[relation.pivotType];
         if (pivotAdapter == null) {
           throw StateError(
-            'MockLocalAdapter requires a related adapter for ${relation.pivotEntity.runtimeType} to be provided for ManyToMany relations.',
+            'MockLocalAdapter requires a related adapter for ${relation.pivotType} to be provided for ManyToMany relations.',
           );
         }
 
@@ -591,10 +590,10 @@ class MockLocalAdapter<T extends DatumEntityInterface> implements LocalAdapter<T
         );
         return relatedAdapter.watchQuery(query);
       case ManyToMany():
-        final pivotAdapter = relatedAdapters?[relation.pivotEntity.runtimeType];
+        final pivotAdapter = relatedAdapters?[relation.pivotType];
         if (pivotAdapter == null) {
           throw StateError(
-            'MockLocalAdapter requires a related adapter for ${relation.pivotEntity.runtimeType} to be provided for ManyToMany relations.',
+            'MockLocalAdapter requires a related adapter for ${relation.pivotType} to be provided for ManyToMany relations.',
           );
         }
 
@@ -992,7 +991,7 @@ class MockRemoteAdapter<T extends DatumEntityInterface> implements RemoteAdapter
       case ManyToMany():
         // 1. Get the manager for the pivot entity.
         final pivotManager = Datum.managerByType(
-          relation.pivotEntity.runtimeType,
+          relation.pivotType,
         );
         // 2. Query the pivot table to find all entries matching the parent's local key.
         final pivotQuery = DatumQuery(

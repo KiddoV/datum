@@ -1735,7 +1735,7 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       if (thisLocalKeyValue == null) return [];
 
       // Get the manager for the pivot entity
-      final pivotManager = Datum.managerByType(relation.pivotEntity.runtimeType);
+      final pivotManager = Datum.managerByType(relation.pivotType);
 
       // Query the pivot entity to find related pivot entities
       final pivotEntities = await pivotManager.query(

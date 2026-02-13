@@ -21,7 +21,7 @@ class TestEntity extends DatumEntity {
   final String name;
   final int age;
 
-  @DatumField('custom_field')
+  @DatumField(name: 'custom_field')
   final String customField;
 
   @DatumIgnore()
@@ -37,7 +37,7 @@ class TestEntity extends DatumEntity {
     required this.name,
     required this.age,
     required this.customField,
-    required this.ignoredField,
+    this.ignoredField = '',
   });
 
   @override

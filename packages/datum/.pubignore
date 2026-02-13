@@ -1,0 +1,6 @@
+# Exclude generated files from the example app
+# These are code-generated files that should not be published
+example/lib/core/router/router.gr.dart
+example/lib/i18n/strings.g.dart
+example/lib/i18n/strings_en.g.dart
+example/lib/i18n/strings_es.g.dart

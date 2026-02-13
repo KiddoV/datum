@@ -1192,10 +1192,10 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
         // Safeguard against missing adapter or wrong type
         RemoteAdapter? pivotAdapter;
         try {
-          pivotAdapter = Datum.manager().remoteAdapter;
+          pivotAdapter = Datum.managerByType(relation.pivotType).remoteAdapter;
         } catch (e) {
           talker.warning(
-              "Could not resolve pivot adapter via Datum.manager(): $e");
+              "Could not resolve pivot adapter via Datum.managerByType(${relation.pivotType}): $e");
         }
 
         if (pivotAdapter is! SupabaseRemoteAdapter) {
@@ -1298,7 +1298,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
       // For ManyToMany relationships, also watch the pivot table
       if (relation is ManyToMany) {
-        final pivotAdapter = Datum.manager().remoteAdapter;
+        final pivotAdapter =
+            Datum.managerByType(relation.pivotType).remoteAdapter;
         if (pivotAdapter is SupabaseRemoteAdapter) {
           final pivotTableName = pivotAdapter.tableName;
           final pivotChannelName =
@@ -1344,7 +1345,8 @@ class SupabaseRemoteAdapter<T extends DatumEntityInterface>
 
         // Clean up pivot channel if it exists
         if (relation is ManyToMany) {
-          final pivotAdapter = Datum.manager().remoteAdapter;
+          final pivotAdapter =
+              Datum.managerByType(relation.pivotType).remoteAdapter;
           if (pivotAdapter is SupabaseRemoteAdapter) {
             final pivotTableName = pivotAdapter.tableName;
             final pivotChannelName =

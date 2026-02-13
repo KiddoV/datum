@@ -223,7 +223,7 @@ class HasOne<T extends DatumEntityInterface> extends Relation<T> {
 }
 
 class ManyToMany<T extends DatumEntityInterface> extends Relation<T> {
-  final DatumEntityInterface pivotEntity;
+  final Type pivotType;
 
   final String thisForeignKey;
 
@@ -239,7 +239,7 @@ class ManyToMany<T extends DatumEntityInterface> extends Relation<T> {
 
   ManyToMany(
     super.parent,
-    this.pivotEntity,
+    this.pivotType,
     this.thisForeignKey,
     this.otherForeignKey, {
     this.thisLocalKey = 'id',
@@ -282,7 +282,7 @@ class ManyToMany<T extends DatumEntityInterface> extends Relation<T> {
     }
 
     // Get the manager for the pivot entity
-    final pivotManager = Datum.managerByType(pivotEntity.runtimeType);
+    final pivotManager = Datum.managerByType(pivotType);
 
     // Query the pivot entity to find related pivot entities
     final pivotEntities = await pivotManager.query(
