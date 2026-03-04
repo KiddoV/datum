@@ -235,9 +235,15 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
           buffer.writeln(
             '\n  /// Get the related ${isList ? 'entities' : 'entity'}',
           );
+          buffer.writeln('  $type get $publicName {');
           buffer.writeln(
-            '  $type get $publicName => relations[\'$publicName\']?.value as $type;',
+            '    final value = relations[\'$publicName\']?.value;',
           );
+          buffer.writeln('    if (value is $type) return value;');
+          buffer.writeln(
+            '    return (this as $className).$fieldName;',
+          );
+          buffer.writeln('  }');
 
           buffer.writeln(
             '\n  /// Set the related ${isList ? 'entities' : 'entity'}',
