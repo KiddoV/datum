@@ -487,6 +487,10 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
         buffer.writeln(
           "      changes['$mapKey'] = $fieldName${type.endsWith('?') ? '?' : ''}.toString();",
         );
+      } else if (type == 'DateTime' || type.startsWith('DateTime?')) {
+        buffer.writeln(
+          "      changes['$mapKey'] = $fieldName${type.endsWith('?') ? '?' : ''}.toIso8601String();",
+        );
       } else {
         buffer.writeln("      changes['$mapKey'] = $fieldName;");
       }
