@@ -984,19 +984,32 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
     }
 
     final relationalEntities = entities.cast<RelationalDatumEntity>();
-
+    final Map<String, dynamic> relationTree = {};
     for (final relationPath in relations) {
       final parts = relationPath.split('.');
-      await _loadRelationPath(relationalEntities, parts, source, userId);
+      Map<String, dynamic> node = relationTree;
+      
+      for (final part in parts) {
+        node = node.putIfAbsent(part, () => <String, dynamic>{});
+      }
+    }
+
+    for (final entry in relationTree.entries) {
+      await _loadRelationTree(relationalEntities, entry.key, entry.value, source, userId);
     }
   }
 
-  Future<void> _loadRelationPath(List<RelationalDatumEntity> entities, List<String> path, DataSource source, String? userId) async {
-    if (entities.isEmpty || path.isEmpty) return;
-
-    final relationName = path.first;
+  Future<void> _loadRelationTree(
+    List<RelationalDatumEntity> entities,
+    String relationName,
+    Map<String, dynamic> children,
+    DataSource source,
+    String? userId,
+  ) async {
+    if (entities.isEmpty) return;
 
     final relation = entities.first.relations[relationName];
+
     if (relation == null) {
       _logger.warn('Relation "$relationName" not found on entity ${T.toString()}');
       return;
@@ -1035,7 +1048,6 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       }
     } else if (relation is HasMany) {
       final foreignKeyName = relation.foreignKey;
-
       final localKeyValues = entities.map((e) => e.id).toSet().toList();
 
       if (localKeyValues.isEmpty) return;
@@ -1065,14 +1077,11 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       }
     }
 
-    // Recurse to next level
-    if (path.length > 1 && relatedEntities.isNotEmpty) {
-      await _loadRelationPath(
-        relatedEntities,
-        path.sublist(1),
-        source,
-        userId,
-      );
+    // Recurse children
+    if (children.isNotEmpty && relatedEntities.isNotEmpty) {
+      for (final entry in children.entries) {
+        await _loadRelationTree(relatedEntities, entry.key, entry.value, source, userId);
+      }
     }
   }
 
