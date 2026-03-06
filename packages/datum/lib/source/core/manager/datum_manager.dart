@@ -983,59 +983,96 @@ class DatumManager<T extends DatumEntityInterface> with Disposable {
       return;
     }
 
-    for (final relationName in relations) {
-      final firstEntity = entities.first as RelationalDatumEntity;
-      final relation = firstEntity.relations[relationName];
+    final relationalEntities = entities.cast<RelationalDatumEntity>();
 
-      if (relation == null) {
-        _logger.warn('Relation "$relationName" not found on entity ${T.toString()}');
-        continue;
-      }
+    for (final relationPath in relations) {
+      final parts = relationPath.split('.');
+      await _loadRelationPath(relationalEntities, parts, source, userId);
+    }
+  }
 
-      final relatedManager = relation.getRelatedManager();
+  Future<void> _loadRelationPath(List<RelationalDatumEntity> entities, List<String> path, DataSource source, String? userId) async {
+    if (entities.isEmpty || path.isEmpty) return;
 
-      if (relation is BelongsTo) {
-        final foreignKeyName = relation.foreignKey;
-        final foreignKeyValues = entities.map((e) => (e as RelationalDatumEntity).toDatumMap()[foreignKeyName]).nonNulls.toSet().toList();
+    final relationName = path.first;
 
-        if (foreignKeyValues.isNotEmpty) {
-          final relatedEntities = await relatedManager.query(
-            DatumQuery(filters: [Filter(relation.localKey, FilterOperator.isIn, foreignKeyValues)]),
-            source: source,
-            userId: userId,
-          );
-          final relatedEntitiesById = {for (var e in relatedEntities) e.id: e};
+    final relation = entities.first.relations[relationName];
+    if (relation == null) {
+      _logger.warn('Relation "$relationName" not found on entity ${T.toString()}');
+      return;
+    }
 
-          for (final entity in entities) {
-            final relationalEntity = entity as RelationalDatumEntity;
-            final foreignKeyValue = relationalEntity.toDatumMap()[foreignKeyName];
-            final relatedEntity = relatedEntitiesById[foreignKeyValue];
-            relationalEntity.relations[relationName]?.setRaw(relatedEntity);
-          }
-        }
-      } else if (relation is HasMany) {
-        final foreignKeyName = relation.foreignKey;
-        final localKeyValues = entities.map((e) => e.id).toSet().toList();
+    final relatedManager = relation.getRelatedManager();
+    final relatedEntities = <RelationalDatumEntity>[];
 
-        if (localKeyValues.isNotEmpty) {
-          final relatedEntities = await relatedManager.query(
-            DatumQuery(filters: [Filter(foreignKeyName, FilterOperator.isIn, localKeyValues)]),
-            source: source,
-            userId: userId,
-          );
+    if (relation is BelongsTo) {
+      final foreignKeyName = relation.foreignKey;
+      final foreignKeyValues = entities.map((e) => e.toDatumMap()[foreignKeyName]).nonNulls.toSet().toList();
 
-          final relatedEntitiesByParentId = <String, List<DatumEntityInterface>>{};
-          for (final relatedEntity in relatedEntities) {
-            final parentId = (relatedEntity as RelationalDatumEntity).toDatumMap()[foreignKeyName];
-            (relatedEntitiesByParentId[parentId] ??= []).add(relatedEntity);
-          }
+      if (foreignKeyValues.isEmpty) return;
 
-          for (final entity in entities) {
-            final related = relatedEntitiesByParentId[entity.id] ?? [];
-            (entity as RelationalDatumEntity).relations[relationName]?.setRaw(related);
-          }
+      final fetched = await relatedManager.query(
+        DatumQuery(
+          filters: [
+            Filter(relation.localKey, FilterOperator.isIn, foreignKeyValues)
+          ],
+        ),
+        source: source,
+        userId: userId,
+      );
+
+      final byId = {for (var e in fetched) e.id: e};
+
+      for (final entity in entities) {
+        final fk = entity.toDatumMap()[foreignKeyName];
+        final related = byId[fk];
+
+        entity.relations[relationName]?.setRaw(related);
+
+        if (related is RelationalDatumEntity) {
+          relatedEntities.add(related);
         }
       }
+    } else if (relation is HasMany) {
+      final foreignKeyName = relation.foreignKey;
+
+      final localKeyValues = entities.map((e) => e.id).toSet().toList();
+
+      if (localKeyValues.isEmpty) return;
+
+      final fetched = await relatedManager.query(
+        DatumQuery(
+          filters: [
+            Filter(foreignKeyName, FilterOperator.isIn, localKeyValues)
+          ],
+        ),
+        source: source,
+        userId: userId,
+      );
+
+      final grouped = <String, List<RelationalDatumEntity>>{};
+
+      for (final entity in fetched) {
+        final parentId = (entity as RelationalDatumEntity).toDatumMap()[foreignKeyName];
+
+        (grouped[parentId] ??= []).add(entity);
+        relatedEntities.add(entity);
+      }
+
+      for (final entity in entities) {
+        final related = grouped[entity.id] ?? [];
+        entity.relations[relationName]?.setRaw(related);
+      }
+    }
+
+    // Recurse to next level
+    if (path.length > 1 && relatedEntities.isNotEmpty) {
+      await _loadRelationPath(
+        relatedEntities,
+        path.sublist(1),
+        source,
+        userId,
+      );
     }
   }
 
