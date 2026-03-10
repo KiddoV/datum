@@ -235,9 +235,15 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
           buffer.writeln(
             '\n  /// Get the related ${isList ? 'entities' : 'entity'}',
           );
+          buffer.writeln('  $type get $publicName {');
           buffer.writeln(
-            '  $type get $publicName => (this as $className).$fieldName;',
+            '    final value = relations[\'$publicName\']?.value;',
           );
+          buffer.writeln('    if (value is $type) return value;');
+          buffer.writeln(
+            '    return (this as $className).$fieldName;',
+          );
+          buffer.writeln('  }');
 
           buffer.writeln(
             '\n  /// Set the related ${isList ? 'entities' : 'entity'}',
@@ -245,7 +251,7 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
           buffer.writeln('  set $publicName($type value) {');
           buffer.writeln('    if (this is $className) {');
           buffer.writeln(
-            '      (this as $className).datumRelations[\'$publicName\']?.setRaw(value);',
+            '      relations[\'$publicName\']?.setRaw(value);',
           );
           buffer.writeln('    }');
           buffer.writeln('  }');
@@ -255,9 +261,12 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
 
     // relations override for RelationalDatumEntity
     if (isRelational) {
+      buffer.writeln('\n  late final Map<String, Relation> _cachedRelations =');
+      buffer.writeln('      (this as $className).datumRelations;');
+
       buffer.writeln('\n  @override');
       buffer.writeln(
-        '  Map<String, Relation> get relations => (this as $className).datumRelations;',
+        '  Map<String, Relation> get relations => _cachedRelations;',
       );
     }
 
