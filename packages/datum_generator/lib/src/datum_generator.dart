@@ -650,6 +650,9 @@ bool _${_toLowerCamelCase(className)}ListEquals<T>(List<T>? a, List<T>? b) {
     // Get constructor parameters so we only pass fields that actually exist in the constructor
     final classElement = allFields.first.enclosingElement as ClassElement;
     final constructor = classElement.unnamedConstructor;
+    final constructorParamMap = {
+      for (final p in constructor?.formalParameters ?? []) p.name: p
+    };
     final constructorParams = constructor?.formalParameters.map((p) => p.name).toSet() ?? {};
 
     final deserializableFields = allFields
@@ -683,7 +686,8 @@ bool _${_toLowerCamelCase(className)}ListEquals<T>(List<T>? a, List<T>? b) {
       }
 
       final mapKey = _getMapKey(field);
-      final type = field.type.getDisplayString();
+      final param = constructorParamMap[fieldName];
+      final type = (param?.type ?? field.type).getDisplayString(withNullability: true);
       final fromGenerator = _getFromGenerator(field);
 
       if (fromGenerator != null) {
