@@ -1098,7 +1098,7 @@ class Datum {
 
   Future<List<Map<String, dynamic>>> queryRaw(
     String query, {
-    List<Object?> variables = const [],
+    List<dynamic> variables = const [],
     DataSource source = DataSource.local,
     String? userId,
   }) async {
