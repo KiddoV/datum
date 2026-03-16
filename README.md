@@ -1,3 +1,9 @@
+<p align="center">
+  <img src="https://zmozkivkhopoeutpnnum.supabase.co/storage/v1/object/public/images/datum_banner.svg" alt="Datum Banner">
+</p>
+
+
+
 # Datum Ecosystem
 
 This is a monorepo for the Datum ecosystem, a collection of packages for building offline-first data synchronization for Dart and Flutter applications.
