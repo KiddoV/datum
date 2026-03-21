@@ -396,6 +396,10 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
         buffer.writeln(
           "      '$mapKey': $fieldName${type.endsWith('?') ? '?' : ''}.toString(),",
         );
+      } else if (type == 'DateTime' || type.startsWith('DateTime?')) {
+        buffer.writeln(
+          "      '$mapKey': target == MapTarget.remote ? $fieldName${type.endsWith('?') ? '?' : ''}.toIso8601String() : $fieldName${type.endsWith('?') ? '?' : ''}.millisecondsSinceEpoch,",
+        );
       } else {
         buffer.writeln("      '$mapKey': $fieldName,");
       }
@@ -460,10 +464,14 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
       final type = field.type.getDisplayString();
       final typeElement = field.type.element;
       final isEnum = typeElement != null && typeElement.kind.name == 'ENUM';
+      final toGenerator = _getToGenerator(field);
 
       buffer.writeln("    if ($fieldName != old.$fieldName) {");
 
-      if (type == 'Color') {
+      if (toGenerator != null) {
+        final code = toGenerator.replaceAll('%DATA_PROPERTY%', fieldName);
+        buffer.writeln("      changes['$mapKey'] = $code;");
+      } else if (type == 'Color') {
         buffer.writeln("      changes['$mapKey'] = $fieldName.toARGB32();");
       } else if (type == 'List<Offset>') {
         buffer.writeln(
@@ -486,6 +494,10 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
       } else if (type == 'BigInt' || type.startsWith('BigInt?')) {
         buffer.writeln(
           "      changes['$mapKey'] = $fieldName${type.endsWith('?') ? '?' : ''}.toString();",
+        );
+      } else if (type == 'DateTime' || type.startsWith('DateTime?')) {
+        buffer.writeln(
+          "      changes['$mapKey'] = $fieldName${type.endsWith('?') ? '?' : ''}.toIso8601String();",
         );
       } else {
         buffer.writeln("      changes['$mapKey'] = $fieldName;");
@@ -676,15 +688,19 @@ bool _${_toLowerCamelCase(className)}ListEquals<T>(List<T>? a, List<T>? b) {
       final fromGenerator = _getFromGenerator(field);
 
       if (fromGenerator != null) {
-        final access = "map['$mapKey'] ?? map['${_camelToSnake(fieldName)}']";
+        final access = "(map['$mapKey'] ?? map['${_camelToSnake(fieldName)}'])";
         final code = fromGenerator.replaceAll('%DATA_PROPERTY%', access);
         buffer.writeln("    $fieldName: $code,");
         continue;
       }
 
-      if (fieldName == 'createdAt' || fieldName == 'modifiedAt') {
+      if (fieldName == 'createdAt' || fieldName == 'modifiedAt' || type == 'DateTime') {
         buffer.writeln(
           "    $fieldName: _${_toLowerCamelCase(className)}ParseDate(map['$mapKey'] ?? map['${_camelToSnake(fieldName)}']),",
+        );
+      } else if (type == 'DateTime?') {
+        buffer.writeln(
+          "    $fieldName: (map['$mapKey'] ?? map['${_camelToSnake(fieldName)}']) != null ? _${_toLowerCamelCase(className)}ParseDate(map['$mapKey'] ?? map['${_camelToSnake(fieldName)}']) : null,",
         );
       } else if (type == 'int') {
         buffer.writeln(
