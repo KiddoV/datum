@@ -329,7 +329,7 @@ void main() {
 
       final postsRelation = user.relations['posts'] as HasMany<Post>;
       expect(postsRelation, isA<HasMany<Post>>());
-      expect(postsRelation.foreignKey, equals('userId'));
+      expect(postsRelation.foreignKey, equals('user_id'));
       expect(postsRelation.localKey, equals('id'));
       expect(
         postsRelation.cascadeDeleteBehavior,
@@ -368,7 +368,7 @@ void main() {
 
       final profileRelation = user.relations['profile'] as HasOne<Profile>;
       expect(profileRelation, isA<HasOne<Profile>>());
-      expect(profileRelation.foreignKey, equals('userId'));
+      expect(profileRelation.foreignKey, equals('user_id'));
       expect(profileRelation.localKey, equals('id'));
     });
   });
@@ -388,7 +388,7 @@ void main() {
 
       final authorRelation = post.relations['author'] as BelongsTo<User>;
       expect(authorRelation, isA<BelongsTo<User>>());
-      expect(authorRelation.foreignKey, equals('userId'));
+      expect(authorRelation.foreignKey, equals('user_id'));
       expect(authorRelation.localKey, equals('id'));
     });
 

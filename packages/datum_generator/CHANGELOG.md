@@ -1,4 +1,4 @@
-## 1.0.1 (Unreleased)
+## 1.0.1
 
 - Refactored: Migrated from string-based type checking to `TypeChecker` for robust type handling.
 - Added: `DatumConverter` support for custom field serialization/deserialization.

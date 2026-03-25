@@ -1,8 +1,8 @@
-# Datum Generator
-
 <p align="center">
-  <img src="https://raw.githubusercontent.com/Shreemanarjun/datum/refs/heads/main/packages/datum/logo/datum.webp" alt="Datum Logo" width="200"/>
+  <img src="https://zmozkivkhopoeutpnnum.supabase.co/storage/v1/object/public/images/datum_banner.svg" alt="Datum Banner">
 </p>
+
+# Datum Generator
 
 A powerful code generation package for the [Datum](https://pub.dev/packages/datum) framework. It automates the generation of boilerplate code for your `DatumEntity` and `RelationalDatumEntity` classes, including serialization, diff tracking, recursive relationships, and more.
 

@@ -23,6 +23,8 @@ class TestEntity extends DatumEntity {
 
   @DatumField(name: 'custom_field')
   final String customField;
+  
+  final DateTime customDate;
 
   @DatumIgnore()
   final String ignoredField;
@@ -37,6 +39,7 @@ class TestEntity extends DatumEntity {
     required this.name,
     required this.age,
     required this.customField,
+    required this.customDate,
     this.ignoredField = '',
   });
 
@@ -57,3 +60,4 @@ class TestEntity extends DatumEntity {
 
 // Since extensions can't add factories, we'll use top-level generated helpers or
 // the user will call them. Our generator produces _$TestEntityFromMap.
+void main() {}

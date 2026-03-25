@@ -57,7 +57,6 @@ dev_dependencies:
   hive_ce_test: ^2.0.0
   mocktail: ^1.0.4
   riverpod_lint: ^2.6.5
-  riverpod_test: ^0.1.9
   slang_build_runner: ^4.9.0
   spot: ^0.16.0
   very_good_analysis: ^10.0.0

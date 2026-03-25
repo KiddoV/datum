@@ -335,10 +335,11 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
   }
 
   String _camelToSnake(String name) {
+    if (name.isEmpty) return name;
     final result = StringBuffer();
     for (var i = 0; i < name.length; i++) {
       final char = name[i];
-      if (char.toUpperCase() == char && i > 0) {
+      if (char.toUpperCase() == char && char.toLowerCase() != char && i > 0) {
         result.write('_');
       }
       result.write(char.toLowerCase());
@@ -406,6 +407,10 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
         buffer.writeln(
           "      '$mapKey': $fieldName${type.endsWith('?') ? '?' : ''}.toString(),",
         );
+      } else if (type == 'DateTime' || type.startsWith('DateTime?')) {
+        buffer.writeln(
+          "      '$mapKey': target == MapTarget.remote ? $fieldName${type.endsWith('?') ? '?' : ''}.toIso8601String() : $fieldName${type.endsWith('?') ? '?' : ''}.millisecondsSinceEpoch,",
+        );
       } else {
         buffer.writeln("      '$mapKey': $fieldName,");
       }
@@ -470,10 +475,14 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
       final type = field.type.getDisplayString();
       final typeElement = field.type.element;
       final isEnum = typeElement != null && typeElement.kind.name == 'ENUM';
+      final toGenerator = _getToGenerator(field);
 
       buffer.writeln("    if ($fieldName != old.$fieldName) {");
 
-      if (type == 'Color') {
+      if (toGenerator != null) {
+        final code = toGenerator.replaceAll('%DATA_PROPERTY%', fieldName);
+        buffer.writeln("      changes['$mapKey'] = $code;");
+      } else if (type == 'Color') {
         buffer.writeln("      changes['$mapKey'] = $fieldName.toARGB32();");
       } else if (type == 'List<Offset>') {
         buffer.writeln(
@@ -704,19 +713,23 @@ bool _${_toLowerCamelCase(className)}ListEquals<T>(List<T>? a, List<T>? b) {
       final fromGenerator = _getFromGenerator(field);
 
       if (fromGenerator != null) {
-        final access = "map['$mapKey'] ?? map['$fieldName']";
+        final access = "(map['$mapKey'] ?? map['$fieldName'])";
         final code = fromGenerator.replaceAll('%DATA_PROPERTY%', access);
         buffer.writeln("    $fieldName: $code,");
         continue;
       }
 
-      if (type == 'DateTime') {
+      if (fieldName == 'createdAt' || fieldName == 'modifiedAt' || type == 'DateTime') {
         buffer.writeln(
           "    $fieldName: _${_toLowerCamelCase(className)}ParseDate(map['$mapKey'] ?? map['$fieldName']),",
         );
       } else if (type == 'DateTime?') {
         buffer.writeln(
           "    $fieldName: map['$mapKey'] != null || map['$fieldName'] != null ? _${_toLowerCamelCase(className)}ParseDate(map['$mapKey'] ?? map['$fieldName']) : null,",
+        );
+      } else if (type == 'DateTime?') {
+        buffer.writeln(
+          "    $fieldName: (map['$mapKey'] ?? map['${_camelToSnake(fieldName)}']) != null ? _${_toLowerCamelCase(className)}ParseDate(map['$mapKey'] ?? map['${_camelToSnake(fieldName)}']) : null,",
         );
       } else if (type == 'int') {
         buffer.writeln(
@@ -937,8 +950,8 @@ DateTime _${_toLowerCamelCase(className)}ParseDate(dynamic value) {
           r'<(.+?)>',
         ).firstMatch(belongsTo.type!.getDisplayString());
         final relatedType = typeMatch?.group(1) ?? 'dynamic';
-        final foreignKey = reader.read('foreignKey').stringValue;
-        final localKey = reader.read('localKey').stringValue;
+        final foreignKey = _camelToSnake(reader.read('foreignKey').stringValue);
+        final localKey = _camelToSnake(reader.read('localKey').stringValue);
         final cascadeDelete = reader.read('cascadeDelete').stringValue;
         return "BelongsTo<$relatedType>(this, '$foreignKey', localKey: '$localKey', cascadeDeleteBehavior: CascadeDeleteBehavior.$cascadeDelete)";
       }
@@ -950,8 +963,8 @@ DateTime _${_toLowerCamelCase(className)}ParseDate(dynamic value) {
           r'<(.+?)>',
         ).firstMatch(hasMany.type!.getDisplayString());
         final relatedType = typeMatch?.group(1) ?? 'dynamic';
-        final foreignKey = reader.read('foreignKey').stringValue;
-        final localKey = reader.read('localKey').stringValue;
+        final foreignKey = _camelToSnake(reader.read('foreignKey').stringValue);
+        final localKey = _camelToSnake(reader.read('localKey').stringValue);
         final cascadeDelete = reader.read('cascadeDelete').stringValue;
         return "HasMany<$relatedType>(this, '$foreignKey', localKey: '$localKey', cascadeDeleteBehavior: CascadeDeleteBehavior.$cascadeDelete)";
       }
@@ -963,8 +976,8 @@ DateTime _${_toLowerCamelCase(className)}ParseDate(dynamic value) {
           r'<(.+?)>',
         ).firstMatch(hasOne.type!.getDisplayString());
         final relatedType = typeMatch?.group(1) ?? 'dynamic';
-        final foreignKey = reader.read('foreignKey').stringValue;
-        final localKey = reader.read('localKey').stringValue;
+        final foreignKey = _camelToSnake(reader.read('foreignKey').stringValue);
+        final localKey = _camelToSnake(reader.read('localKey').stringValue);
         final cascadeDelete = reader.read('cascadeDelete').stringValue;
         return "HasOne<$relatedType>(this, '$foreignKey', localKey: '$localKey', cascadeDeleteBehavior: CascadeDeleteBehavior.$cascadeDelete)";
       }
@@ -977,10 +990,10 @@ DateTime _${_toLowerCamelCase(className)}ParseDate(dynamic value) {
         ).firstMatch(manyToMany.type!.getDisplayString());
         final relatedType = typeMatch?.group(1) ?? 'dynamic';
         final pivotType = typeMatch?.group(2) ?? 'dynamic';
-        final thisForeignKey = reader.read('thisForeignKey').stringValue;
-        final otherForeignKey = reader.read('otherForeignKey').stringValue;
-        final thisLocalKey = reader.read('thisLocalKey').stringValue;
-        final otherLocalKey = reader.read('otherLocalKey').stringValue;
+        final thisForeignKey = _camelToSnake(reader.read('thisForeignKey').stringValue);
+        final otherForeignKey = _camelToSnake(reader.read('otherForeignKey').stringValue);
+        final thisLocalKey = _camelToSnake(reader.read('thisLocalKey').stringValue);
+        final otherLocalKey = _camelToSnake(reader.read('otherLocalKey').stringValue);
         final cascadeDelete = reader.read('cascadeDelete').stringValue;
 
         return "ManyToMany<$relatedType>("
