@@ -484,7 +484,23 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
             return true;
           }
 
-          return false;
+          if (a is Set && b is Set) {
+            if (a.length != b.length) return false;
+
+            // Ensure each element is matched exactly once (prevents duplicate matching)
+            final unmatched = b.toList();
+            for (final item in a) {
+              final matchIndex = unmatched.indexWhere(
+                (other) => _isEqual(item, other),
+              );
+              if (matchIndex == -1) return false;
+              unmatched.removeAt(matchIndex);
+            }
+
+            return unmatched.isEmpty;
+          }
+
+          return a == b;
         }
       ''');
     }
