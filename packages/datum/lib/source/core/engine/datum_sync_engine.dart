@@ -477,9 +477,11 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
 
     // Use streaming approach for large datasets to reduce memory usage
     final remoteItemsStream = _streamRemoteItems(userId, scope);
+    final remoteIds = <String>{};
     final remoteBatch = <T>[];
 
     await for (final remoteItem in remoteItemsStream) {
+      remoteIds.add(remoteItem.id);
       remoteBatch.add(remoteItem);
 
       // Process batch when it reaches the batch size
@@ -516,6 +518,11 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
       cumulativeBytesPulled += batchBytes;
     }
 
+    // Only handle missing remote item on full sync
+    if (scope == null && (options?.query == null || options!.query.filters.isEmpty) && options?.forceFullSync == true) {
+      await _handleRemoteMissing(userId, remoteIds, options, generatedEvents);
+    }
+
     return bytesPulled;
   }
 
@@ -535,6 +542,76 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
 
       // Allow other async operations to proceed
       await Future.delayed(Duration.zero);
+    }
+  }
+
+  // Handle missing remote items
+  Future<void> _handleRemoteMissing(
+    String userId,
+    Set<String> remoteIds,
+    DatumSyncOptions<T>? options,
+    List<DatumSyncEvent<T>> generatedEvents,
+  ) async {
+    logger.info('Handling remote-missing items...');
+
+    // Get all local items is the only way to check if remote is missing for now
+    final localItems = await localAdapter.readAll(userId: userId);
+
+    for (final localItem in localItems) {
+      if (localItem.isDeleted) continue; // Avoid conflicts
+      if (remoteIds.contains(localItem.id)) continue;
+
+      logger.info('Missing remote item detected, id: ${localItem.id}');
+      final context = DatumConflictContext(
+        userId: userId,
+        entityId: localItem.id,
+        type: DatumConflictType.deletionConflict,
+        detectedAt: DateTime.now()
+      );
+
+      final conflictEvent = ConflictDetectedEvent<T>(
+        userId: userId,
+        context: context,
+        localData: localItem,
+        remoteData: null
+      );
+
+      generatedEvents.add(conflictEvent);
+      _notifyObservers(conflictEvent);
+
+      final resolver = options?.conflictResolver ?? conflictResolver;
+      print("Using resolver ===>>> $resolver");
+      final resolution = await resolver.resolve(
+        local: localItem,
+        remote: null,
+        context: context,
+      );
+
+      switch (resolution.strategy) {
+        case DatumResolutionStrategy.takeRemote:
+          await localAdapter.delete(localItem.id, userId: userId);
+          break;
+        case DatumResolutionStrategy.takeLocal:
+          // Keep local (maybe push later)
+          break;
+        case DatumResolutionStrategy.merge:
+          if (resolution.resolvedData != null) {
+            await localAdapter.update(resolution.resolvedData!);
+          }
+          break;
+        case DatumResolutionStrategy.abort:
+          logger.warn('Conflict resolution aborted for ${context.entityId}');
+        case DatumResolutionStrategy.askUser:
+          logger.warn('Conflict resolution requires user input for ${context.entityId}');
+      }
+
+      generatedEvents.add(
+        ConflictResolvedEvent(
+          userId: userId,
+          entityId: localItem.id,
+          resolution: resolution,
+        ),
+      );
     }
   }
 
