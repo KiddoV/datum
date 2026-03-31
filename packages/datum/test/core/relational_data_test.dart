@@ -868,6 +868,8 @@ void main() {
     late DatumManager<Post> postManager;
 
     setUp(() {
+      Datum.resetForTesting();
+
       testUser = User(
         id: 'user-1',
         name: 'Kiddo V',
@@ -882,6 +884,10 @@ void main() {
         modifiedAt: DateTime(2026, 3, 31),
         createdAt: DateTime(2026, 3, 31),
       );
+    });
+
+    tearDown(() {
+      Datum.resetForTesting();
     });
     test('query supports nested relation field (author.name)', () async {
       // Arrange
