@@ -519,8 +519,10 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
     }
 
     // Only handle missing remote item on full sync
-    if (scope == null && (options?.query == null || options!.query.filters.isEmpty) && options?.forceFullSync == true) {
-      await _handleRemoteMissing(userId, remoteIds, options, generatedEvents);
+    if (statusSubject.value.status == DatumSyncStatus.syncing && scope == null) {
+      if ( (options?.query == null || options!.query.filters.isEmpty) && options?.forceFullSync == true) {
+        await _handleRemoteMissing(userId, remoteIds, options, generatedEvents);
+      }
     }
 
     return bytesPulled;
@@ -580,7 +582,6 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
       _notifyObservers(conflictEvent);
 
       final resolver = options?.conflictResolver ?? conflictResolver;
-      print("Using resolver ===>>> $resolver");
       final resolution = await resolver.resolve(
         local: localItem,
         remote: null,
@@ -732,10 +733,12 @@ class DatumSyncEngine<T extends DatumEntityInterface> {
           await localAdapter.update(resolution.resolvedData!);
         case DatumResolutionStrategy.abort:
           logger.warn('Conflict resolution aborted for ${context.entityId}');
+          break;
         case DatumResolutionStrategy.askUser:
           logger.warn(
             'Conflict resolution requires user input for ${context.entityId}',
           );
+          break;
       }
       final resolvedEvent = ConflictResolvedEvent<T>(
         userId: userId,
