@@ -775,7 +775,7 @@ bool _${_toLowerCamelCase(className)}ListEquals<T>(List<T>? a, List<T>? b) {
         continue;
       }
 
-      if (fieldName == 'createdAt' || fieldName == 'modifiedAt' || type == 'DateTime') {
+      if (type == 'DateTime') {
         buffer.writeln(
           "    $fieldName: _${_toLowerCamelCase(className)}ParseDate(map['$mapKey'] ?? map['$fieldName']),",
         );
