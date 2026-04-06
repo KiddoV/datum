@@ -439,7 +439,7 @@ class DatumGenerator extends GeneratorForAnnotation<DatumSerializable> {
     List<dynamic> fields,
   ) {
     buffer.writeln(
-      '\n  Map<String, dynamic>? datumDiff(DatumEntityInterface oldVersion) {',
+      '\n  Map<String, dynamic>? datumDiff(DatumEntityInterface oldVersion, {MapTarget target = MapTarget.local}) {',
     );
 
     final excludedFields = {
